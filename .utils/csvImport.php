@@ -73,33 +73,61 @@ if (($file = fopen("Productos.csv", "r")) !== FALSE) {
     $handle = fopen("prueba.csv", "r");
     if ($handle) {
         $lineNum = 1;
-        while (($column = fgetcsv($handle,5000, ";")) !== false) { // We read the CSV line by line
+        while (($column = fgetcsv($handle, 5000, ";")) !== false) { // We read the CSV line by line
             $attributes = $column[12]; // In the column 12 is the info we need, the attributes
-            $code = substr($attributes, 5); // We remove the first part of the attribute string
-            $code = before('|', $code); // We use this function to get the code without the rest of the attributes
-            echo $code . "\n";
-
-            $groups[$code] = [];
-            if (in_array($code, array_keys($groups))) {
-                $groups[$code][] = $lineNum;
+//            $code = substr($attributes, 5); // We remove the first part of the attribute string
+            $code = before('|', $column[12]); // We use this function to get the code without the rest of the attributes
+            $groups[substr($code, 5)];
+            if ($code === before('|', $column[12])) {
+                $groups[substr($code, 5)][] = $lineNum . ";sku=" . $column[0] . "," . $column[12]; // With this, we save the product code on the groups array and it's SKU
             }
-
             $lineNum++;
-
-            //Filtramos los indices vacíos [].
         }
-
-
         fclose($handle);
     } else {
         // Error opening the file.
     }
 
+    // Now with the code and the SKU, for each product we have saved on the array, we have to change
+    // it's product type to configurable and add to the configurable variations the SKUs
+
+    foreach ($groups as $group) {
+        if ($group[0] === '2;sku=001,code=|size=|color=|mounting=|diameter=' || $group[0] === '1;sku=sku,additional_attributes') {
+            echo "Skipping line..." . "\n"; // We skip the first two lines because they are not correct
+        } else {
+            $firstProduct = explode(';', $group[0]);
+            $lineProduct = $firstProduct[0]; //We pick the line where the first product has the same code
+
+            $variations = '';
+            for ($i = 1; $i < count($group); $i++) {
+                $explode = explode(';', $group[$i]); // We pick the variations of the rest of the products
+                $variations .= $explode[1] . "|"; // Adding the variations to the same variable to use it later
+            }
+
+            $new2 = fopen('prueba2.csv', 'w'); // We create a new CSV with the info that we will be using
+            $handle = fopen("prueba.csv", "r"); // We open the last CSV we created
+            $lineNum = 1;
+            while (($column = fgetcsv($handle, 5000, ";")) !== false) {
+                if ($lineNum !== intval($lineProduct)) {
+                    $lineNum++;
+                    fputcsv($new2, $column, ";"); // If the line is not the one we want to modify and we haven't modified it yet, we leave it as it is
+                } else {
+                    $column[2] = 'configurable';
+                    $column[17] = substr($variations, 0, -1);
+                    fputcsv($new2, $column, ";"); // If the line is the one we want, we modify it and add it to the CSV
+                    echo "Line " . $lineNum . " modified succesfully!\n";
+                    $lineNum++;
+                }
+
+            }
+            fclose($handle);
+        }
+    }
+
     echo "Finished execution." . "\n";
 }
-function before ($char, $string)
+
+function before($char, $string)
 {
     return substr($string, 0, strpos($string, $char));
-};
-
-?>
+}
