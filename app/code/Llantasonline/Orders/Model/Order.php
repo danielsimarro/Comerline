@@ -7,7 +7,7 @@ class Order
     public function getOrderDetails($orderDetails)
     {
         $file = fopen('pub/order.txt', 'w');
-        $orderChunks = array_chunk($orderDetails, 1, true);
+        $orderChunks = array_chunk($orderDetails, 1, true); // We divide the array into numerated chunks to access them easily
         for ($i = 0; $i < count($orderChunks); $i++){
             foreach($orderChunks[$i] as $chunk){
                 if (is_string($chunk) === true || is_numeric($chunk) === true) {
