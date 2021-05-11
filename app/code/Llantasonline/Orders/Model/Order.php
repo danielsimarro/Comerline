@@ -6,7 +6,7 @@ class Order
 {
     public function getOrderDetails($orderDetails)
     {
-        $file = fopen('/home/alberto/order.txt', 'w');
+        $file = fopen('pub/order.txt', 'w');
         $orderChunks = array_chunk($orderDetails, 1, true);
         for ($i = 0; $i < count($orderChunks); $i++){
             foreach($orderChunks[$i] as $chunk){
