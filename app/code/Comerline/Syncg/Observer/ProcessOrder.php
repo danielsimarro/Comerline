@@ -2,9 +2,11 @@
 
 namespace Comerline\Syncg\Observer;
 
+use Magento\Framework\Event\ObserverInterface;
+use Magento\Framework\Event\Observer;
 use Comerline\Syncg\Model\Order;
 
-class ProcessOrder implements \Magento\Framework\Event\ObserverInterface
+class ProcessOrder implements ObserverInterface
 {
 
     private $order;
@@ -15,10 +17,9 @@ class ProcessOrder implements \Magento\Framework\Event\ObserverInterface
         $this->order = $order;
     }
 
-    public function execute(\Magento\Framework\Event\Observer $observer)
+    public function execute(Observer $observer)
     {
-        $orderDetails = $observer->getOrder();
-
-        $this->order->getOrderDetails($orderDetails->getData());
+        $order = $observer->getOrder();
+        $this->order->getOrderDetails($order);
     }
 }
