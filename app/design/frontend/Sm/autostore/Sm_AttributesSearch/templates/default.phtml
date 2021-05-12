@@ -1,0 +1,71 @@
+<?php
+/**
+ * @category Magentech
+ * @package Sm_AttributesSearch
+ * @version 1.0.0
+ * @copyright Copyright (c) 2018 YouTech Company. All Rights Reserved.
+ * @license - Copyrighted Commercial Software
+ * @author YouTech Company <contact@ytcvn.com>
+ * @link http://www.magentech.com
+ */
+$attributes = $block->getAttributesData();
+if (!empty($attributes)) {
+    ?>
+    <div id="<?php echo $block->getNameInLayout(); ?>" class="smas-wrap">
+        <div class="smas-container">
+            <div data-role="loader" class="smas-loading">
+                <div class="loader">
+                    <img src="<?php /* @escapeNotVerified */
+                    echo $block->getViewFileUrl('images/loader-1.gif'); ?>"
+                         alt="<?php /* @escapeNotVerified */
+                         echo __('Loading...') ?>">
+                </div>
+            </div>
+            <?php if (!empty($block->getCaption())) { ?>
+                <div class="smas-caption">
+                    <?php echo $block->getCaption(); ?>
+                </div>
+            <?php } ?>
+            <div class="smas-form-wrap">
+                <form method="get" action="" class="smas-form ">
+                    <div class="smas-group-left cf">
+                        <?php foreach ($attributes as $key => $attr) { ?>
+                            <div class="smas-attr">
+                                <div class="smas-attr-inner">
+                                    <select id="<?php echo $key . '_' . $attr['id']; ?>"
+                                            class="smas-select <?php echo $attr['last'] ? ' smas-select-last ' : ''; ?>"
+                                            name="<?php echo $key; ?>" data-attr-id="<?php echo $attr['id']; ?>"
+                                        <?php echo $attr['disabled'] ? 'disabled="disabled"' : ''; ?>>
+                                        <?php echo $block->getLayout()
+                                            ->createBlock("Sm\AttributesSearch\Block\AttributesSearch")
+                                            ->setData('attr', $attr)
+                                            ->setTemplate("Sm_AttributesSearch::default_options.phtml")->toHtml(); ?>
+                                    </select>
+                                </div>
+                            </div>
+                        <?php } ?>
+                    </div>
+                    <div class="smas-group-right">
+                        <div class="smas-btn">
+                            <div class="smas-attr-inner cf">
+                                <button class="btn btn-search " disabled="disabled">Search</button>
+                                <button class="btn btn-reset " style="display:none;">Reset</button>
+                            </div>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    <?php
+}
+?>
+<script type="text/javascript">
+    require(['jquery', 'Sm_AttributesSearch/js/attributes-search'], function ($) {
+        var attrSearch = {
+            "actionUrl": '<?php echo $block->getActionUrl(); ?>',
+            "elementId": "<?php echo $block->getNameInLayout(); ?>",
+        };
+        $("#" + attrSearch.elementId).SearchAttributes(attrSearch);
+    });
+</script>

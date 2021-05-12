@@ -1,0 +1,23 @@
+<?php
+/**
+ * @category Magentech
+ * @package Sm_AttributesSearch
+ * @version 1.0.0
+ * @copyright Copyright (c) 2018 YouTech Company. All Rights Reserved.
+ * @license - Copyrighted Commercial Software
+ * @author YouTech Company <contact@ytcvn.com>
+ * @link http://www.magentech.com
+ */
+$attr = $block->getData('attr');
+?>
+<option value="0"><?php echo $block->getLabelAttribute($attr['code']); ?></option>
+<?php if (isset($attr['options']) && !empty($attr['options'])) { ?>
+    <?php $labelOpt = $block->getOptionLabel($attr['code']); ?>
+    <?php foreach ($attr['options'] as $opt) { ?>
+        <?php if (isset($opt['value']) && !empty($opt['value']) && isset($labelOpt[$opt['value']])) { ?>
+            <option value="<?php echo $opt['value']; ?>">
+                <?php echo $labelOpt[$opt['value']]; ?><?php echo '&nbsp;(' . $opt['count'] . ')'; ?>
+            </option>
+        <?php } ?>
+    <?php } ?>
+<?php } ?>

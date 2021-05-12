@@ -1,0 +1,91 @@
+<?php
+/**
+ * Copyright © Magento, Inc. All rights reserved.
+ * See COPYING.txt for license details.
+ */
+
+// @codingStandardsIgnoreFile
+/** @var \Magento\Contact\Block\ContactForm $block */
+?>
+
+<div class="contact-container clearfix">
+    <div class="row">
+        <div class="col-lg-6">
+            <div class="image-contact">
+                <?php echo $block->getLayout()->createBlock('Magento\Cms\Block\Block')->setBlockId('contact-image')->toHtml(); ?>
+            </div>
+        </div>
+
+        <div class="col-lg-6">
+            <div class="form-contact">
+                <div class="contact-description">
+                    <?php echo $block->getLayout()->createBlock('Magento\Cms\Block\Block')->setBlockId('contact-description')->toHtml(); ?>
+                </div>
+
+                <form class="form contact"
+                      action="<?= $block->escapeUrl($block->getFormAction()) ?>"
+                      id="contact-form"
+                      method="post"
+                      data-hasrequired="<?= $block->escapeHtmlAttr(__('* Required Fields')) ?>"
+                      data-mage-init='{"validation":{}}'>
+                    <fieldset class="fieldset">
+                        <div class="row">
+                            <div class="col-lg-6 col-md-6">
+                                <div class="field name required">
+                                    <div class="control">
+                                        <input name="name" id="name" title="<?= $block->escapeHtmlAttr(__('Name')) ?>"
+                                               placeholder="<?php echo __('Name'); ?>"
+                                               value="<?= $block->escapeHtmlAttr($this->helper('Magento\Contact\Helper\Data')->getPostValue('name') ?: $this->helper('Magento\Contact\Helper\Data')->getUserName()) ?>"
+                                               class="input-text" type="text" data-validate="{required:true}"/>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="col-lg-6 col-md-6">
+                                <div class="field email required">
+                                    <div class="control">
+                                        <input name="email" id="email"
+                                               title="<?= $block->escapeHtmlAttr(__('Email')) ?>"
+                                               placeholder="<?php echo __('Email'); ?>"
+                                               value="<?= $block->escapeHtmlAttr($this->helper('Magento\Contact\Helper\Data')->getPostValue('email') ?: $this->helper('Magento\Contact\Helper\Data')->getUserEmail()) ?>"
+                                               class="input-text" type="email"
+                                               data-validate="{required:true, 'validate-email':true}"/>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="field telephone">
+                            <div class="control">
+                                <input name="telephone" id="telephone" placeholder="<?php echo __('Phone Number'); ?>"
+                                       title="<?= $block->escapeHtmlAttr(__('Phone Number')) ?>"
+                                       value="<?= $block->escapeHtmlAttr($this->helper('Magento\Contact\Helper\Data')->getPostValue('telephone')) ?>"
+                                       class="input-text" type="text"/>
+                            </div>
+                        </div>
+                        <div class="field comment required">
+                            <div class="control">
+                                <textarea name="comment" id="comment" placeholder="<?php echo __('Leave A Comment'); ?>"
+                                          title="<?= $block->escapeHtmlAttr(__('What’s on your mind?')) ?>"
+                                          class="input-text" cols="5" rows="3"
+                                          data-validate="{required:true}"><?= $block->escapeHtml($this->helper('Magento\Contact\Helper\Data')->getPostValue('comment')) ?></textarea>
+                            </div>
+                        </div>
+                        <?= $block->getChildHtml('form.additional.info') ?>
+                    </fieldset>
+                    <div class="actions-toolbar">
+                        <div class="primary">
+                            <input type="hidden" name="hideit" id="hideit" value=""/>
+                            <button type="submit" title="<?= $block->escapeHtmlAttr(__('Submit')) ?>"
+                                    class="action submit primary">
+                                <span><?= $block->escapeHtml(__('Submit')) ?></span>
+                            </button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+

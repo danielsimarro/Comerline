@@ -1,0 +1,20 @@
+<?xml version="1.0"?>
+<!--
+/**
+ * Copyright © 2015 Magento. All rights reserved.
+ * See COPYING.txt for license details.
+ */
+-->
+<config xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="../../Store/etc/config.xsd">
+    <default>
+        <attributessearch>
+            <general>
+                <enable>1</enable>
+				<title_module>New Products</title_module>
+            </general>
+			<source>
+				<select_attributes>0</select_attributes>
+			</source>
+        </attributessearch>
+    </default>
+</config>

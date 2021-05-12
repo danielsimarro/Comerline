@@ -1,0 +1,42 @@
+#row_attributessearch_source_select_attributes td.value{
+	width:60%;
+}
+
+#row_attributessearch_source_select_attributes tbody td{
+	padding:5px 10px;
+	border-right:1px solid #fff;
+	text-align:center;
+	vertical-align:middle;
+	color:#fff;
+}
+
+#row_attributessearch_source_select_attributes .admin__control-table th{
+	padding:15px10px;
+	border-right:1px solid #fff;
+	text-align:center;
+	background-color: #514943;
+	color:#fff;
+}
+
+#row_attributessearch_source_select_attributes tbody  tr:nth-child(even) td{
+	background-color: #f7f7f7;
+}
+#row_attributessearch_source_select_attributes tbody  tr:hover td{
+	background-color:#e5f7fe
+}
+
+#row_attributessearch_source_select_attributes tbody td .action-delete::before,
+#row_attributessearch_source_select_attributes tbody td .draggable-handle::before{
+}
+
+#row_attributessearch_source_select_attributes tfoot td.col-actions-add button{
+	color:#fff;
+	background-color: #eb5202;
+	border-color:#eb5202;
+}
+#row_attributessearch_source_select_attributes tfoot td.col-actions-add button:hover,
+#row_attributessearch_source_select_attributes tfoot td.col-actions-add button:active{
+	background-color: #ba4000;
+	border-color: #b84002;
+}
+

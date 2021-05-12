@@ -1,0 +1,9 @@
+<?php
+$_product = $block->getProduct();
+$blockObj = $block->getLayout()->createBlock('Sm\Autostore\Block\Template');
+?>
+
+
+<div class="view-count">
+    <?php echo __('Views: ') . $blockObj->getProductCount($_product->getId()); ?>
+</div>

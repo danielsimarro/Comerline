@@ -1,0 +1,10 @@
+<?xml version="1.0"?>
+<config xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="urn:magento:framework:ObjectManager/etc/config.xsd">
+    <preference for="Magento\CatalogSearch\Block\Result" type="Sm\AttributesSearch\Block\CatalogSearch\Result" />
+	<preference for="Magento\CatalogSearch\Controller\Result\Index" type="Sm\AttributesSearch\Controller\CatalogSearch\Result\Index" />
+	<virtualType name="elasticsearchFulltextSearchCollection" type="Sm\AttributesSearch\Model\CatalogSearch\Fulltext\Collection">
+        <arguments>
+            <argument name="searchRequestName" xsi:type="string">quick_search_container</argument>
+        </arguments>
+    </virtualType>
+</config>

@@ -1,0 +1,46 @@
+<?php
+/**
+ * Copyright © 2016 Magento. All rights reserved.
+ * See COPYING.txt for license details.
+ */
+
+// @codingStandardsIgnoreFile
+
+/**
+ * @var \Magento\Theme\Block\Html\Header $block
+ */
+
+$_config     = $this->helper('Sm\Autostore\Helper\Data');
+$headerStyle = $_config->getThemeLayout('header_style');
+
+include($block->getTemplateFile("Magento_Theme::html/header-style/" . $headerStyle . ".phtml"));
+?>
+
+<?php if ($_config->getGeneral('menu_ontop') == 1) { ?>
+    <script type="text/javascript">
+        require([
+            'jquery'
+        ], function ($) {
+            $window = $(window);
+            if ($('.ontop-element').length) {
+                menu_offset_top = $('.ontop-element').offset().top;
+
+                function processScroll() {
+                    var scrollTop = $window.scrollTop();
+                    if (scrollTop >= menu_offset_top) {
+                        $('.ontop-element').addClass('menu-on-top');
+                        $('body').addClass('body-on-top');
+                    } else if (scrollTop <= menu_offset_top) {
+                        $('.ontop-element').removeClass('menu-on-top');
+                        $('body').removeClass('body-on-top');
+                    }
+                }
+
+                processScroll();
+                $window.scroll(function () {
+                    processScroll();
+                });
+            }
+        });
+    </script>
+<?php } ?>

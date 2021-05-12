@@ -11811,7 +11811,7 @@
 "Settlement declined","Establecimiento declinado","module","Magento_BraintreeTwo"
 "Settlement pending","Establecimiento pendiente","module","Magento_BraintreeTwo"
 "Settlement confirmed","Establecimiento confirmado","module","Magento_BraintreeTwo"
-"Sale","Venta","module","Magento_BraintreeTwo"
+"Sale","Oferta","module","Magento_BraintreeTwo"
 "Credit","Crédito","module","Magento_BraintreeTwo"
 "Credit Card Type","Tipo de tarjeta de crédito","module","Magento_BraintreeTwo"
 "Credit Card Number","Número de tarjeta de crédito","module","Magento_BraintreeTwo"
@@ -12916,15 +12916,19 @@
 "Type","Tipo","module","Magento_Bundle"
 "Search products...","Buscar productos...","theme",frontend/Sm/autostore
 "You may like this products","Puede que te gusten estos productos","theme",frontend/Sm/autostore
-"Featured Products ","Productos Destacados","theme",frontend/Sm/autostore
+"Featured Products","Productos Destacados"
 "Your Dashboard","Tu Perfil","theme",frontend/Sm/autostore
 "All Categories","Todas las Categorias","theme",frontend/Sm/autostore
 "View More","Ver Más","theme",frontend/Sm/autostore
-"Views","Visitas","theme",frontend/Sm/autostore
+"Views: ","Visitas: ",theme,frontend/Sm/autostore
+"Featured Products","Productos Destacados",module,Sm_FilterProducts
 "View Cart","Ver Carrito","theme",frontend/Sm/autostore
-"Enter your destination to get a shipping estimate", "Introduzca su dirección para ver una estimación de los gastos de envío","theme",frontend/Sm/autostore
+"Enter your destination to get a shipping estimate.", "Introduzca su dirección para ver una estimación de los gastos de envío.","theme",frontend/Sm/autostore
 "Flat Rate","Tarifa","theme",frontend/Sm/autostore
+"Flat Rate - Fixed","Tarifa fija","theme",frontend/Sm/autostore
 "Fixed","Fija","theme",frontend/Sm/autostore
-"%1 Item in Cart","%1 Artículos en el Carrito","theme",frontend/Sm/autostore
+"Item in Cart","Artículo en el Carrito","theme",frontend/Sm/autostore
+"Items in Cart","Artículos en el Carrito","theme",frontend/Sm/autostore
 "Check / Money order","Dirección de facturación","theme",frontend/Sm/autostore
 "Item was removed successfully.","El artículo se ha borrado correctamente.","theme",frontend/Sm/autostore
+"Error occurred. Try to refresh page.","Ha ocurrido un error. Por favor, refresque la página.","theme",frontend/Sm/autostore
