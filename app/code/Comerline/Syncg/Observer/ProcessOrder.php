@@ -1,8 +1,8 @@
 <?php
 
-namespace Llantasonline\Orders\Observer;
+namespace Comerline\Syncg\Observer;
 
-use Llantasonline\Orders\Model\Order;
+use Comerline\Syncg\Model\Order;
 
 class ProcessOrder implements \Magento\Framework\Event\ObserverInterface
 {

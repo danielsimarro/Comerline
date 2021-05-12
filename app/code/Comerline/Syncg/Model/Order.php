@@ -1,6 +1,6 @@
 <?php
 
-namespace Llantasonline\Orders\Model;
+namespace Comerline\Syncg\Model;
 
 class Order
 {

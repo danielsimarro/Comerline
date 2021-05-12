@@ -1,6 +1,6 @@
 <?php
 \Magento\Framework\Component\ComponentRegistrar::register(
     \Magento\Framework\Component\ComponentRegistrar::MODULE,
-    'Llantasonline_Orders',
+    'Comerline_Syncg',
     __DIR__
 );

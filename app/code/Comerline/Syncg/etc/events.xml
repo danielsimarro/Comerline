@@ -1,6 +1,6 @@
 <?xml version="1.0"?>
 <config xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="urn:magento:framework:Event/etc/events.xsd">
     <event name="checkout_submit_all_after">
-        <observer name="llantasonline_orders_observer_checkout_submit_all_after" instance="Llantasonline\Orders\Observer\ProcessOrder" />
+        <observer name="comerline_syncg_observer_checkout_submit_all_after" instance="Comerline\Syncg\Observer\ProcessOrder" />
     </event>
 </config>
