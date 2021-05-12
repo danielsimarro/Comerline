@@ -1,0 +1,213 @@
+.smas-wrap {
+    margin: 0;
+    padding: 0;
+}
+
+.smas-container {
+    display: block;
+    position: relative;
+}
+
+.smas-loading {
+    background: rgba(255, 255, 255, 0.5) none repeat scroll 0 0;
+    bottom: 0;
+    left: 0;
+    margin: auto;
+    position: absolute;
+    right: 0;
+    top: 0;
+    z-index: 9999;
+}
+
+.smas-loading .loader > img {
+    bottom: 0;
+    left: 0;
+    margin: auto;
+    position: absolute;
+    right: 0;
+    top: 0;
+    z-index: 100;
+}
+
+.smas-caption {
+    color: #fff;
+    text-align: center;
+    text-transform: uppercase;
+    margin-bottom: 57px;
+}
+
+.smas-caption h2 {
+    font-size: 48px;
+    letter-spacing: 1px;
+    font-weight: 600;
+    margin: 0;
+    padding-bottom: 10px;
+}
+
+.smas-caption p {
+    color: #cccccc;
+}
+
+.smas-caption p span {
+    color: #fff;
+}
+
+.smas-form {
+    position: relative;
+}
+
+.smas-group-right {
+    position: absolute;
+    top: 0;
+    right: 0;
+}
+
+.smas-group-left {
+    margin-right: 148px;
+}
+
+.smas-attr {
+    float: left;
+    width: 33.33%;
+}
+
+.smas-attr-inner {
+    margin: 0 3px;
+}
+
+.chosen-container-single .chosen-single {
+    height: 49px;
+    line-height: 49px;
+    background: none;
+    background-color: #fff;
+    padding-left: 30px;
+}
+
+.chosen-container-active.chosen-with-drop .chosen-single {
+    background: none;
+    background-color: #fff;
+}
+
+.chosen-container-single .chosen-single div {
+    width: 50px;
+}
+
+.chosen-container-single .chosen-single span {
+    margin-right: 50px;
+}
+
+.chosen-container-single .chosen-single div b {
+    background: url(../images/choosen-icon.png) no-repeat 1px center;
+}
+
+.chosen-container-active.chosen-with-drop .chosen-single div b {
+    background-position: -35px center;
+}
+
+.chosen-container-single.chosen-disabled {
+    opacity: 1 !important;
+}
+
+.chosen-container-single.chosen-disabled .chosen-single div b {
+    background: url(../images/choosen-icon.png) no-repeat -72px center;
+}
+
+.smas-btn .btn.btn-search {
+    width: 142px;
+    background: none;
+    background-color: #ff2d37;
+    height: 49px;
+    border: none;
+    color: #fff;
+    box-shadow: none;
+    vertical-align: middle;
+    line-height: 100%;
+    text-transform: uppercase;
+    display: block;
+}
+
+.smas-btn .btn.btn-search:before {
+    margin: 0 5px;
+    .font-awesome(f002, 14px);
+}
+
+.smas-btn .btn.btn-reset {
+    /*background: none;
+    color: #fff;*/
+    text-transform: uppercase;
+    float: right;
+    margin-top: 5px;
+}
+
+.cf:before,
+.cf:after {
+    content: " "; /* 1 */
+    display: table; /* 2 */
+}
+
+.cf:after {
+    clear: both;
+}
+
+/**
+ * For IE 6/7 only
+ * Include this rule to trigger hasLayout and contain floats.
+ */
+.cf {
+    *zoom: 1;
+}
+
+.chosen-container-single .chosen-single {
+    font-size: 107.69%;
+    color: #484848;
+    border: none !important;
+}
+
+.chosen-container .chosen-drop {
+    border: none !important;
+}
+
+.chosen-container-single .chosen-search {
+    padding-left: 10px;
+    padding-right: 10px;
+}
+
+.chosen-container .chosen-results {
+    margin: 0;
+    padding: 10px;
+    max-height: 235px;
+}
+
+.chosen-container .chosen-results li {
+    padding: 10px;
+    background: transparent;
+    .transition(.2s);
+
+    &:not(:last-child) {
+        margin-bottom: 1px;
+    }
+
+    &.result-selected,
+    &.highlighted {
+        background: #ddd !important;
+        color: inherit !important;
+    }
+}
+
+.smas-btn .btn.btn-search {
+    opacity: 1;
+    font-size: 107.69% !important;
+    font-weight: 500;
+    line-height: 50px;
+
+    &:before {
+        position: relative;
+        top: -1px;
+    }
+}
+
+.smas-btn .btn.btn-reset {
+    display: none !important;
+    visibility: hidden !important;
+    opacity: 0 !important;
+}

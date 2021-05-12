@@ -1,0 +1,44 @@
+<?xml version="1.0"?>
+<!--
+/**
+ * Copyright © 2015 Magento. All rights reserved.
+ * See COPYING.txt for license details.
+ */
+-->
+<config xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="../../../Config/etc/system_file.xsd">
+   <system>
+        <tab id="magentech" translate="label" sortOrder="100">
+			<label>Magentech.com</label>
+		</tab>
+		<section id="attributessearch" translate="label" type="text" sortOrder="40" showInDefault="1" showInWebsite="1" showInStore="1">
+            <class>separator-top</class>
+			<label>Sm Attributes Search</label>
+			<tab>magentech</tab>
+            <resource>Sm_AttributesSearch::config_filterproducts</resource>
+            <group id="general" translate="label" type="text" sortOrder="1" showInDefault="1" showInWebsite="1" showInStore="1">
+                <label>General Settings</label>
+                <field id="active" translate="label" type="select" sortOrder="1" showInDefault="1" showInWebsite="1" showInStore="1">
+                    <label>Enable</label>
+                    <source_model>Magento\Config\Model\Config\Source\Yesno</source_model>
+                </field>
+				<field id="caption" translate="label" type="textarea" sortOrder="2" showInDefault="1" showInWebsite="1" showInStore="1">
+					<label>Caption</label>
+					<!-- <depends>
+						<field id="active">1</field>
+					</depends> -->
+				</field>
+			</group>
+			<group id="source" translate="label" type="text" sortOrder="2" showInDefault="1" showInWebsite="1" showInStore="1">
+				<label>Source Options</label>
+				<field id="select_attributes"  translate="label" type="text" sortOrder="3" showInDefault="1" showInWebsite="1" showInStore="1">
+					<label>Select Attributes</label>
+					<frontend_model>Sm\AttributesSearch\Block\Adminhtml\Form\Field\SelectAttributes</frontend_model>
+                    <backend_model>Sm\AttributesSearch\Model\Config\Backend\Serialized\ArraySerialized</backend_model>
+				</field>
+				<!-- <depends>
+					<field id="attributessearch/general/active">1</field>
+				</depends> -->
+			</group>
+		</section>		
+	</system>	
+</config>

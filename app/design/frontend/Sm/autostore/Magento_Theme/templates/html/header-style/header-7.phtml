@@ -1,0 +1,102 @@
+<?php
+$login_customer = $block->getLayout()->createBlock('Magento\Customer\Block\Account\Customer');
+$welcomeMessage = $block->getWelcome();
+?>
+
+<div class="header-container header-style-7">
+    <div class="header-top clearfix">
+        <div class="container">
+            <div class="hdtop-content">
+                <div class="social-column">
+                    <div class="top-left-content clearfix">
+                        <?php echo $block->getLayout()->createBlock('Magento\Cms\Block\Block')->setBlockId('header-social')->toHtml(); ?>
+                    </div>
+                </div>
+
+                <div class="hdtop-right">
+                    <div class="row">
+                        <div class="col-lg-6 col-md-6 col-6 header-links-column">
+                            <div class="customer-action">
+                                <?php echo $block->getChildHtml('header.links'); ?>
+                            </div>
+                        </div>
+
+                        <div class="col-lg-6 col-md-6 col-6 action-column">
+                            <div class="setting-store">
+                                <?php echo $block->getChildHtml('language-header'); ?>
+                                <?php echo $block->getChildHtml('currency-header'); ?>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="header-middle ontop-element">
+        <div class="container">
+            <div class="hdmiddle-content">
+                <div class="logo-middle">
+                    <?php echo $block->getChildHtml('logo_theme'); ?>
+                </div>
+
+                <div class="hdmiddle-right">
+                    <div class="middle-right">
+                        <div class="middle-right-container">
+                            <div class="search-navigation">
+                                <div class="header-navigation">
+                                    <div class="desktop-navigation">
+                                        <div class="vertical-megamenu">
+                                            <?php
+                                            if ($_config->getGeneral('menu_style') == 'megamenu') {
+                                                echo $block->getLayout()->createBlock('Magento\Cms\Block\Block')->setBlockId('vertical-megamenu')->toHtml();
+                                            } else {
+                                                echo $block->getChildHtml('navigation-header');
+                                            } ?>
+                                        </div>
+
+                                        <div class="horizontal-container">
+                                            <?php echo $block->getLayout()->createBlock('Magento\Cms\Block\Block')->setBlockId('horizontal-megamenu')->toHtml(); ?>
+                                        </div>
+                                    </div>
+
+                                    <div class="navigation-mobile-container">
+                                        <?php echo $block->getChildHtml('navigation.mobile'); ?>
+                                    </div>
+                                </div>
+
+
+                                <?php echo $block->getChildHtml('search-header-pro'); ?>
+
+                                <a id="search-btn" class="search-btn" title="<?php echo __('Search'); ?>"
+                                   href="javascript:void(0);"><span><?php echo __('Search'); ?></span></a>
+
+                                <script>
+                                    require([
+                                        'jquery'
+                                    ], function ($) {
+                                        $("#search-btn").click(function () {
+                                            $('body').toggleClass('show-search');
+                                            $(this).toggleClass('active');
+                                        });
+                                    });
+                                </script>
+                            </div>
+
+                            <div class="wishlist-header">
+                                <a href="<?php echo $this->getUrl('wishlist') ?>"
+                                   title="<?php echo __('My Wishlist') ?>">
+                                    <span><?php echo __('My Wishlist') ?></span>
+                                </a>
+                            </div>
+
+                            <?php echo $block->getChildHtml('cart-header'); ?>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+

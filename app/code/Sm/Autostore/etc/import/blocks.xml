@@ -1,0 +1,1271 @@
+<?xml version="1.0"?>
+<root>
+	<blocks>
+		<cms_item>
+			<title>Autostore - About Us Page</title>
+			<identifier>about-us-page</identifier>
+			<content>
+				<![CDATA[<div class="aboutus-page">
+	<div class="top-image">
+		<img src="{{media url="wysiwyg/about/item-1.jpg"}}" alt="About Cover" />
+	</div>
+	
+	<div class="about-description">
+		<h2>About Us</h2>
+		
+		<p>
+			Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.
+		</p>
+		
+		<p>
+			Sed ut perspiciatis unde omnis iste natus error sit voluptatem accusantium doloremque laudantium, totam rem aperiam, eaque ipsa quae ab illo inventore veritatis et quasi architecto beatae vitae dicta sunt explicabo Nemo enim ipsam voluptatem quia voluptas sit aspernatur aut odit aut fugit,
+		</p>
+	</div>
+	
+	<div class="slider-member">
+		<h2>Our Team work</h2>
+		
+		<div class="owl-carousel owl-theme">
+			<div class="item">
+				<div class="image-member">
+					<a href="#"><img src="{{media url="wysiwyg/about/member-1.jpg"}}" alt="Member Image" /></a>
+					
+					<div class="member-social">
+						<ul>
+							<li><a href="#"><span class="fa fa-twitter"></span></a></li>
+							<li><a href="#"><span class="fa fa-facebook"></span></a></li>
+							<li><a href="#"><span class="fa fa-google"></span></a></li>
+							<li><a href="#"><span class="fa fa-skype"></span></a></li>
+						</ul>
+					</div>
+				</div>
+				
+				<div class="info-member">
+					<h3>Michael Phelps</h3>
+					<p>Founder, CEO</p>
+				</div>
+			</div>
+			
+			<div class="item">
+				<div class="image-member">
+					<a href="#"><img src="{{media url="wysiwyg/about/member-2.jpg"}}" alt="Member Image" /></a>
+					
+					<div class="member-social">
+						<ul>
+							<li><a href="#"><span class="fa fa-twitter"></span></a></li>
+							<li><a href="#"><span class="fa fa-facebook"></span></a></li>
+							<li><a href="#"><span class="fa fa-google"></span></a></li>
+							<li><a href="#"><span class="fa fa-skype"></span></a></li>
+						</ul>
+					</div>
+				</div>
+				
+				<div class="info-member">
+					<h3>Vladimir Radskin</h3>
+					<p>Web Designer</p>
+				</div>
+			</div>
+			
+			<div class="item">
+				<div class="image-member">
+					<a href="#"><img src="{{media url="wysiwyg/about/member-3.jpg"}}" alt="Member Image" /></a>
+					
+					<div class="member-social">
+						<ul>
+							<li><a href="#"><span class="fa fa-twitter"></span></a></li>
+							<li><a href="#"><span class="fa fa-facebook"></span></a></li>
+							<li><a href="#"><span class="fa fa-google"></span></a></li>
+							<li><a href="#"><span class="fa fa-skype"></span></a></li>
+						</ul>
+					</div>
+				</div>
+				
+				<div class="info-member">
+					<h3>Tommy Hilfiger</h3>
+					<p>Developer</p>
+				</div>
+			</div>
+			
+			<div class="item">
+				<div class="image-member">
+					<a href="#"><img src="{{media url="wysiwyg/about/member-4.jpg"}}" alt="Member Image" /></a>
+					
+					<div class="member-social">
+						<ul>
+							<li><a href="#"><span class="fa fa-twitter"></span></a></li>
+							<li><a href="#"><span class="fa fa-facebook"></span></a></li>
+							<li><a href="#"><span class="fa fa-google"></span></a></li>
+							<li><a href="#"><span class="fa fa-skype"></span></a></li>
+						</ul>
+					</div>
+				</div>
+				
+				<div class="info-member">
+					<h3>Anna Johanson</h3>
+					<p>Testing Website</p>
+				</div>
+			</div>
+			
+			<div class="item">
+				<div class="image-member">
+					<a href="#"><img src="{{media url="wysiwyg/about/member-1.jpg"}}" alt="Member Image" /></a>
+					
+					<div class="member-social">
+						<ul>
+							<li><a href="#"><span class="fa fa-twitter"></span></a></li>
+							<li><a href="#"><span class="fa fa-facebook"></span></a></li>
+							<li><a href="#"><span class="fa fa-google"></span></a></li>
+							<li><a href="#"><span class="fa fa-skype"></span></a></li>
+						</ul>
+					</div>
+				</div>
+				
+				<div class="info-member">
+					<h3>Michael Phelps</h3>
+					<p>Founder, CEO</p>
+				</div>
+			</div>
+			
+			<div class="item">
+				<div class="image-member">
+					<a href="#"><img src="{{media url="wysiwyg/about/member-2.jpg"}}" alt="Member Image" /></a>
+					
+					<div class="member-social">
+						<ul>
+							<li><a href="#"><span class="fa fa-twitter"></span></a></li>
+							<li><a href="#"><span class="fa fa-facebook"></span></a></li>
+							<li><a href="#"><span class="fa fa-google"></span></a></li>
+							<li><a href="#"><span class="fa fa-skype"></span></a></li>
+						</ul>
+					</div>
+				</div>
+				
+				<div class="info-member">
+					<h3>Vladimir Radskin</h3>
+					<p>Web Designer</p>
+				</div>
+			</div>
+		</div>
+		
+		<script>
+			require([
+				'jquery',
+				'owlcarousel'
+			], function ($) {
+				var owl_upsell = $(".slider-member .owl-carousel");
+				owl_upsell.owlCarousel({
+
+					responsive: {
+						0: {
+							items: 1
+						},
+						480: {
+							items: 2
+						},
+						768: {
+							items: 3
+						},
+						992: {
+							items: 4
+						},
+						1200: {
+							items: 4
+						}
+					},
+
+					autoplay: false,
+					loop: false,
+					nav: true,
+					dots: false,
+					autoplaySpeed: 500,
+					navSpeed: 500,
+					dotsSpeed: 500,
+					autoplayHoverPause: true,
+					margin: 30,
+				});
+			});
+		</script>
+	</div>
+	
+	<div class="about-map">
+		<h2>Shop Location</h2>
+		
+		<div class="google-map">
+			{{block class="Magento\\Cms\\Block\\Block" block_id="google-map"}}
+		</div>
+	</div>
+	
+</div>]]>
+			</content>
+			<is_active>1</is_active>
+			<store_id>0</store_id>
+		</cms_item>
+		<cms_item>
+			<title>Autostore - Google Map</title>
+			<identifier>google-map</identifier>
+			<content>
+				<![CDATA[<div class="google-map"><iframe style="border: 0;" src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3151.8402891185415!2d144.95373631585633!3d-37.817209742014676!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x6ad65d4c2b349649%3A0xb6899234e561db11!2sEnvato!5e0!3m2!1svi!2s!4v1527494727294" width="600" height="450" frameborder="0" allowfullscreen=""></iframe></div>]]>
+			</content>
+			<is_active>1</is_active>
+			<store_id>0</store_id>
+		</cms_item>
+		<cms_item>
+			<title>Autostore - Product Megamenu</title>
+			<identifier>product-megamenu</identifier>
+			<content>
+				<![CDATA[<div class="product-megamenu">{{block class="Sm\FilterProducts\Block\FilterProducts" template="Sm_FilterProducts::default-menu.phtml" title_module="Featured Product" display_countdown="0" product_source="lastest_products" select_category="98" product_limitation="1"}}</div>]]>
+			</content>
+			<is_active>1</is_active>
+			<store_id>0</store_id>
+		</cms_item>
+		<cms_item>
+			<title>Autostore - Social Newsletter Popup</title>
+			<identifier>social-newsletter-popup</identifier>
+			<content>
+				<![CDATA[{{block class="Magento\Framework\View\Element\Template" template="Magento_Theme::html/social.phtml"}}]]>
+			</content>
+			<is_active>1</is_active>
+			<store_id>0</store_id>
+		</cms_item>
+		<cms_item>
+			<title>Autostore - Short Description Newsletter Popup</title>
+			<identifier>short-description-newsletter-popup</identifier>
+			<content>
+				<![CDATA[<div class="newsletter-content">
+	<div class="newsletter-title">Newsletter Subscribe</div>
+	<p>
+		Subscribe to the mailing list to receive updates on new arrivals, special offers and other discount information.
+	</p>
+</div>]]>
+			</content>
+			<is_active>1</is_active>
+			<store_id>0</store_id>
+		</cms_item>
+		<cms_item>
+			<title>Autostore - Vertical Megamenu</title>
+			<identifier>vertical-megamenu</identifier>
+			<content>
+				<![CDATA[{{block class="Sm\MegaMenu\Block\MegaMenu\View" title="All Categories" group_id="1" theme="2" template="Sm_MegaMenu::megamenu-vertical.phtml"}}]]>
+			</content>
+			<is_active>1</is_active>
+			<store_id>0</store_id>
+		</cms_item>
+		<cms_item>
+			<title>Autostore - Megamenu Horizontal</title>
+			<identifier>horizontal-megamenu</identifier>
+			<content>
+				<![CDATA[{{block class="Sm\MegaMenu\Block\MegaMenu\View" group_id="2" theme="1" template="Sm_MegaMenu::megamenu-horizontal.phtml"}}]]>
+			</content>
+			<is_active>1</is_active>
+			<store_id>0</store_id>
+		</cms_item>
+		<cms_item>
+			<title>Autostore - Footer Payment</title>
+			<identifier>payment-footer</identifier>
+			<content>
+				<![CDATA[<img class="mark-lazy" src="{{media url="wysiwyg/footer/payment-footer.png"}}" alt="Payment" width="370" height="32" />]]>
+			</content>
+			<is_active>1</is_active>
+			<store_id>0</store_id>
+		</cms_item>
+		<cms_item>
+			<title>Autostore - Footer 1 - Content</title>
+			<identifier>footer-1-content</identifier>
+			<content>
+				<![CDATA[<div class="footer-top">
+	<div class="container">
+		<div class="services-footer">
+			<div class="row">
+				<div class="col-lg-3 col-md-6">
+					<div class="service-item">
+						<div class="image-service">
+							<img src="{{media url="wysiwyg/icon/icon-1.png"}}" alt="Icon" width="70" height="70" />
+						</div>
+						
+						<div class="info-service">
+							<h3>Free Shipping</h3>
+							<p>On all orders over $99.00</p>
+						</div>
+					</div>
+				</div>
+				
+				<div class="col-lg-3 col-md-6">
+					<div class="service-item">
+						<div class="image-service">
+							<img src="{{media url="wysiwyg/icon/icon-2.png"}}" alt="Icon" width="70" height="70" />
+						</div>
+						
+						<div class="info-service">
+							<h3>Money Guarantee</h3>
+							<p>7 days money back guarantee</p>
+						</div>
+					</div>
+				</div>
+				
+				<div class="col-lg-3 col-md-6">
+					<div class="service-item">
+						<div class="image-service">
+							<img src="{{media url="wysiwyg/icon/icon-3.png"}}" alt="Icon" width="70" height="70" />
+						</div>
+						
+						<div class="info-service">
+							<h3>Safe Shopping</h3>
+							<p>Safe shopping guarantee</p>
+						</div>
+					</div>
+				</div>
+				
+				<div class="col-lg-3 col-md-6">
+					<div class="service-item">
+						<div class="image-service">
+							<img src="{{media url="wysiwyg/icon/icon-4.png"}}" alt="Icon" width="70" height="70" />
+						</div>
+						
+						<div class="info-service">
+							<h3>Online Support</h3>
+							<p>We support 24/24h on day</p>
+						</div>
+					</div>
+				</div>
+			</div>
+		</div>
+	</div>
+</div>
+
+<div class="footer-middle">
+	<div class="container">
+		<div class="row">
+			<div class="col-xl-4 col-lg-3">
+				<div class="block-footer">
+					<div class="title-footer">Contact Us</div>
+					
+					<div class="content-footer content-about">
+						<ul>
+							<li class="address">
+								5611 Wellington Road, Suite 115, Gainesville, VA 20155
+							</li>
+							
+							<li class="phone">
+								888 9344 6000 - 888 1234 6789
+							</li>
+							
+							<li class="email">
+								autostore@magentech.com
+							</li>
+							
+							<li class="time-work">
+								7 Days a week from 10-00 am to 6-00 pm
+							</li>
+						</ul>
+					</div>
+				</div>
+			</div>
+			
+			<div class="col-lg-3">
+				<div class="block-footer">
+					<div class="title-footer">Store Location</div>
+					
+					<div class="content-footer">
+						<ul>
+							<li>
+								<a href="#">Los Angeles - USA</a>
+							</li>
+							
+							<li>
+								<a href="#">New York - USA</a>
+							</li>
+							
+							<li>
+								<a href="#">California - USA</a>
+							</li>
+							
+							<li>
+								<a href="#">Bangkok - Thailand</a>
+							</li>
+							
+							<li>
+								<a href="#">Paris - France</a>
+							</li>
+							
+							<li>
+								<a href="#">London - England</a>
+							</li>
+						</ul>
+					</div>
+				</div>
+			</div>
+			
+			<div class="col-lg-3">
+				<div class="block-footer">
+					<div class="title-footer">Customer Service</div>
+					
+					<div class="content-footer">
+						<ul>
+							<li>
+								<a href="#">Customer Service</a>
+							</li>
+							
+							<li>
+								<a href="#">Shipping & Returns</a>
+							</li>
+							
+							<li>
+								<a href="#">Track Your Order</a>
+							</li>
+							
+							<li>
+								<a href="#">Help Center</a>
+							</li>
+							
+							<li>
+								<a href="#">Store Location</a>
+							</li>
+							
+							<li>
+								<a href="#">Customer Feedback</a>
+							</li>
+						</ul>
+					</div>
+				</div>
+			</div>
+			
+			
+			<div class="col-xl-2 col-lg-3">
+				<div class="block-footer">
+					<div class="title-footer">Information</div>
+					
+					<div class="content-footer">
+						<ul>
+							<li>
+								<a href="#">Caps & Hats</a>
+							</li>
+							
+							<li>
+								<a href="#">Hoodies & Sweatshirts</a>
+							</li>
+							
+							<li>
+								<a href="#">Jacket & Coats</a>
+							</li>
+							
+							<li>
+								<a href="#">Jumpers & Cardigans</a>
+							</li>
+							
+							<li>
+								<a href="#">Shoes, Boots & Trainers</a>
+							</li>
+							
+							<li>
+								<a href="#">Underwear & Socks</a>
+							</li>
+						</ul>
+					</div>
+				</div>
+			</div>
+		</div>
+		
+		<div class="social-newsletter">
+			<div class="row">
+				<div class="col-lg-4">
+					{{block class="Magento\Framework\View\Element\Template" template="Magento_Theme::html/social.phtml"}}
+				</div>
+				
+				<div class="col-lg-8">
+					<div class="footer-newsletter">
+						<p class="title-newsletter">Sign Up For Newsletter</p>
+						{{block class="Magento\Newsletter\Block\Subscribe" template="subscribe-footer.phtml"}}
+					</div>
+				</div>
+			</div>
+		</div>
+	</div>
+</div>]]>
+			</content>
+			<is_active>1</is_active>
+			<store_id>0</store_id>
+		</cms_item>
+		<cms_item>
+			<title>Autostore - Header Social</title>
+			<identifier>header-social</identifier>
+			<content>
+				<![CDATA[{{block class="Magento\Framework\View\Element\Template" template="Magento_Theme::html/social.phtml"}}]]>
+			</content>
+			<is_active>1</is_active>
+			<store_id>0</store_id>
+		</cms_item>
+		<cms_item>
+			<title>Autostore - Sidebar Banner</title>
+			<identifier>sidebar-banner</identifier>
+			<content>
+				<![CDATA[<div class="banner-image">
+<a href="#" title="Banner Image"><img class="mark-lazy" src="{{media url="wysiwyg/banner/item-sidebar.jpg"}}" alt="Banner Image" /></a>
+</div>]]>
+			</content>
+			<is_active>1</is_active>
+			<store_id>0</store_id>
+		</cms_item>
+		<cms_item>
+			<title>Autostore - Contact Us Image</title>
+			<identifier>contact-image</identifier>
+			<content>
+				<![CDATA[<div><img src="{{media url="wysiwyg/contact-us/image-contact.jpg"}}" alt="Contact Us" /></div>]]>
+			</content>
+			<is_active>1</is_active>
+			<store_id>0</store_id>
+		</cms_item>
+		<cms_item>
+			<title>Autostore - Contact Description</title>
+			<identifier>contact-description</identifier>
+			<content>
+				<![CDATA[<h2>Contact Us</h2>
+<p>We love to hear from you! Please let us know if you have any questions or concerns and we will get back to you within 2 business days. Thanks!</p>]]>
+			</content>
+			<is_active>1</is_active>
+			<store_id>0</store_id>
+		</cms_item>
+		<cms_item>
+			<title>Autostore - Sidebar Detail Extended</title>
+			<identifier>detail-extended</identifier>
+			<content>
+				<![CDATA[{{block class="Sm\FilterProducts\Block\FilterProducts" template="Sm_FilterProducts::block-list.phtml" title_module="Featured Products" display_countdown="0" product_source="lastest_products" select_category="" product_limitation="5"}}
+
+<div class="banner-image">
+	<a href="#"><img src="{{media url="wysiwyg/banner/item-sidebar.jpg"}}" alt="Banner Image" /></a>
+</div>]]>
+			</content>
+			<is_active>1</is_active>
+			<store_id>0</store_id>
+		</cms_item>
+		<cms_item>
+			<title>Autostore - Footer 2 - Content</title>
+			<identifier>footer-2-content</identifier>
+			<content>
+				<![CDATA[<div class="footer-top">
+	<div class="container">
+		<div class="social-newsletter">
+			<div class="row">
+				<div class="col-lg-4">
+					{{block class="Magento\Framework\View\Element\Template" template="Magento_Theme::html/social.phtml"}}
+				</div>
+				
+				<div class="col-lg-8">
+					<div class="footer-newsletter">
+						<p class="title-newsletter">Sign Up For Newsletter</p>
+						{{block class="Magento\Newsletter\Block\Subscribe" template="subscribe-footer.phtml"}}
+					</div>
+				</div>
+			</div>
+		</div>
+	</div>
+</div>
+
+<div class="footer-middle">
+	<div class="container">
+		<div class="row">
+			<div class="col-xl-4 col-lg-3">
+				<div class="block-footer">
+					<div class="title-footer">Contact Us</div>
+					
+					<div class="content-footer content-about">
+						<ul>
+							<li class="address">
+								5611 Wellington Road, Suite 115, Gainesville, VA 20155
+							</li>
+							
+							<li class="phone">
+								888 9344 6000 - 888 1234 6789
+							</li>
+							
+							<li class="email">
+								autostore@magentech.com
+							</li>
+							
+							<li class="time-work">
+								7 Days a week from 10-00 am to 6-00 pm
+							</li>
+						</ul>
+					</div>
+				</div>
+			</div>
+			
+			<div class="col-lg-3">
+				<div class="block-footer">
+					<div class="title-footer">Store Location</div>
+					
+					<div class="content-footer">
+						<ul>
+							<li>
+								<a href="#">Los Angeles - USA</a>
+							</li>
+							
+							<li>
+								<a href="#">New York - USA</a>
+							</li>
+							
+							<li>
+								<a href="#">California - USA</a>
+							</li>
+							
+							<li>
+								<a href="#">Bangkok - Thailand</a>
+							</li>
+							
+							<li>
+								<a href="#">Paris - France</a>
+							</li>
+							
+							<li>
+								<a href="#">London - England</a>
+							</li>
+						</ul>
+					</div>
+				</div>
+			</div>
+			
+			<div class="col-lg-3">
+				<div class="block-footer">
+					<div class="title-footer">Customer Service</div>
+					
+					<div class="content-footer">
+						<ul>
+							<li>
+								<a href="#">Customer Service</a>
+							</li>
+							
+							<li>
+								<a href="#">Shipping & Returns</a>
+							</li>
+							
+							<li>
+								<a href="#">Track Your Order</a>
+							</li>
+							
+							<li>
+								<a href="#">Help Center</a>
+							</li>
+							
+							<li>
+								<a href="#">Store Location</a>
+							</li>
+							
+							<li>
+								<a href="#">Customer Feedback</a>
+							</li>
+						</ul>
+					</div>
+				</div>
+			</div>
+			
+			
+			<div class="col-xl-2 col-lg-3">
+				<div class="block-footer">
+					<div class="title-footer">Information</div>
+					
+					<div class="content-footer">
+						<ul>
+							<li>
+								<a href="#">Caps & Hats</a>
+							</li>
+							
+							<li>
+								<a href="#">Hoodies & Sweatshirts</a>
+							</li>
+							
+							<li>
+								<a href="#">Jacket & Coats</a>
+							</li>
+							
+							<li>
+								<a href="#">Jumpers & Cardigans</a>
+							</li>
+							
+							<li>
+								<a href="#">Shoes, Boots & Trainers</a>
+							</li>
+							
+							<li>
+								<a href="#">Underwear & Socks</a>
+							</li>
+						</ul>
+					</div>
+				</div>
+			</div>
+		</div>
+	</div>
+</div>]]>
+			</content>
+			<is_active>1</is_active>
+			<store_id>0</store_id>
+		</cms_item>
+		<cms_item>
+			<title>Autostore - Footer 3 - Content</title>
+			<identifier>footer-3-content</identifier>
+			<content>
+				<![CDATA[<div class="footer-top">
+	<div class="container">
+		<div class="row">
+			<div class="col-xl-4 col-lg-3">
+				<div class="block-footer">
+					<div class="title-footer">Contact Us</div>
+					
+					<div class="content-footer content-about">
+						<ul>
+							<li class="address">
+								5611 Wellington Road, Suite 115, Gainesville, VA 20155
+							</li>
+							
+							<li class="phone">
+								888 9344 6000 - 888 1234 6789
+							</li>
+							
+							<li class="email">
+								autostore@magentech.com
+							</li>
+							
+							<li class="time-work">
+								7 Days a week from 10-00 am to 6-00 pm
+							</li>
+						</ul>
+					</div>
+				</div>
+			</div>
+			
+			<div class="col-lg-3">
+				<div class="block-footer">
+					<div class="title-footer">Store Location</div>
+					
+					<div class="content-footer">
+						<ul>
+							<li>
+								<a href="#">Los Angeles - USA</a>
+							</li>
+							
+							<li>
+								<a href="#">New York - USA</a>
+							</li>
+							
+							<li>
+								<a href="#">California - USA</a>
+							</li>
+							
+							<li>
+								<a href="#">Bangkok - Thailand</a>
+							</li>
+							
+							<li>
+								<a href="#">Paris - France</a>
+							</li>
+							
+							<li>
+								<a href="#">London - England</a>
+							</li>
+						</ul>
+					</div>
+				</div>
+			</div>
+			
+			<div class="col-lg-3">
+				<div class="block-footer">
+					<div class="title-footer">Customer Service</div>
+					
+					<div class="content-footer">
+						<ul>
+							<li>
+								<a href="#">Customer Service</a>
+							</li>
+							
+							<li>
+								<a href="#">Shipping & Returns</a>
+							</li>
+							
+							<li>
+								<a href="#">Track Your Order</a>
+							</li>
+							
+							<li>
+								<a href="#">Help Center</a>
+							</li>
+							
+							<li>
+								<a href="#">Store Location</a>
+							</li>
+							
+							<li>
+								<a href="#">Customer Feedback</a>
+							</li>
+						</ul>
+					</div>
+				</div>
+			</div>
+			
+			
+			<div class="col-xl-2 col-lg-3">
+				<div class="block-footer">
+					<div class="title-footer">Information</div>
+					
+					<div class="content-footer">
+						<ul>
+							<li>
+								<a href="#">Caps & Hats</a>
+							</li>
+							
+							<li>
+								<a href="#">Hoodies & Sweatshirts</a>
+							</li>
+							
+							<li>
+								<a href="#">Jacket & Coats</a>
+							</li>
+							
+							<li>
+								<a href="#">Jumpers & Cardigans</a>
+							</li>
+							
+							<li>
+								<a href="#">Shoes, Boots & Trainers</a>
+							</li>
+							
+							<li>
+								<a href="#">Underwear & Socks</a>
+							</li>
+						</ul>
+					</div>
+				</div>
+			</div>
+		</div>
+	</div>
+</div>
+
+<div class="footer-middle">
+	<div class="container">
+		<div class="social-newsletter">
+			<div class="row">
+				<div class="col-lg-5">
+					{{block class="Magento\Framework\View\Element\Template" template="Magento_Theme::html/social.phtml"}}
+				</div>
+				
+				<div class="col-lg-7">
+					<div class="footer-newsletter">
+						<p class="title-newsletter">Sign Up For Newsletter</p>
+						{{block class="Magento\Newsletter\Block\Subscribe" template="subscribe-footer.phtml"}}
+					</div>
+				</div>
+			</div>
+		</div>
+	</div>
+</div>]]>
+			</content>
+			<is_active>1</is_active>
+			<store_id>0</store_id>
+		</cms_item>
+		<cms_item>
+			<title>Autostore - Header Hotline</title>
+			<identifier>header-hotline</identifier>
+			<content>
+				<![CDATA[<div class="phone-header">
+						<span>Hotline:</span> 888-943-446-000
+					</div>]]>
+			</content>
+			<is_active>1</is_active>
+			<store_id>0</store_id>
+		</cms_item>
+		<cms_item>
+			<title>Autostore - Footer 4 - Content</title>
+			<identifier>footer-4-content</identifier>
+			<content>
+				<![CDATA[<div class="footer-middle">
+	<div class="container">
+		<div class="row">
+			<div class="col-xl-4 col-lg-4">
+				<div class="block-footer">
+					<div class="title-footer">Contact Us</div>
+					
+					<div class="content-footer content-about">
+						<ul>
+							<li class="address">
+								5611 Wellington Road, Suite 115, Gainesville,VA 20155<br/>Los Angeles city, USA.
+							</li>
+							
+							<li class="phone">
+								888 9344 6000 - 888 1234 6789
+							</li>
+							
+							<li class="email">
+								autostore@magentech.com
+							</li>
+							
+							<li class="time-work">
+								7 Days a week from 10-00 am to 6-00 pm
+							</li>
+						</ul>
+					</div>
+				</div>
+			</div>
+			
+			<div class="col-lg-2">
+				<div class="block-footer">
+					<div class="title-footer">Store Location</div>
+					
+					<div class="content-footer">
+						<ul>
+							<li>
+								<a href="#">Los Angeles - USA</a>
+							</li>
+							
+							<li>
+								<a href="#">New York - USA</a>
+							</li>
+							
+							<li>
+								<a href="#">California - USA</a>
+							</li>
+							
+							<li>
+								<a href="#">Bangkok - Thailand</a>
+							</li>
+							
+							<li>
+								<a href="#">Paris - France</a>
+							</li>
+							
+							<li>
+								<a href="#">London - England</a>
+							</li>
+						</ul>
+					</div>
+				</div>
+			</div>
+			
+			<div class="col-lg-2">
+				<div class="block-footer">
+					<div class="title-footer">Customer Service</div>
+					
+					<div class="content-footer">
+						<ul>
+							<li>
+								<a href="#">Customer Service</a>
+							</li>
+							
+							<li>
+								<a href="#">Shipping & Returns</a>
+							</li>
+							
+							<li>
+								<a href="#">Track Your Order</a>
+							</li>
+							
+							<li>
+								<a href="#">Help Center</a>
+							</li>
+							
+							<li>
+								<a href="#">Store Location</a>
+							</li>
+							
+							<li>
+								<a href="#">Customer Feedback</a>
+							</li>
+						</ul>
+					</div>
+				</div>
+			</div>
+			
+			
+			<div class="col-xl-2 col-lg-2">
+				<div class="block-footer">
+					<div class="title-footer">Information</div>
+					
+					<div class="content-footer">
+						<ul>
+							<li>
+								<a href="#">Caps & Hats</a>
+							</li>
+							
+							<li>
+								<a href="#">Hoodies & Sweatshirts</a>
+							</li>
+							
+							<li>
+								<a href="#">Jacket & Coats</a>
+							</li>
+							
+							<li>
+								<a href="#">Jumpers & Cardigans</a>
+							</li>
+							
+							<li>
+								<a href="#">Shoes, Boots & Trainers</a>
+							</li>
+							
+							<li>
+								<a href="#">Underwear & Socks</a>
+							</li>
+						</ul>
+					</div>
+				</div>
+			</div>
+			
+			<div class="col-xl-2 col-lg-2">
+				<div class="block-footer">
+					<div class="title-footer">Information</div>
+					
+					<div class="content-footer">
+						<ul>
+							<li>
+								<a href="#">Caps & Hats</a>
+							</li>
+							
+							<li>
+								<a href="#">Hoodies & Sweatshirts</a>
+							</li>
+							
+							<li>
+								<a href="#">Jacket & Coats</a>
+							</li>
+							
+							<li>
+								<a href="#">Jumpers & Cardigans</a>
+							</li>
+							
+							<li>
+								<a href="#">Shoes, Boots & Trainers</a>
+							</li>
+							
+							<li>
+								<a href="#">Underwear & Socks</a>
+							</li>
+						</ul>
+					</div>
+				</div>
+			</div>
+		</div>
+		
+		<div class="social-newsletter">
+			<div class="row">
+				<div class="col-lg-4">
+					{{block class="Magento\Framework\View\Element\Template" template="Magento_Theme::html/social.phtml"}}
+				</div>
+				
+				<div class="col-lg-8">
+					<div class="footer-newsletter">
+						<p class="title-newsletter">Sign Up For Newsletter & get <span>25% Off</span> first order</p>
+						{{block class="Magento\Newsletter\Block\Subscribe" template="subscribe-footer.phtml"}}
+					</div>
+				</div>
+			</div>
+		</div>
+	</div>
+</div>]]>
+			</content>
+			<is_active>1</is_active>
+			<store_id>0</store_id>
+		</cms_item>
+		<cms_item>
+			<title>Autostore - Hotline</title>
+			<identifier>hotline-right</identifier>
+			<content>
+				<![CDATA[<div class="right-item">
+                                    <span>Hotline:</span> 888 - 94344 6000
+                                </div>]]>
+			</content>
+			<is_active>1</is_active>
+			<store_id>0</store_id>
+		</cms_item>
+		<cms_item>
+			<title>Autostore - Footer 5 - Content</title>
+			<identifier>footer-5-content</identifier>
+			<content>
+				<![CDATA[<div class="footer-top">
+	<div class="container">
+		<div class="social-newsletter">
+			<div class="row">
+				<div class="col-lg-4">
+					{{block class="Magento\Framework\View\Element\Template" template="Magento_Theme::html/social.phtml"}}
+				</div>
+				
+				<div class="col-lg-8">
+					<div class="footer-newsletter">
+						<p class="title-newsletter">Sign Up For Newsletter & get <span>25% Off</span> first order</p>
+						{{block class="Magento\Newsletter\Block\Subscribe" template="subscribe-footer.phtml"}}
+					</div>
+				</div>
+			</div>
+		</div>
+	</div>
+</div>
+
+<div class="footer-middle">
+	<div class="container">
+		<div class="row">
+			<div class="col-xl-4 col-lg-4 col-sm-6">
+				<div class="block-footer block-contact-footer">
+					<div class="title-footer">Contact Us</div>
+					
+					<div class="content-footer content-about">
+						<ul>
+							<li class="address">
+								5611 Wellington Road, Suite 115, Gainesville,VA 20155<br/>Los Angeles city, USA.
+							</li>
+							
+							<li class="phone">
+								888 9344 6000 - 888 1234 6789
+							</li>
+							
+							<li class="email">
+								autostore@magentech.com
+							</li>
+							
+							<li class="time-work">
+								7 Days a week from 10-00 am to 6-00 pm
+							</li>
+						</ul>
+					</div>
+				</div>
+			</div>
+			
+			<div class="col-xl-2 col-lg-4 col-sm-6">
+				<div class="block-footer">
+					<div class="title-footer">Store Location</div>
+					
+					<div class="content-footer">
+						<ul>
+							<li>
+								<a href="#">Los Angeles - USA</a>
+							</li>
+							
+							<li>
+								<a href="#">New York - USA</a>
+							</li>
+							
+							<li>
+								<a href="#">California - USA</a>
+							</li>
+							
+							<li>
+								<a href="#">Bangkok - Thailand</a>
+							</li>
+							
+							<li>
+								<a href="#">Paris - France</a>
+							</li>
+							
+							<li>
+								<a href="#">London - England</a>
+							</li>
+						</ul>
+					</div>
+				</div>
+			</div>
+			
+			<div class="col-xl-2 col-lg-4 col-sm-6">
+				<div class="block-footer">
+					<div class="title-footer">Customer Service</div>
+					
+					<div class="content-footer">
+						<ul>
+							<li>
+								<a href="#">Customer Service</a>
+							</li>
+							
+							<li>
+								<a href="#">Shipping & Returns</a>
+							</li>
+							
+							<li>
+								<a href="#">Track Your Order</a>
+							</li>
+							
+							<li>
+								<a href="#">Help Center</a>
+							</li>
+							
+							<li>
+								<a href="#">Store Location</a>
+							</li>
+							
+							<li>
+								<a href="#">Customer Feedback</a>
+							</li>
+						</ul>
+					</div>
+				</div>
+			</div>
+			
+			
+			<div class="col-xl-2 col-lg-4 col-sm-6">
+				<div class="block-footer">
+					<div class="title-footer">Information</div>
+					
+					<div class="content-footer">
+						<ul>
+							<li>
+								<a href="#">Caps & Hats</a>
+							</li>
+							
+							<li>
+								<a href="#">Hoodies & Sweatshirts</a>
+							</li>
+							
+							<li>
+								<a href="#">Jacket & Coats</a>
+							</li>
+							
+							<li>
+								<a href="#">Jumpers & Cardigans</a>
+							</li>
+							
+							<li>
+								<a href="#">Shoes, Boots & Trainers</a>
+							</li>
+							
+							<li>
+								<a href="#">Underwear & Socks</a>
+							</li>
+						</ul>
+					</div>
+				</div>
+			</div>
+			
+			<div class="col-xl-2 col-lg-4 col-sm-6">
+				<div class="block-footer">
+					<div class="title-footer">Information</div>
+					
+					<div class="content-footer">
+						<ul>
+							<li>
+								<a href="#">Caps & Hats</a>
+							</li>
+							
+							<li>
+								<a href="#">Hoodies & Sweatshirts</a>
+							</li>
+							
+							<li>
+								<a href="#">Jacket & Coats</a>
+							</li>
+							
+							<li>
+								<a href="#">Jumpers & Cardigans</a>
+							</li>
+							
+							<li>
+								<a href="#">Shoes, Boots & Trainers</a>
+							</li>
+							
+							<li>
+								<a href="#">Underwear & Socks</a>
+							</li>
+						</ul>
+					</div>
+				</div>
+			</div>
+		</div>
+	</div>
+</div>]]>
+			</content>
+			<is_active>1</is_active>
+			<store_id>0</store_id>
+		</cms_item>
+	</blocks>
+</root>

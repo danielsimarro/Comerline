@@ -1,0 +1,85 @@
+.price-slider-wrap {
+    margin: 10px;
+    padding: 0px 10px 0 0;
+}
+
+#price-slider {
+    background-color: #666;
+    border-radius: 3px;
+    height: 6px;
+    margin: 10px 8px 0 4px;
+    position: relative;
+}
+
+#price-slider .ui-slider-handle {
+    border-color: #f4a137;
+}
+
+#price-slider .ui-slider-range {
+    background-color: #f4a137;
+}
+
+#price-slider .ui-slider-range {
+    background-color: #f03939;
+    height: 100%;
+    position: absolute;
+}
+
+#price-slider .ui-slider-handle {
+    background: #fff none repeat scroll 0 0;
+    border: 3px solid;
+    border-radius: 50%;
+    color: #f03939;
+    cursor: e-resize;
+    display: block;
+    height: 8px;
+    margin-right: inherit;
+    padding-left: inherit;
+    padding-right: inherit;
+    position: absolute;
+    text-align: center;
+    top: -5px;
+    width: 8px;
+    z-index: 15;
+}
+
+.price-slider-values {
+    margin-top: 20px;
+    text-align: center;
+}
+
+.price-slider-values input[type="text"] {
+    border: 1px solid #d8d8d8;
+    color: #211e1f;
+    padding-left: 2px;
+    padding-right: 2px;
+    text-align: center;
+    width: 50px;
+}
+
+.loading-mask-shopby {
+    background: rgba(255, 255, 255, 0.5) none repeat scroll 0 0;
+    bottom: 0;
+    left: 0;
+    margin: auto;
+    position: fixed;
+    right: 0;
+    top: 0;
+    z-index: 9999;
+}
+
+.loading-mask-shopby .loader > img {
+    bottom: 0;
+    left: 0;
+    margin: auto;
+    position: fixed;
+    right: 0;
+    top: 0;
+    z-index: 100;
+}
+
+@media all and (max-width: 360px) {
+    .toolbar-sorter.sorter .sorter-label {
+        display: none;
+    }
+}
