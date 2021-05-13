@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "4c3418075b9c6e95f2b336292373d0f1",
+    "content-hash": "0c058e499088e658abb3a094240cba3d",
     "packages": [
         {
             "name": "2tvenom/cborencode",
@@ -1292,43 +1292,6 @@
                 "qrcode"
             ],
             "time": "2020-07-10T10:16:06+00:00"
-        },
-        {
-            "name": "eusonlito/magento2-language-es_es",
-            "version": "dev-master",
-            "source": {
-                "type": "git",
-                "url": "https://github.com/eusonlito/magento2-language-es_es.git",
-                "reference": "828e8f3fc6f39b58f947a707147ae481af2c1c5a"
-            },
-            "dist": {
-                "type": "zip",
-                "url": "https://api.github.com/repos/eusonlito/magento2-language-es_es/zipball/828e8f3fc6f39b58f947a707147ae481af2c1c5a",
-                "reference": "828e8f3fc6f39b58f947a707147ae481af2c1c5a",
-                "shasum": ""
-            },
-            "require": {
-                "magento/framework": ">=100"
-            },
-            "type": "magento2-language",
-            "autoload": {
-                "files": [
-                    "registration.php"
-                ]
-            },
-            "notification-url": "https://packagist.org/downloads/",
-            "license": [
-                "MIT"
-            ],
-            "authors": [
-                {
-                    "name": "Lito",
-                    "email": "lito@eordes.com",
-                    "homepage": "https://about.me/lito"
-                }
-            ],
-            "description": "Magento 2 Spanish (Spain) language package - Paquete de idioma Español (España) para Magento 2",
-            "time": "2020-08-07T20:54:17+00:00"
         },
         {
             "name": "ezimuel/guzzlestreams",
@@ -24416,12 +24379,12 @@
             "version": "1.9.1",
             "source": {
                 "type": "git",
-                "url": "https://github.com/webmozarts/assert.git",
+                "url": "https://github.com/webmozart/assert.git",
                 "reference": "bafc69caeb4d49c39fd0779086c03a3738cbb389"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/webmozarts/assert/zipball/bafc69caeb4d49c39fd0779086c03a3738cbb389",
+                "url": "https://api.github.com/repos/webmozart/assert/zipball/bafc69caeb4d49c39fd0779086c03a3738cbb389",
                 "reference": "bafc69caeb4d49c39fd0779086c03a3738cbb389",
                 "shasum": ""
             },
@@ -24500,12 +24463,9 @@
     ],
     "aliases": [],
     "minimum-stability": "stable",
-    "stability-flags": {
-        "eusonlito/magento2-language-es_es": 20
-    },
+    "stability-flags": [],
     "prefer-stable": true,
     "prefer-lowest": false,
     "platform": [],
-    "platform-dev": [],
-    "plugin-api-version": "1.1.0"
+    "platform-dev": []
 }
