@@ -19,6 +19,6 @@ class CronSyncgStatus
 
     public function execute()
     {
-        $this->syncgHelper->fetchPending();
+        $this->syncgHelper->syncgAll();
     }
 }

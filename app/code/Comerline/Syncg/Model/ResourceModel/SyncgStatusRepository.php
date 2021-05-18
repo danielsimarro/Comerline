@@ -73,16 +73,6 @@ class SyncgStatusRepository
         }
     }
 
-    public function updateStatus($item, $status)
-    {
-        $this->syncgStatus = $this->syncgStatusFactory->create()->load($item->getData('incremental_id'));
-        if ($status != $this->syncgStatus->getStatus()) {
-            $this->syncgStatus->setStatus($status);
-            $this->syncgStatus->setUpdatedAt($this->date->date());
-            $this->saveSyncgStatus($this->syncgStatus);
-        }
-    }
-
     private function saveSyncgStatus($model): void
     {
         try {

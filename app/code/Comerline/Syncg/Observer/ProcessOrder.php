@@ -12,10 +12,19 @@ use Comerline\Syncg\Model\SyncgStatus;
 class ProcessOrder implements ObserverInterface
 {
 
+    /**
+     * @var Order
+     */
     private $order;
 
+    /**
+     * @var Config
+     */
     private $config;
 
+    /**
+     * @var SyncgStatusRepository
+     */
     private $syncgStatusRepository;
 
     public function __construct(
@@ -33,11 +42,6 @@ class ProcessOrder implements ObserverInterface
         if ($this->config->getGeneralConfig('enable_order_sync') === "1") {
             $order = $observer->getOrder();
             $this->syncgStatusRepository->updateEntityStatus($order->getData('increment_id'), SyncgStatus::TYPE_ORDER, SyncgStatus::STATUS_PENDING);
-            $this->order->getOrderDetails($order);
-//  This will go in the CRON job, and was made only to test that the database changes when the TXT of the order is created
-//            if($this->order->getOrderDetails($order) === 1){
-//                $this->syncgStatusRepository->updateStatus($order, SyncgStatus::STATUS_COMPLETED);
-//            }
         }
     }
 }
