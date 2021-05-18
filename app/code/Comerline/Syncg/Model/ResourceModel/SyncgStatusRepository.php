@@ -7,8 +7,10 @@ use Comerline\Syncg\Model\ResourceModel\SyncgStatus as SyncgStatusResource;
 use Comerline\Syncg\Model\ResourceModel\SyncgStatus\CollectionFactory;
 use Comerline\Syncg\Model\SyncgStatus;
 use Comerline\Syncg\Model\SyncgStatusFactory;
+use Magento\Framework\Phrase;
 use Magento\Framework\Stdlib\DateTime\DateTime;
 use Exception;
+use Psr\Log\LoggerInterface;
 
 class SyncgStatusRepository
 {
@@ -38,16 +40,23 @@ class SyncgStatusRepository
      */
     protected $syncgStatusFactory;
 
+    /**
+     * @var LoggerInterface
+     */
+    private $logger;
+
     public function __construct(
         SyncgStatusResource $syncgStatusResource,
         DateTime $date,
         CollectionFactory $syncgStatusCollectionFactory,
-        SyncgStatusFactory $syncgStatusFactory
+        SyncgStatusFactory $syncgStatusFactory,
+        LoggerInterface $logger
     ) {
         $this->syncgStatusResource = $syncgStatusResource;
         $this->date = $date;
         $this->syncgStatusCollectionFactory = $syncgStatusCollectionFactory;
         $this->syncgStatusFactory = $syncgStatusFactory;
+        $this->logger = $logger;
     }
 
     public function updateEntityStatus($mgId, $type, $status)
@@ -78,7 +87,7 @@ class SyncgStatusRepository
         try {
             $this->syncgStatusResource->save($model);
         } catch (AlreadyExistsException | Exception $e) {
-
+            $this->logger->error(new Phrase('Comerline Syncg | Save Error | ' . $e->getMessage()));
         }
     }
 }

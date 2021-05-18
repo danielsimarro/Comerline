@@ -44,14 +44,15 @@ class Syncg
 
     public function syncgAll(){
         if ($this->config->getGeneralConfig('enable_order_sync') === "1") {
-            $this->fetchPending();
+            $this->fetchPendingOrders();
         }
     }
 
-    public function fetchPending(){
+    public function fetchPendingOrders(){
         $orderIds = [];
         $collection = $this->syncgStatusCollectionFactory->create()
-            ->addFieldToFilter('status', SyncgStatus::STATUS_PENDING);
+            ->addFieldToFilter('status', SyncgStatus::STATUS_PENDING)
+            ->addFieldToFilter('type', SyncgStatus::TYPE_ORDER);
         foreach ($collection as $item){
             $orderIds[] = $item->getData('mg_id');
         }
