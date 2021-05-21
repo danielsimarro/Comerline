@@ -10,7 +10,7 @@ use Magento\Framework\Serialize\Serializer\Json;
 use Magento\Framework\Webapi\Rest\Request;
 use Psr\Log\LoggerInterface;
 
-class Login extends SyncgApiService
+class GetArticles extends SyncgApiService
 {
 
     protected $method = Request::HTTP_METHOD_GET;
@@ -25,16 +25,23 @@ class Login extends SyncgApiService
         parent::__construct($configHelper, $json, $responseFactory, $clientFactory, $logger);
     }
 
-    public function buildParams(string $key)
+    public function buildParams()
     {
-        $this->endpoint .= '/?usr=' . $this->config->getGeneralConfig('email') . '&clave=' . $key;
+        $fields = [
+            'campos' => json_encode(array("id", "descripcion", "pvp1", "modelo")),
+            'filtro' => json_encode(array(
+                "inicio" => 22079,
+                "filtro" => array(
+                    array("campo" => "descripcion", "valor" => "gloss", "tipo" => 2)
+                )
+            ))
+        ];
+        $this->endpoint .= '/articulos/listar?campos=' . $fields['campos'] . '&filtro=' . $fields['filtro'];
     }
 
     public function send()
     {
-        $response = $this->execute();
-        $key = md5($this->config->getGeneralConfig('user_key') . $response['llave']);
-        $this->buildParams($key);
+        $this->buildParams();
         $response = $this->execute();
     }
 }

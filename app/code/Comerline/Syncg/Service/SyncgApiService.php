@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Comerline\Syncg\Service;
 
 use Comerline\Syncg\Helper\Config;
+use GuzzleHttp\Cookie\FileCookieJar;
 use Magento\Framework\Serialize\Serializer\Json;
 use Magento\Framework\Webapi\Rest\Request;
 use GuzzleHttp\ClientFactory;
@@ -41,7 +42,7 @@ abstract class SyncgApiService
         $this->responseFactory = $responseFactory;
         $this->logger = $logger;
         $this->uri = $this->config->getGeneralConfig('installation_url');
-        $this->id = $this->config->getGeneralConfig('database_id');
+        $this->endpoint = $this->config->getGeneralConfig('database_id');
     }
 
     public function execute(){
@@ -49,7 +50,7 @@ abstract class SyncgApiService
         $response = $this->doRequest($this->id, $this->params, $this->method);
         $status = $response->getStatusCode();
         if ($status === 200){
-            $responseJson = $response->getBody()->getContents();
+            $responseJson = $response->getBody()->__toString();
             try {
                 $data = $this->json->unserialize($responseJson);
             } catch (InvalidArgumentException $e) {
@@ -58,6 +59,7 @@ abstract class SyncgApiService
         } else {
             $this->logger->error(new Phrase('Comerline Syncg | There seems to be a problem doing the request'));
         }
+        return $data;
     }
 
     private function doRequest(
@@ -67,6 +69,7 @@ abstract class SyncgApiService
     ): Response {
         $client = $this->clientFactory->create(['config' => [
             'base_uri' => $this->uri,
+            'cookies' => new FileCookieJar('cookie_path', true),
         ]]);
 
         try {
