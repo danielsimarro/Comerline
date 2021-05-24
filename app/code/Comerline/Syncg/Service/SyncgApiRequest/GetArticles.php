@@ -15,6 +15,9 @@ class GetArticles extends SyncgApiService
 
     protected $method = Request::HTTP_METHOD_GET;
 
+    /**
+     * @var Config
+     */
     protected $config;
 
     public function __construct(
@@ -44,17 +47,18 @@ class GetArticles extends SyncgApiService
 
     public function send()
     {
-        $loop = true;
-        $start = 1;
-        $pages = [];
+        $loop = true; // Variable to check if we need to break the loop or keep on it
+        $start = 1; // Counter to check from which page we start the query
+        $pages = []; // Array where we will store the items, ordered in pages
         while ($loop){
             $this->buildParams($start);
             $response = $this->execute();
             if($response['listado']){
                 $pages[] = $response['listado'];
-                $start = intval($response['listado'][0]['id']) + 1;
+                $start = intval($response['listado'][0]['id']) + 1; // The first item that the API gives us is the one with highest ID always,
+                                                                    // so we get it for the next query, and we add 1 to avoid duplicating that item
             } else {
-                $loop = false;
+                $loop = false;  // If $response['listado'] is empty, we end the while loop
             }
         }
     }

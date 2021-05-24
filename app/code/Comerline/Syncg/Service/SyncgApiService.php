@@ -21,12 +21,24 @@ abstract class SyncgApiService
     protected $endpoint = '';
     protected $params = [];
 
+    /**
+     * @var ResponseFactory
+     */
     private $responseFactory;
 
+    /**
+     * @var Config
+     */
     protected $config;
 
+    /**
+     * @var Json
+     */
     protected $json;
 
+    /**
+     * @var LoggerInterface
+     */
     protected $logger;
 
     public function __construct(

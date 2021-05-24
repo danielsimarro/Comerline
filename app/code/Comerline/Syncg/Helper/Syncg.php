@@ -32,8 +32,14 @@ class Syncg
      */
     private $config;
 
+    /**
+     * @var Login
+     */
     private $login;
 
+    /**
+     * @var GetArticles
+     */
     private $getArticles;
 
     public function __construct(
