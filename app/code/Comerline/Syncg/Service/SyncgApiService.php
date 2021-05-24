@@ -47,7 +47,7 @@ abstract class SyncgApiService
 
     public function execute(){
         $data = null;
-        $response = $this->doRequest($this->id, $this->params, $this->method);
+        $response = $this->doRequest($this->endpoint, $this->params, $this->method);
         $status = $response->getStatusCode();
         if ($status === 200){
             $responseJson = $response->getBody()->__toString();
