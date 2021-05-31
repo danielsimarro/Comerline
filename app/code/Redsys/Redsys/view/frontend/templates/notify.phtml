@@ -1,0 +1,55 @@
+<!--
+/**
+* NOTA SOBRE LA LICENCIA DE USO DEL SOFTWARE
+* 
+* El uso de este software está sujeto a las Condiciones de uso de software que
+* se incluyen en el paquete en el documento "Aviso Legal.pdf". También puede
+* obtener una copia en la siguiente url:
+* http://www.redsys.es/wps/portal/redsys/publica/areadeserviciosweb/descargaDeDocumentacionYEjecutables
+* 
+* Redsys es titular de todos los derechos de propiedad intelectual e industrial
+* del software.
+* 
+* Quedan expresamente prohibidas la reproducción, la distribución y la
+* comunicación pública, incluida su modalidad de puesta a disposición con fines
+* distintos a los descritos en las Condiciones de uso.
+* 
+* Redsys se reserva la posibilidad de ejercer las acciones legales que le
+* correspondan para hacer valer sus derechos frente a cualquier infracción de
+* los derechos de propiedad intelectual y/o industrial.
+* 
+* Redsys Servicios de Procesamiento, S.L., CIF B85955367
+*/
+-->
+
+<?php
+
+	switch ($this->getExito()) {
+		case 0:
+			echo __("Gracias por confiar en nosotros. El pago del pedido ha sido procesado con éxito.")."<br/>";
+			break;
+		case 1:
+			echo "<b>". __("La forma en que intenta acceder al sistema de notificacion no es correcta.")."</b><br/>";
+			echo __("Este mensaje lo puede estar viendo por dos motivos:")."<br/><br/>";
+			echo "<ol>";
+				echo "<li>".__("El hosting del comercio utiliza redirección internamente.")."</li>";
+				echo "<li>".__("Está usted intentando navegar por esta página; esta pagina no está accesible para entrar directamente desde el navegador de internet.")."</li>";
+			echo "</ol>";
+			echo __("Si ha llegado aquí redirigido desde la pasarela de pago, contacte con el soporte del comercio.");
+			break;
+		case 2:
+			echo __("Gracias por confiar en nosotros. Se ha producido un error durante el pago.")."<br/>";			
+			echo __("Si el problema persiste contacte con el soporte del comercio.");
+			break;
+		case 3:
+			echo __("Gracias por confiar en nosotros. Se ha producido un error durante el pago.")."<br/>";
+			echo __("Si el problema persiste contacte con el soporte del comercio.");
+			break;
+		case 4:
+			echo __("Se ha producido un error desconocido");
+			echo __("Por favor, contacte con el soporte del comercio");
+			break;
+					
+	}
+
+

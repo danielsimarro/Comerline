@@ -1,0 +1,63 @@
+<!--
+/**
+* NOTA SOBRE LA LICENCIA DE USO DEL SOFTWARE
+* 
+* El uso de este software está sujeto a las Condiciones de uso de software que
+* se incluyen en el paquete en el documento "Aviso Legal.pdf". También puede
+* obtener una copia en la siguiente url:
+* http://www.redsys.es/wps/portal/redsys/publica/areadeserviciosweb/descargaDeDocumentacionYEjecutables
+* 
+* Redsys es titular de todos los derechos de propiedad intelectual e industrial
+* del software.
+* 
+* Quedan expresamente prohibidas la reproducción, la distribución y la
+* comunicación pública, incluida su modalidad de puesta a disposición con fines
+* distintos a los descritos en las Condiciones de uso.
+* 
+* Redsys se reserva la posibilidad de ejercer las acciones legales que le
+* correspondan para hacer valer sus derechos frente a cualquier infracción de
+* los derechos de propiedad intelectual y/o industrial.
+* 
+* Redsys Servicios de Procesamiento, S.L., CIF B85955367
+*/
+-->
+<div class="payment-method" data-bind="css: {'_active': (getCode() == isChecked())}">
+    <div class="payment-method-title field choice">
+        <input type="radio"
+               name="payment[method]"
+               class="radio"
+               data-bind="attr: {'id': getCode()}, value: getCode(), checked: isChecked, click: selectPaymentMethod, visible: isRadioButtonVisible()"/>
+        <label data-bind="attr: {'for': getCode()}" class="label"><span data-bind="text: getTitle()"></span></label>
+    </div>
+    <div class="payment-method-content">
+        <!-- ko foreach: getRegion('messages') -->
+        <!-- ko template: getTemplate() --><!-- /ko -->
+        <!--/ko-->
+        <div class="payment-method-billing-address">
+            <!-- ko foreach: $parent.getRegion(getBillingAddressFormName()) -->
+            <!-- ko template: getTemplate() --><!-- /ko -->
+            <!--/ko-->
+        </div>
+        <div class="checkout-agreements-block">
+            <!-- ko foreach: $parent.getRegion('before-place-order') -->
+                <!-- ko template: getTemplate() --><!-- /ko -->
+            <!--/ko-->
+        </div>
+        <div class="actions-toolbar">
+            <div class="primary">
+                <button class="action primary checkout"
+                        type="submit"
+                        data-bind="
+                        click: placeOrder,
+                        attr: {title: $t('Place Order')},
+                        css: {disabled: !isPlaceOrderActionAllowed()},
+                        enable: (getCode() == isChecked())
+                        "
+                        disabled>
+                    <span data-bind="i18n: 'Finalizar y Pagar'"></span>
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+        
