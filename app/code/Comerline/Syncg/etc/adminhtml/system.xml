@@ -31,6 +31,10 @@
                     <label>Sincronizar productos</label>
                     <source_model>Magento\Config\Model\Config\Source\Yesno</source_model>
                 </field>
+                <field id="last_date_sync_products" translate="label" type="text" sortOrder="1" showInDefault="0" showInWebsite="0" showInStore="0">>
+                    <label>Ultima sincronización de productos</label>
+                    <comment>Muestra la última fecha en la que se realizó una sincronización de productos.</comment>
+                </field>
             </group>
         </section>
     </system>

@@ -8,6 +8,8 @@ use Comerline\Syncg\Model\SyncgStatus;
 use Comerline\Syncg\Model\Order;
 use Comerline\Syncg\Service\SyncgApiRequest\Login;
 use Comerline\Syncg\Service\SyncgApiRequest\GetArticles;
+use Magento\Framework\Stdlib\DateTime\DateTime;
+use Psr\Log\LoggerInterface;
 
 class Syncg
 {
@@ -42,13 +44,25 @@ class Syncg
      */
     private $getArticles;
 
+    /**
+     * @var DateTime
+     */
+    private $dateTime;
+
+    /**
+     * @var LoggerInterface
+     */
+    private $logger;
+
     public function __construct(
         SyncgStatusRepository $syncgStatusRepository,
         CollectionFactory $syncgStatusCollectionFactory,
         Order $order,
         Config $config,
         Login $login,
-        GetArticles $getArticles
+        GetArticles $getArticles,
+        DateTime $dateTime,
+        LoggerInterface $logger
     ) {
         $this->syncgStatusRepository = $syncgStatusRepository;
         $this->syncgStatusCollectionFactory = $syncgStatusCollectionFactory;
@@ -56,6 +70,8 @@ class Syncg
         $this->config = $config;
         $this->login = $login;
         $this->getArticles = $getArticles;
+        $this->dateTime = $dateTime;
+        $this->logger = $logger;
     }
 
     public function syncgAll(){
@@ -63,7 +79,12 @@ class Syncg
         if ($this->config->getGeneralConfig('enable_order_sync') === "1") {
             $this->fetchPendingOrders();
         }
-        $this->fetchArticles();
+        if ($this->checkMakeSync()){
+//            $this->fetchArticles();
+            $this->config->setSyncInProgress(true);
+            $this->config->setLastDateSyncProducts($this->dateTime->gmtDate());
+            $this->config->setSyncInProgress(false);
+        }
     }
 
     public function fetchPendingOrders(){
@@ -83,5 +104,21 @@ class Syncg
 
     public function connectToAPI(){
         $this->login->send();
+    }
+
+    private function checkMakeSync(): bool
+    {
+        $makeSync = true;
+        $currentDate = $this->dateTime->gmtTimestamp();
+        $lastSyncPlusFiveMinutes = $this->config->getLastSyncPlusFiveMinutes();
+//        if ($this->config->syncInProgress()) {
+//            $makeSync = false;
+//            $this->logger->info('Comerline Syncg | Sync in progress');
+//        }
+        if ($currentDate < $lastSyncPlusFiveMinutes) {
+            $makeSync = false;
+            $this->logger->info("Comerline Syncg | Five minutes haven't passed");
+        }
+        return $makeSync;
     }
 }
