@@ -80,8 +80,8 @@ class Syncg
             $this->fetchPendingOrders();
         }
         if ($this->checkMakeSync()){
-//            $this->fetchArticles();
             $this->config->setSyncInProgress(true);
+            $this->fetchArticles();
             $this->config->setLastDateSyncProducts($this->dateTime->gmtDate());
             $this->config->setSyncInProgress(false);
         }
@@ -111,14 +111,14 @@ class Syncg
         $makeSync = true;
         $currentDate = $this->dateTime->gmtTimestamp();
         $lastSyncPlusFiveMinutes = $this->config->getLastSyncPlusFiveMinutes();
-//        if ($this->config->syncInProgress()) {
-//            $makeSync = false;
-//            $this->logger->info('Comerline Syncg | Sync in progress');
-//        }
-        if ($currentDate < $lastSyncPlusFiveMinutes) {
+        if ($this->config->syncInProgress()) {
             $makeSync = false;
-            $this->logger->info("Comerline Syncg | Five minutes haven't passed");
+            $this->logger->info('Comerline Syncg | Sync in progress');
         }
+//        if ($currentDate < $lastSyncPlusFiveMinutes) {
+//            $makeSync = false;
+//            $this->logger->info("Comerline Syncg | Five minutes haven't passed");
+//        }
         return $makeSync;
     }
 }

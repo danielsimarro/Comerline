@@ -51,7 +51,16 @@ class Config extends AbstractHelper
     public function syncInProgress(): bool
     {
         $syncInProgress = false;
-        $coreConfigData = $this->getGeneralConfig('sync_in_progress');
+        $coreConfigData = $this->getParamsWithoutSystem('syncg/general/sync_in_progress');
+        $lastSyncPlusHalfHour = $this->getLastSyncPlusHalfHour();
+        $currentDate = $this->dateTime->gmtTimestamp();
+        if ($coreConfigData) {
+            $syncInProgress = $coreConfigData->getValue() ?? false;
+        }
+        if ($syncInProgress && $lastSyncPlusHalfHour <= $currentDate) {
+            $syncInProgress = false;
+        }
+        return $syncInProgress;
     }
 
     public function getGeneralConfig($code, $storeId = null)
@@ -76,6 +85,20 @@ class Config extends AbstractHelper
             }
         }
         return $lastSyncPlusFiveMinutesTms;
+    }
+
+    public function getLastSyncPlusHalfHour() : int
+    {
+        $lastSyncPlusHalfHourTms = 0;
+        $coreConfigData = $this->getParamsWithoutSystem('syncg/general/last_date_sync_products');
+        if ($coreConfigData) {
+            $date = $coreConfigData->getValue();
+            if($date){
+                $dateFormat = DatetimeOrigin::createFromFormat('Y-m-d H:i:s', $date);
+                $lastSyncPlusHalfHourTms = $dateFormat->add(new DateInterval('PT30M'))->getTimestamp();
+            }
+        }
+        return $lastSyncPlusHalfHourTms;
     }
 
     private function getParamsWithoutSystem(string $param)
