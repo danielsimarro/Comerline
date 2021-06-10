@@ -100,6 +100,7 @@ class Syncg
 
     public function fetchArticles(){
         $this->getArticles->send();
+
     }
 
     public function connectToAPI(){
