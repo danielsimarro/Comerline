@@ -17,6 +17,7 @@ use Magento\Eav\Model\Entity\Attribute\SetFactory as AttributeSetFactory;
 use Magento\Framework\Filesystem\DirectoryList;
 use Magento\Framework\Serialize\Serializer\Json;
 use Magento\Framework\Webapi\Rest\Request;
+use PHPUnit\Exception;
 use Psr\Log\LoggerInterface;
 
 class GetArticles extends SyncgApiService
@@ -69,6 +70,9 @@ class GetArticles extends SyncgApiService
      */
     private $attributeSetFactory;
 
+    /**
+     * @var AttributeHelper
+     */
     private $attributeHelper;
 
     private $dir;
@@ -105,11 +109,11 @@ class GetArticles extends SyncgApiService
     public function buildParams($start)
     {
         $fields = [
-            'campos' => json_encode(array("nombre", "ref_fabricante", "descripcion", "pvp1", "modelo", "si_vender_en_web")),
+            'campos' => json_encode(array("nombre", "ref_fabricante", "descripcion", "pvp1", "modelo", "si_vender_en_web", "existencias_globales")),
             'filtro' => json_encode(array(
                 "inicio" => $start,
                 "filtro" => array(
-                    array("campo" => "descripcion", "valor" => "Separador simple de 5mm espesor as", "tipo" => 0)
+                    array("campo" => "descripcion", "valor" => " asasasa2", "tipo" => 2)
                 )
             )),
             'orden' => json_encode(array("campo" => "id", "orden" => "ASC"))
@@ -121,7 +125,7 @@ class GetArticles extends SyncgApiService
     public function send()
     {
         $loop = true; // Variable to check if we need to break the loop or keep on it
-        $start = 256; // Counter to check from which page we start the query
+        $start = 0; // Counter to check from which page we start the query
         $pages = []; // Array where we will store the items, ordered in pages
         while ($loop){
             $this->buildParams($start);
@@ -142,72 +146,122 @@ class GetArticles extends SyncgApiService
         }
         $objectManager = \Magento\Framework\App\ObjectManager::getInstance(); // Instance of Object Manager. This is temporal, and will change in the near future
         if ($pages) {
-            $productRelateds =  [];
+            $attributeSetId = "";  // Variable where we will store the attribute set ID
+            $relatedProducts =  [];
+            $relatedProductsSons = [];
             foreach ($pages as $page){
                 for ($i = 0; $i < count($page); $i++){
-                    $attributeSetId = null;  // Variable where we will store the attribute set ID
                     $collectionSyncg = $this->syncgStatusCollectionFactory->create()
                         ->addFieldToFilter('g_id', $page[$i]['cod']); // We check if the product already exists
-                    $attributeSetCollectionFactory = $objectManager->get('Magento\Eav\Model\ResourceModel\Entity\Attribute\Set\CollectionFactory'); // Temporary use of object manager, this should be a Dependency Injection
-                    $attributeSetCollection = $attributeSetCollectionFactory->create();
-                    $attributeSets = $attributeSetCollection->getItems();
-                    foreach ($attributeSets as $attributeSet) {
-                        if ($attributeSet->getAttributeSetName() === $page[$i]['familias'][0]['nombre']) { // If the name of the attribute set is the same as the one on G4100...
-                             $attributeSetId = $attributeSet->getAttributeSetId(); // We save the ID to use it later
+                    if (array_key_exists('familias', $page[$i])) { // We check if the product has an attribute set. If it does, then checks what it is
+                        $attributeSetCollectionFactory = $objectManager->get('Magento\Eav\Model\ResourceModel\Entity\Attribute\Set\CollectionFactory');
+                        $attributeSetCollection = $attributeSetCollectionFactory->create();
+                        $attributeSets = $attributeSetCollection->getItems();
+                        foreach ($attributeSets as $attributeSet) {
+                            if ($attributeSet->getAttributeSetName() === $page[$i]['familias'][0]['nombre']) { // If the name of the attribute set is the same as the one on G4100...
+                                $attributeSetId = $attributeSet->getAttributeSetId(); // We save the ID to use it later
+                            }
                         }
                     }
-                    if ($collectionSyncg->getSize() > 0) {
+                    if ($collectionSyncg->getSize() > 0) { // If the product already exists, that means we only have to update it
                         foreach ($collectionSyncg as $itemSyncg) {
                             $product_id = $itemSyncg->getData('mg_id');
                             $product = $this->productRepository->getById($product_id, true);
-                            $product->setStoreId(0);
-                            $product->setTaxClassId(0);
-                            $product->setAttributeSetId($attributeSetId);
-                            $this->insertAttributes($page[$i]['tp_2'][0], $product);
-                            $product->setTypeId('simple');
-                            $product->setPrice(188);
-                            $product->setSku($page[$i]['ref_fabricante']);
-                            $product->setName($page[$i]['descripcion']);
-                            if ($page[$i]['si_vender_en_web'] === true) {
-                                $product->setStatus(1);
-                            } else {
-                                $product->setStatus(0);
-                            }
+                            $this->createUpdateProduct($product, $page, $attributeSetId, $i);
                             $this->productResource->save($product);
                         }
                     } else {
-                        $product = $this->productFactory->create();
-                        $product->setStoreId(0);
-                        $product->setTaxClassId(0);
-                        $product->setAttributeSetId($attributeSetId);
-                        $product->setTypeId('simple');
-                        $this->insertAttributes($page[$i]['tp_2'][0], $product);
-                        $product->setPrice($page[$i]['pvp1']);
-                        $product->setSku($page[$i]['ref_fabricante']);
-                        $product->setName($page[$i]['descripcion']);
-                        if ($page[$i]['si_vender_en_web'] === true) {
-                            $product->setStatus(1);
-                        } else {
-                            $product->setStatus(0);
-                        }
+                        $product = $this->productFactory->create(); // If the product doesn't exists, we create it
+                        $this->createUpdateProduct($product, $page, $attributeSetId, $i);
                         $product->save();
                     }
-                        if ($page[$i]['relacionados']){ // If the product has related products we get it's ID and save it on an array to work later with it
-                            $productRelateds['id'] = $product->getEntityId();
+                        if (array_key_exists('relacionados', $page[$i])){ // If the product has related products we get it's ID and save it on an array to work later with it
+                            $relatedProducts[] = $product->getEntityId();
                             foreach ($page[$i]['relacionados'] as $r){
-                                $productRelateds['related'] .= $r['cod'] . ', ';
+                                $relatedProductsSons[$product->getEntityId()][] = $r['cod'];
                             }
                         }
                         $this->syncgStatus = $this->syncgStatusRepository->updateEntityStatus($product->getEntityId(), $page[$i]['cod'], SyncgStatus::TYPE_PRODUCT, 1);
-//                        $this->getImages($page[$i], $product);  Commented at the moment because this is not working as intended
+                        $this->getImages($page[$i], $product);
                 }
             }
 
-            foreach ($productRelateds as $pr)
+            foreach ($relatedProducts as $rp)
             {
-                $product = $this->productRepository->getById($pr, true);
+                $product = $this->productRepository->getById($rp);
+                try {
+                    $attributeModel = $objectManager->create('Magento\ConfigurableProduct\Model\Product\Type\Configurable\Attribute');
+                    $attributes = array(121); // Array with the attributes we want to make configurable
+                    $position = 0;
+                    foreach ($attributes as $attributeId) {
+                        $data = array('attribute_id' => $attributeId, 'product_id' => $product->getId(), 'position' => $position);
+                        $position++;
+                        try {
+                            $attributeModel->setData($data)->save();
+                        } catch (Exception $e) {
+                        $this->logger->info('Comerline Syncg | ' . $e->getMessage());
+                        }
+                    }
+                    $product->setTypeId("configurable"); // We change the type of the product to configurable
+                    $product->setAffectConfigurableProductAttributes($product->getData('attribute_set_id'));
+                    $objectManager->create('Magento\ConfigurableProduct\Model\Product\Type\Configurable')->setUsedProductAttributeIds($attributes, $product);
+                    $product->setNewVariationsAttributeSetId($product->getData('attribute_set_id'));
+                    $relatedIds = $this->getRelatedProductsIds($rp, $relatedProductsSons);
+                    $product->setAssociatedProductsIds($relatedIds);
+                    $product->setCanSaveConfigurableAttributes(true);
+                    $product->save();
+                } catch (Exception $e) {
+                    $this->logger->info('Comerline Syncg | ' . $e->getMessage());
+                }
             }
         }
+    }
+
+    public function createUpdateProduct($product, $page, $attributeSetId, $i)
+    {
+        $product->setSku($page[$i]['ref_fabricante']);
+        $product->setName($page[$i]['descripcion']);
+        $product->setStoreId(0);
+        $product->setAttributeSetId($attributeSetId);
+        if (array_key_exists('tp_2', $page[$i])){
+            $this->insertAttributes($page[$i]['tp_2'][0], $product);
+        }
+        if ($page[$i]['si_vender_en_web'] === true) {
+            $product->setStatus(1);
+        } else {
+            $product->setStatus(0);
+        }
+        $product->setTaxClassId(0);
+        $product->setTypeId('simple');
+        $product->setPrice($page[$i]['pvp1']);
+        $stock = 0;
+        if ($page[$i]['existencias_globales'] > 0) { // If there are no existences, that means there is no stock
+            $stock = 1;
+        }
+        $product->setStockData(
+            array(
+                'use_config_manage_stock' => 0,
+                'manage_stock' => 1,
+                'is_in_stock' => $stock,
+                'qty' => $page[$i]['existencias_globales']
+            )
+        );
+    }
+
+    public function getRelatedProductsIds($rp, $relatedProductsSons)
+    {
+        $related = [];
+        foreach ($relatedProductsSons[$rp] as $son)
+        {
+            $collectionSon = $this->syncgStatusCollectionFactory->create()
+                ->addFieldToFilter('g_id', $son); // We get the product from Magento
+            foreach ($collectionSon as $itemSon)
+            {
+                $related[] = $itemSon->getData('mg_id');
+            }
+        }
+
+        return $related;
     }
 
     public function insertAttributes($attributes, $product)
@@ -246,37 +300,56 @@ class GetArticles extends SyncgApiService
         }
     }
 
-// Commented at the moment because this is not working as intended
+    public function getImages($article, $product)
+    {
+        if(array_key_exists('imagenes', $article))
+        {
+            $baseUrl = $this->config->getGeneralConfig('installation_url') . $this->config->getGeneralConfig('database_id');
+            $user = $this->config->getGeneralConfig('email');
+            $pass = $this->config->getGeneralConfig('user_key');
 
+            $ch = curl_init();
+            curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+            curl_setopt($ch, CURLOPT_COOKIESESSION, true);
+            curl_setopt($ch, CURLOPT_COOKIEJAR, 'session');
 
-//    public function getImages($article, $product)
-//    {
-//        if($article['imagenes'])
-//        {
-//            $baseUrl = $this->config->getGeneralConfig('installation_url') . $this->config->getGeneralConfig('database_id');
-//            $user = $this->config->getGeneralConfig('email');
-//            $pass = $this->config->getGeneralConfig('user_key');
-//
-//            $ch = curl_init();
-//            curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-//            curl_setopt($ch, CURLOPT_COOKIESESSION, true);
-//            curl_setopt($ch, CURLOPT_COOKIEJAR, 'session');
-//
-//            curl_setopt($ch, CURLOPT_URL, $baseUrl);
-//            $result = curl_exec($ch);
-//            $json = json_decode($result, true);
-//
-//            curl_setopt($ch, CURLOPT_URL, $baseUrl . "/?usr=" . $user . "&clave=" . md5($pass . $json['llave']));
-//            curl_exec($ch);
-//            foreach ($article['imagenes'] as $image) {
-//                $ch = curl_setopt($ch, CURLOPT_URL, $baseUrl . '/imagenes/' . $image);
-//                $fp = fopen($this->dir->getPath('media') . '/images/' . $image . '.png', 'wb');
-//                curl_setopt($ch, CURLOPT_FILE, $fp);
-//                curl_exec($ch);
-//                curl_close($ch);
-//                fclose($fp);
-//                $this->syncgStatus = $this->syncgStatusRepository->updateEntityStatus($product->getEntityId(), $image, SyncgStatus::TYPE_IMAGE, 1);
-//            }
-//        }
-//    }
+            curl_setopt($ch, CURLOPT_URL, $baseUrl);
+            $result = curl_exec($ch);
+            $json = json_decode($result, true);
+
+            curl_setopt($ch, CURLOPT_URL, $baseUrl . "/?usr=" . $user . "&clave=" . md5($pass . $json['llave']));
+            $result = curl_exec($ch);
+            foreach ($article['imagenes'] as $image) {
+                $path = $this->dir->getPath('media') . '/images/' . $image . '.jpg';
+                $fp = fopen ($path, 'w+');              // open file handle
+
+                curl_setopt($ch, CURLOPT_URL, $baseUrl. "/imagenes/" . $image);
+                // curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false); // enable if you want
+                curl_setopt($ch, CURLOPT_FILE, $fp);          // output to file
+                curl_setopt($ch, CURLOPT_FOLLOWLOCATION, 1);
+                curl_setopt($ch, CURLOPT_TIMEOUT, 1000);      // some large value to allow curl to run for a long time
+                curl_setopt($ch, CURLOPT_USERAGENT, 'Mozilla/5.0');
+                // curl_setopt($ch, CURLOPT_VERBOSE, true);   // Enable this line to see debug prints
+                curl_exec($ch);
+
+                curl_close($ch);                              // closing curl handle
+                fclose($fp);
+                $collectionProducts = $this->syncgStatusCollectionFactory->create()
+                    ->addFieldToFilter('g_id', $article['cod']);
+                if ($collectionProducts->getSize() > 0) { // If the product already exists, that means we only have to update it
+                    foreach ($collectionProducts as $itemProducts) {
+                        $product_id = $itemProducts->getData('mg_id');
+                        $product = $this->productRepository->getById($product_id, true);
+                        try {
+                            $product->addImageToMediaGallery($path, array('image', 'small_image', 'thumbnail'), false, false);
+                        } catch (Exception $e) {
+                            $this->logger->info('Comerline Syncg | ' . $e->getMessage());
+                        }
+                        $this->productResource->save($product);
+                    }
+                }
+                $this->syncgStatus = $this->syncgStatusRepository->updateEntityStatus($product->getEntityId(), $image, SyncgStatus::TYPE_IMAGE, 1);
+            }
+        }
+    }
 }
