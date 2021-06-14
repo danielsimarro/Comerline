@@ -99,7 +99,7 @@ class AttributeHelper extends AbstractHelper
                 $option
             );
 
-            // Get the inserted ID. Should be returned from the installer, but it isn't.
+            // Get the inserted ID
             $optionId = $this->getOptionId($attributeCode, $label, true);
         }
 

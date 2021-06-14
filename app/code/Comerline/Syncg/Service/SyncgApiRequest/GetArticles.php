@@ -8,6 +8,8 @@ use Comerline\Syncg\Model\SyncgStatus;
 use Comerline\Syncg\Model\ResourceModel\SyncgStatus\CollectionFactory;
 use Comerline\Syncg\Model\ResourceModel\SyncgStatusRepository;
 use Magento\Catalog\Api\ProductRepositoryInterface;
+use Magento\Catalog\Model\ResourceModel\Category\CollectionFactory as CategoryCollectionFactory;
+use Magento\Eav\Model\ResourceModel\Entity\Attribute\Set\CollectionFactory as AttributeCollectionFactory;
 use Magento\Catalog\Model\ResourceModel\Product as ProductResource;
 use GuzzleHttp\ClientFactory;
 use Comerline\Syncg\Helper\AttributeHelper;
@@ -77,6 +79,10 @@ class GetArticles extends SyncgApiService
 
     private $dir;
 
+    private $categoryCollectionFactory;
+
+    private $attributeCollectionFactory;
+
     public function __construct(
         Config $configHelper,
         Json $json,
@@ -91,7 +97,9 @@ class GetArticles extends SyncgApiService
         ProductResource $productResource,
         AttributeSetFactory $attributeSetFactory,
         AttributeHelper $attributeHelper,
-        DirectoryList $dir
+        DirectoryList $dir,
+        CategoryCollectionFactory $categoryCollectionFactory,
+        AttributeCollectionFactory $attributeCollectionFactory
     ) {
         $this->config = $configHelper;
         $this->syncgStatus = $syncgStatus;
@@ -103,13 +111,15 @@ class GetArticles extends SyncgApiService
         $this->attributeSetFactory = $attributeSetFactory;
         $this->attributeHelper = $attributeHelper;
         $this->dir = $dir;
+        $this->categoryCollectionFactory = $categoryCollectionFactory;
+        $this->attributeCollectionFactory = $attributeCollectionFactory;
         parent::__construct($configHelper, $json, $responseFactory, $clientFactory, $logger);
     }
 
     public function buildParams($start)
     {
         $fields = [
-            'campos' => json_encode(array("nombre", "ref_fabricante", "descripcion", "pvp1", "modelo", "si_vender_en_web", "existencias_globales")),
+            'campos' => json_encode(array("nombre", "ref_fabricante", "descripcion", "desc_detallada" ,"pvp1", "modelo", "si_vender_en_web", "existencias_globales", "grupo")),
             'filtro' => json_encode(array(
                 "inicio" => $start,
                 "filtro" => array(
@@ -148,14 +158,14 @@ class GetArticles extends SyncgApiService
         if ($pages) {
             $attributeSetId = "";  // Variable where we will store the attribute set ID
             $relatedProducts =  [];
+            $relatedAttributes = [];
             $relatedProductsSons = [];
             foreach ($pages as $page){
                 for ($i = 0; $i < count($page); $i++){
                     $collectionSyncg = $this->syncgStatusCollectionFactory->create()
                         ->addFieldToFilter('g_id', $page[$i]['cod']); // We check if the product already exists
                     if (array_key_exists('familias', $page[$i])) { // We check if the product has an attribute set. If it does, then checks what it is
-                        $attributeSetCollectionFactory = $objectManager->get('Magento\Eav\Model\ResourceModel\Entity\Attribute\Set\CollectionFactory');
-                        $attributeSetCollection = $attributeSetCollectionFactory->create();
+                        $attributeSetCollection = $this->attributeCollectionFactory->create();
                         $attributeSets = $attributeSetCollection->getItems();
                         foreach ($attributeSets as $attributeSet) {
                             if ($attributeSet->getAttributeSetName() === $page[$i]['familias'][0]['nombre']) { // If the name of the attribute set is the same as the one on G4100...
@@ -179,6 +189,7 @@ class GetArticles extends SyncgApiService
                             $relatedProducts[] = $product->getEntityId();
                             foreach ($page[$i]['relacionados'] as $r){
                                 $relatedProductsSons[$product->getEntityId()][] = $r['cod'];
+                                $relatedAttributes[$product->getEntityId()] = $this->getAttributesIds($page[$i]['tp_2'][0]);
                             }
                         }
                         $this->syncgStatus = $this->syncgStatusRepository->updateEntityStatus($product->getEntityId(), $page[$i]['cod'], SyncgStatus::TYPE_PRODUCT, 1);
@@ -191,25 +202,21 @@ class GetArticles extends SyncgApiService
                 $product = $this->productRepository->getById($rp);
                 try {
                     $attributeModel = $objectManager->create('Magento\ConfigurableProduct\Model\Product\Type\Configurable\Attribute');
-                    $attributes = array(121); // Array with the attributes we want to make configurable
-                    $position = 0;
-                    foreach ($attributes as $attributeId) {
-                        $data = array('attribute_id' => $attributeId, 'product_id' => $product->getId(), 'position' => $position);
-                        $position++;
-                        try {
-                            $attributeModel->setData($data)->save();
-                        } catch (Exception $e) {
-                        $this->logger->info('Comerline Syncg | ' . $e->getMessage());
-                        }
+                    $attributes = $relatedAttributes[$rp]; // Array with the attributes we want to make configurable
+                    foreach ($attributes as $key => $attributeId) {
+                        $data = array('attribute_id' => $attributeId, 'product_id' => $product->getId(), 'position' => $key);
+                        $attributeModel->setData($data)->save();
                     }
                     $product->setTypeId("configurable"); // We change the type of the product to configurable
                     $product->setAffectConfigurableProductAttributes($product->getData('attribute_set_id'));
                     $objectManager->create('Magento\ConfigurableProduct\Model\Product\Type\Configurable')->setUsedProductAttributeIds($attributes, $product);
-                    $product->setNewVariationsAttributeSetId($product->getData('attribute_set_id'));
+                    $product->setNewVariationsAttributeSetId(intval($product->getData('attribute_set_id')));
                     $relatedIds = $this->getRelatedProductsIds($rp, $relatedProductsSons);
-                    $product->setAssociatedProductsIds($relatedIds);
+                    $extensionConfigurableAttributes = $product->getExtensionAttributes();
+                    $extensionConfigurableAttributes->setConfigurableProductLinks($relatedIds);
+                    $product->setExtensionAttributes($extensionConfigurableAttributes);
                     $product->setCanSaveConfigurableAttributes(true);
-                    $product->save();
+                    $this->productRepository->save($product);
                 } catch (Exception $e) {
                     $this->logger->info('Comerline Syncg | ' . $e->getMessage());
                 }
@@ -234,6 +241,9 @@ class GetArticles extends SyncgApiService
         $product->setTaxClassId(0);
         $product->setTypeId('simple');
         $product->setPrice($page[$i]['pvp1']);
+        $product->setDescription($page[$i]['desc_detallada']);
+        $categoryIds = $this->getCategoryIds($page[$i]['familias'][0]['nombre']);
+        $product->setCategoryIds($categoryIds);
         $stock = 0;
         if ($page[$i]['existencias_globales'] > 0) { // If there are no existences, that means there is no stock
             $stock = 1;
@@ -246,6 +256,17 @@ class GetArticles extends SyncgApiService
                 'qty' => $page[$i]['existencias_globales']
             )
         );
+    }
+
+    public function getCategoryIds($categoryName)
+    {
+        $categoryId = [];
+        $categoryCollection = $this->categoryCollectionFactory->create()
+            ->addAttributeToFilter('name', $categoryName);
+        if ($categoryCollection->getSize()) {
+            $categoryId[] = $categoryCollection->getFirstItem()->getId();
+        }
+        return $categoryId;
     }
 
     public function getRelatedProductsIds($rp, $relatedProductsSons)
@@ -262,6 +283,38 @@ class GetArticles extends SyncgApiService
         }
 
         return $related;
+    }
+
+    public function getAttributesIds($attributes)
+    {
+        if ($attributes) { // If this is exists, that means we have attributes
+            $code = [];
+            $thickness = $attributes['c_11'];
+            if ($thickness !== "") {
+                $code[] = $this->attributeHelper->getAttribute('thickness')->getAttributeId();
+            }
+            $type = $attributes['c_10'];
+            if ($type !== "") {
+                $code[] = $this->attributeHelper->getAttribute('type')->getAttributeId();
+            }
+            $diameter = $attributes['c_5'];
+            if ($diameter !== "") {
+                $code[] = $this->attributeHelper->getAttribute('diameter')->getAttributeId();
+            }
+            $size = $attributes['c_4'];
+            if ($size !== "") {
+                $code[] = $this->attributeHelper->getAttribute('size')->getAttributeId();
+            }
+            $mounting = $attributes['c_9'];
+            if ($mounting !== "") {
+                $code[] = $this->attributeHelper->getAttribute('mounting')->getAttributeId();
+            }
+            $color = $attributes['c_8'];
+            if ($color !== "") {
+                $code[] = $this->attributeHelper->getAttribute('color')->getAttributeId();
+            }
+        }
+        return $code;
     }
 
     public function insertAttributes($attributes, $product)
