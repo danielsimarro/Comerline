@@ -161,7 +161,7 @@ class GetArticles extends SyncgApiService
             $relatedAttributes = [];
             $relatedProductsSons = [];
             foreach ($pages as $page){
-                for ($i = 0; $i < count($page); $i++){
+                for ($i = 0; $i < count($page); $i++){ //Cada producto.
                     $collectionSyncg = $this->syncgStatusCollectionFactory->create()
                         ->addFieldToFilter('g_id', $page[$i]['cod']); // We check if the product already exists
                     if (array_key_exists('familias', $page[$i])) { // We check if the product has an attribute set. If it does, then checks what it is
@@ -203,10 +203,23 @@ class GetArticles extends SyncgApiService
             {
                 $product = $this->productRepository->getById($rp);
                 try {
-                    $attributeModel = $objectManager->create('Magento\ConfigurableProduct\Model\Product\Type\Configurable\Attribute');
                     $attributes = $relatedAttributes[$rp]; // Array with the attributes we want to make configurable
-                    foreach ($attributes as $key => $attributeId) {
-                        $data = array('attribute_id' => $attributeId, 'product_id' => $product->getId(), 'position' => $key);
+                    $attributeModels = [];
+                    $count = 0;
+                    foreach ($attributes as $attributeId) {
+                        $attributeModel = $objectManager->create('Magento\ConfigurableProduct\Model\Product\Type\Configurable\Attribute');
+                        $eavModel = $objectManager->create('Magento\Catalog\Model\ResourceModel\Eav\Attribute');
+                        $attr = $eavModel->load($attributeId);
+                        $data = array(
+                            'attribute_id' => $attributeId,
+                            'product_id' => $product->getId(),
+                            'position' => strval($count),
+                            'sku' => $product->getSku(),
+                            'label' => $attr->getData('frontend_label')
+                        );
+                        $count++;
+                        $new = $attributeModel->setData($data);
+                        array_push($attributeModels, $new);
                         try {
                             $attributeModel->setData($data)->save();
                         } catch (\Magento\Framework\Exception\AlreadyExistsException $e){
@@ -214,12 +227,14 @@ class GetArticles extends SyncgApiService
                         }
                     }
                     $product->setTypeId("configurable"); // We change the type of the product to configurable
-                    $product->setAffectConfigurableProductAttributes($product->getData('attribute_set_id'));
+                    $product->setAffectConfigurableProductAttributes();
+                    $product->setAttributeSetId($product->getData('attribute_set_id'));
                     $objectManager->create('Magento\ConfigurableProduct\Model\Product\Type\Configurable')->setUsedProductAttributeIds($attributes, $product);
-                    //$product->setNewVariationsAttributeSetId(intval($product->getData('attribute_set_id'))); TODO: reemplazo.
+                    $product->setNewVariationsAttributeSetId(intval($product->getData('attribute_set_id')));
                     $relatedIds = $this->getRelatedProductsIds($rp, $relatedProductsSons, $magentoId);
                     $extensionConfigurableAttributes = $product->getExtensionAttributes();
                     $extensionConfigurableAttributes->setConfigurableProductLinks($relatedIds);
+                    $extensionConfigurableAttributes->setConfigurableProductOptions($attributeModels);
                     $product->setExtensionAttributes($extensionConfigurableAttributes);
                     $product->setCanSaveConfigurableAttributes(true);
                     $this->productRepository->save($product);
