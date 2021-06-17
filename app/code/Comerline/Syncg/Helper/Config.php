@@ -57,9 +57,9 @@ class Config extends AbstractHelper
         if ($coreConfigData) {
             $syncInProgress = $coreConfigData->getValue() ?? false;
         }
-        if ($syncInProgress && $lastSyncPlusHalfHour <= $currentDate) {
-            $syncInProgress = false;
-        }
+//        if ($syncInProgress && $lastSyncPlusHalfHour <= $currentDate) {
+//            $syncInProgress = false;
+//        }
         return $syncInProgress;
     }
 
@@ -101,7 +101,7 @@ class Config extends AbstractHelper
         return $lastSyncPlusHalfHourTms;
     }
 
-    private function getParamsWithoutSystem(string $param)
+    public function getParamsWithoutSystem(string $param)
     {
         return $this->coreConfigDataCollection
             ->create()

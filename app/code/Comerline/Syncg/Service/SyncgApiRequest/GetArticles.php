@@ -20,7 +20,9 @@ use Magento\Framework\Filesystem\DirectoryList;
 use Magento\Framework\Serialize\Serializer\Json;
 use Magento\Framework\Webapi\Rest\Request;
 use PHPUnit\Exception;
+use Magento\Framework\Exception\NoSuchEntityException;
 use Psr\Log\LoggerInterface;
+use Magento\Framework\App\ObjectManager;
 
 class GetArticles extends SyncgApiService
 {
@@ -77,10 +79,19 @@ class GetArticles extends SyncgApiService
      */
     private $attributeHelper;
 
+    /**
+     * @var DirectoryList
+     */
     private $dir;
 
+    /**
+     * @var CategoryCollectionFactory
+     */
     private $categoryCollectionFactory;
 
+    /**
+     * @var AttributeCollectionFactory
+     */
     private $attributeCollectionFactory;
 
     public function __construct(
@@ -118,12 +129,15 @@ class GetArticles extends SyncgApiService
 
     public function buildParams($start)
     {
+        $coreConfigData = $this->config->getParamsWithoutSystem('syncg/general/last_date_sync_products')->getValue(); // We get the last sync date
+        $date = date('d-m-Y H:i', strtotime($coreConfigData . '+2 hours')); // We have to add 2 hours, since the date from the API comes in CEST
         $fields = [
-            'campos' => json_encode(array("nombre", "ref_fabricante", "descripcion", "desc_detallada" ,"pvp1", "modelo", "si_vender_en_web", "existencias_globales", "grupo")),
+            'campos' => json_encode(array("nombre", "ref_fabricante", "fecha_cambio", "ref_proveedor", "descripcion", "desc_detallada" ,"pvp1", "modelo", "si_vender_en_web", "existencias_globales", "grupo")),
             'filtro' => json_encode(array(
                 "inicio" => $start,
                 "filtro" => array(
-                    array("campo" => "descripcion", "valor" => "asasasa2", "tipo" => 2)
+                    array("campo" => "si_vender_en_web", "valor" => "1", "tipo" => 0),
+                    array("campo" => "fecha_cambio", "valor" => $date, "tipo" => 3)
                 )
             )),
             'orden' => json_encode(array("campo" => "id", "orden" => "ASC"))
@@ -154,14 +168,14 @@ class GetArticles extends SyncgApiService
                 $loop = false;  // If $response['listado'] is empty, we end the while loop
             }
         }
-        $objectManager = \Magento\Framework\App\ObjectManager::getInstance(); // Instance of Object Manager. This is temporal, and will change in the near future
+        $objectManager = ObjectManager::getInstance(); // Instance of Object Manager. We need it for some of the operations that didn't work with dependency injection
         if ($pages) {
             $attributeSetId = "";  // Variable where we will store the attribute set ID
-            $relatedProducts =  [];
-            $relatedAttributes = [];
-            $relatedProductsSons = [];
+            $relatedProducts =  []; // Array where we will store the products that have related products
+            $relatedAttributes = []; // Array where we will store the attributtes that are related
+            $relatedProductsSons = []; // Array where we will store the related products
             foreach ($pages as $page){
-                for ($i = 0; $i < count($page); $i++){ //Cada producto.
+                for ($i = 0; $i < count($page); $i++){ //We navigate through the products in a page
                     $collectionSyncg = $this->syncgStatusCollectionFactory->create()
                         ->addFieldToFilter('g_id', $page[$i]['cod']); // We check if the product already exists
                     if (array_key_exists('familias', $page[$i])) { // We check if the product has an attribute set. If it does, then checks what it is
@@ -176,7 +190,7 @@ class GetArticles extends SyncgApiService
                     if ($collectionSyncg->getSize() > 0) { // If the product already exists, that means we only have to update it
                         foreach ($collectionSyncg as $itemSyncg) {
                             $product_id = $itemSyncg->getData('mg_id');
-                            $product = $this->productRepository->getById($product_id, true);
+                            $product = $this->productRepository->getById($product_id, true); // We load the product in edit mode
                             $this->createUpdateProduct($product, $page, $attributeSetId, $i);
                             $this->productResource->save($product);
                         }
@@ -187,7 +201,7 @@ class GetArticles extends SyncgApiService
                     }
                         if (array_key_exists('relacionados', $page[$i])){ // If the product has related products we get it's ID and save it on an array to work later with it
                             $product_id = $product->getId();
-                            $magentoId = $this->createSimpleProduct($page, $i, $attributeSetId, $product_id);
+                            $magentoId[] = $this->createSimpleProduct($page, $i, $attributeSetId, $product_id); // We get the ID since we will create a duplicate of this product to avoid losing options
                             $relatedProducts[] = $product->getEntityId();
                             foreach ($page[$i]['relacionados'] as $r){
                                 $relatedProductsSons[$product->getEntityId()][] = $r['cod'];
@@ -221,25 +235,25 @@ class GetArticles extends SyncgApiService
                         $new = $attributeModel->setData($data);
                         array_push($attributeModels, $new);
                         try {
-                            $attributeModel->setData($data)->save();
+                            $attributeModel->setData($data)->save(); // We create the attribute model
                         } catch (\Magento\Framework\Exception\AlreadyExistsException $e){
-                            $this->logger->info($e->getMessage());
-                        }
+                            $this->logger->info('Syncg | ' . $e->getMessage()); // If the attribute model already exists, it throws an exception,
+                        }                                                       // so we need to catch it to avoid execution from stopping
                     }
                     $product->setTypeId("configurable"); // We change the type of the product to configurable
-                    $product->setAffectConfigurableProductAttributes();
                     $product->setAttributeSetId($product->getData('attribute_set_id'));
                     $objectManager->create('Magento\ConfigurableProduct\Model\Product\Type\Configurable')->setUsedProductAttributeIds($attributes, $product);
                     $product->setNewVariationsAttributeSetId(intval($product->getData('attribute_set_id')));
                     $relatedIds = $this->getRelatedProductsIds($rp, $relatedProductsSons, $magentoId);
                     $extensionConfigurableAttributes = $product->getExtensionAttributes();
-                    $extensionConfigurableAttributes->setConfigurableProductLinks($relatedIds);
-                    $extensionConfigurableAttributes->setConfigurableProductOptions($attributeModels);
+                    $extensionConfigurableAttributes->setConfigurableProductLinks($relatedIds); // Linking by ID the products that are related to this configurable
+                    $extensionConfigurableAttributes->setConfigurableProductOptions($attributeModels); // Linking the options that are configurable
                     $product->setExtensionAttributes($extensionConfigurableAttributes);
                     $product->setCanSaveConfigurableAttributes(true);
                     $this->productRepository->save($product);
+                    $this->setRelatedsNotVisible($relatedIds); // We need to make the simple products related to this one hidden
                 } catch (Exception $e) {
-                    $this->logger->info('Comerline Syncg | ' . $e->getMessage());
+                    $this->logger->info('Syncg | ' . $e->getMessage());
                 }
             }
         }
@@ -249,11 +263,16 @@ class GetArticles extends SyncgApiService
     {
         $simpleProduct[$i] = $page[$i];
         unset($simpleProduct[$i]['relacionados']); // We remove related products as we don't need them
-        $simpleProduct[$i]['ref_fabricante'] .= '-' . $simpleProduct[$i]['id']; // We add the ID to the SKU to avoid errors
+        $sku = "";
+        if ($simpleProduct[$i]['ref_fabricante'] !== "") {
+            $sku = $simpleProduct[$i]['ref_fabricante'] .= '-' . $simpleProduct[$i]['id']; // We add the ID to the SKU to avoid errors
+        } else {                                                                           // If ref_fabricante is empty, we use ref_proveedor
+            $sku = $simpleProduct[$i]['ref_proveedor'] .= '-' . $simpleProduct[$i]['id'];
+        }
         $simpleProduct[$i]['cod'] .= '-' . $simpleProduct[$i]['id']; // We add the ID to the code to avoid errors
         try {
-            $product = $this->productRepository->get($simpleProduct[$i]['ref_fabricante']); // If the SKU exists, we load the product
-        } catch (\Magento\Framework\Exception\NoSuchEntityException $e) {
+            $product = $this->productRepository->get($sku); // If the SKU exists, we load the product
+        } catch (NoSuchEntityException $e) {
             $product = false; // Otherwise, we have to create it
         }
         if ($product) {
@@ -273,7 +292,13 @@ class GetArticles extends SyncgApiService
 
     public function createUpdateProduct($product, $page, $attributeSetId, $i)
     {
-        $product->setSku($page[$i]['ref_fabricante']);
+        if ($page[$i]['ref_fabricante'] !== ""){
+            $product->setSku($page[$i]['ref_fabricante']);
+            $url = strtolower(str_replace(" ", "-", $page[$i]['ref_fabricante']) . $page[$i]['cod']);
+        } else {
+            $product->setSku($page[$i]['ref_proveedor']);
+            $url = strtolower(str_replace(" ", "-", $page[$i]['ref_proveedor']) . $page[$i]['cod']);
+        }
         $product->setName($page[$i]['descripcion']);
         $product->setStoreId(0);
         $product->setAttributeSetId($attributeSetId);
@@ -288,9 +313,14 @@ class GetArticles extends SyncgApiService
         $product->setTaxClassId(0);
         $product->setTypeId('simple');
         $product->setPrice($page[$i]['pvp1']);
+        $product->setVisibility(4);
+        $product->setWebsiteIds(array(1));
+        $product->setUrlKey($url);
         $product->setDescription($page[$i]['desc_detallada']);
-        $categoryIds = $this->getCategoryIds($page[$i]['familias'][0]['nombre']);
-        $product->setCategoryIds($categoryIds);
+        if (array_key_exists('familias', $page[$i])) {
+            $categoryIds = $this->getCategoryIds($page[$i]['familias'][0]['nombre']);
+            $product->setCategoryIds($categoryIds);
+        }
         $stock = 0;
         if ($page[$i]['existencias_globales'] > 0) { // If there are no existences, that means there is no stock
             $stock = 1;
@@ -300,7 +330,7 @@ class GetArticles extends SyncgApiService
                 'use_config_manage_stock' => 0,
                 'manage_stock' => 1,
                 'is_in_stock' => $stock,
-                'qty' => intval($page[$i]['existencias_globales'])
+                'qty' => $page[$i]['existencias_globales']
             )
         );
     }
@@ -327,19 +357,34 @@ class GetArticles extends SyncgApiService
             {
                 $related[] = $itemSon->getData('mg_id'); // For each of them, we save the Magento ID to use it later
             }
-            $related[] = $magentoId[$rp]; // We also add $magentoId, as we need it
+            foreach ($magentoId as $id)
+            {
+                if (array_key_exists($rp, $id)){
+                    $related[] = $id[$rp]; // We also add $magentoId, as we need it
+                }
+            }
         }
 
         return $related;
     }
 
+    public function setRelatedsNotVisible($related)
+    {
+        foreach ($related as $r)
+        {
+            $product = $this->productRepository->getById($r);
+            $product->setVisibility(1);
+            $this->productRepository->save($product);
+        }
+    }
+
     public function getAttributesIds($attributes)
     {
         if ($attributes) { // If this is exists, that means we have attributes
-            $code = [];
+            $code = []; // Array where we will store the attributes IDs
             $thickness = $attributes['c_11'];
             if ($thickness !== "") {
-                $code[] = $this->attributeHelper->getAttribute('thickness')->getAttributeId();
+                $code[] = $this->attributeHelper->getAttribute('thickness')->getAttributeId(); // With this helper we get the ID of the desired attribute
             }
             $type = $attributes['c_10'];
             if ($type !== "") {
@@ -374,7 +419,7 @@ class GetArticles extends SyncgApiService
                 $product->setCustomAttribute('thickness', $thicknessId);
             } else {
                 $product->setCustomAttribute('thickness', ''); // We do this to put it on empty in case that is what we get from the API
-            }
+            }                                                  // Useful when we delete an attribute, this sets it to empty
             $type = $attributes['c_10'];
             if ($type !== "") {
                 $typeId = $this->attributeHelper->createOrGetId('type', $type);
@@ -454,7 +499,7 @@ class GetArticles extends SyncgApiService
                         try {
                             $product->addImageToMediaGallery($path, array('image', 'small_image', 'thumbnail'), false, false);
                         } catch (Exception $e) {
-                            $this->logger->info('Comerline Syncg | ' . $e->getMessage());
+                            $this->logger->info('Syncg | ' . $e->getMessage());
                         }
                         $this->productResource->save($product);
                     }

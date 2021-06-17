@@ -114,11 +114,11 @@ class Syncg
         $lastSyncPlusFiveMinutes = $this->config->getLastSyncPlusFiveMinutes();
         if ($this->config->syncInProgress()) {
             $makeSync = false;
-            $this->logger->info('Comerline Syncg | Sync in progress');
+            $this->logger->info('Syncg | Sync in progress');
         }
 //        if ($currentDate < $lastSyncPlusFiveMinutes) {
 //            $makeSync = false;
-//            $this->logger->info("Comerline Syncg | Five minutes haven't passed");
+//            $this->logger->info("Syncg | Five minutes haven't passed");
 //        }
         return $makeSync;
     }
