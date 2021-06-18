@@ -130,9 +130,10 @@ class GetArticles extends SyncgApiService
     public function buildParams($start)
     {
         $coreConfigData = $this->config->getParamsWithoutSystem('syncg/general/last_date_sync_products')->getValue(); // We get the last sync date
-        $date = date('d-m-Y H:i', strtotime($coreConfigData . '+2 hours')); // We have to add 2 hours, since the date from the API comes in CEST
+        $date = date('Y-m-d H:i', strtotime($coreConfigData . '+2 hours')); // We have to add 2 hours, since the date from the API comes in CEST
+
         $fields = [
-            'campos' => json_encode(array("nombre", "ref_fabricante", "fecha_cambio", "ref_proveedor", "descripcion", "desc_detallada" ,"pvp1", "modelo", "si_vender_en_web", "existencias_globales", "grupo")),
+            'campos' => json_encode(array("nombre", "ref_fabricante", "fecha_cambio", "borrado", "ref_proveedor", "descripcion", "desc_detallada" ,"pvp1", "modelo", "si_vender_en_web", "existencias_globales", "grupo")),
             'filtro' => json_encode(array(
                 "inicio" => $start,
                 "filtro" => array(
@@ -488,7 +489,6 @@ class GetArticles extends SyncgApiService
                 curl_setopt($ch, CURLOPT_USERAGENT, 'Mozilla/5.0');
                 curl_exec($ch);
 
-                curl_close($ch);                              // Closing curl handle
                 fclose($fp);
                 $collectionProducts = $this->syncgStatusCollectionFactory->create()
                     ->addFieldToFilter('g_id', $article['cod']);
@@ -496,6 +496,12 @@ class GetArticles extends SyncgApiService
                     foreach ($collectionProducts as $itemProducts) {
                         $product_id = $itemProducts->getData('mg_id');
                         $product = $this->productRepository->getById($product_id, true);
+
+                        $existingMediaGalleryEntries = $product->getMediaGalleryEntries();
+
+                        foreach ($existingMediaGalleryEntries as $key => $entry) {
+                            unset($existingMediaGalleryEntries[$key]);
+                        }
                         try {
                             $product->addImageToMediaGallery($path, array('image', 'small_image', 'thumbnail'), false, false);
                         } catch (Exception $e) {
@@ -506,6 +512,7 @@ class GetArticles extends SyncgApiService
                 }
                 $this->syncgStatus = $this->syncgStatusRepository->updateEntityStatus($product->getEntityId(), $image, SyncgStatus::TYPE_IMAGE, 1);
             }
+            curl_close($ch);                              // Closing curl handle
         }
     }
 }

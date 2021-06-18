@@ -6,6 +6,7 @@ use Comerline\Syncg\Model\ResourceModel\SyncgStatusRepository;
 use Comerline\Syncg\Model\ResourceModel\SyncgStatus\CollectionFactory;
 use Comerline\Syncg\Model\SyncgStatus;
 use Comerline\Syncg\Model\Order;
+use Comerline\Syncg\Service\SyncgApiRequest\CheckDeletedArticles;
 use Comerline\Syncg\Service\SyncgApiRequest\Login;
 use Comerline\Syncg\Service\SyncgApiRequest\GetArticles;
 use Magento\Framework\Stdlib\DateTime\DateTime;
@@ -44,6 +45,8 @@ class Syncg
      */
     private $getArticles;
 
+    private $checkDeletedArticles;
+
     /**
      * @var DateTime
      */
@@ -61,6 +64,7 @@ class Syncg
         Config $config,
         Login $login,
         GetArticles $getArticles,
+        CheckDeletedArticles $checkDeletedArticles,
         DateTime $dateTime,
         LoggerInterface $logger
     ) {
@@ -70,6 +74,7 @@ class Syncg
         $this->config = $config;
         $this->login = $login;
         $this->getArticles = $getArticles;
+        $this->checkDeletedArticles = $checkDeletedArticles;
         $this->dateTime = $dateTime;
         $this->logger = $logger;
     }
@@ -100,7 +105,7 @@ class Syncg
 
     public function fetchArticles(){
         $this->getArticles->send();
-
+        $this->checkDeletedArticles->send();
     }
 
     public function connectToAPI(){
