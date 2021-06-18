@@ -23,6 +23,9 @@ use PHPUnit\Exception;
 use Magento\Framework\Exception\NoSuchEntityException;
 use Psr\Log\LoggerInterface;
 use Magento\Framework\App\ObjectManager;
+use DateTimeZone;
+use DateInterval;
+use Safe\DateTime;
 
 class GetArticles extends SyncgApiService
 {
@@ -130,7 +133,11 @@ class GetArticles extends SyncgApiService
     public function buildParams($start)
     {
         $coreConfigData = $this->config->getParamsWithoutSystem('syncg/general/last_date_sync_products')->getValue(); // We get the last sync date
-        $date = date('Y-m-d H:i', strtotime($coreConfigData . '+2 hours')); // We have to add 2 hours, since the date from the API comes in CEST
+
+        $timezone = new DateTimeZone('Europe/Madrid');
+        $date = new DateTime($coreConfigData, $timezone);
+        $hours = $date->getOffset() / 3600; // We have to add the offset, since the date from the API comes in CEST
+        $newDate = $date->add(new DateInterval(("PT{$hours}H")));
 
         $fields = [
             'campos' => json_encode(array("nombre", "ref_fabricante", "fecha_cambio", "borrado", "ref_proveedor", "descripcion", "desc_detallada" ,"pvp1", "modelo", "si_vender_en_web", "existencias_globales", "grupo")),
@@ -138,7 +145,7 @@ class GetArticles extends SyncgApiService
                 "inicio" => $start,
                 "filtro" => array(
                     array("campo" => "si_vender_en_web", "valor" => "1", "tipo" => 0),
-                    array("campo" => "fecha_cambio", "valor" => $date, "tipo" => 3)
+                    array("campo" => "fecha_cambio", "valor" => $newDate->format('Y-m-d H:i'), "tipo" => 3)
                 )
             )),
             'orden' => json_encode(array("campo" => "id", "orden" => "ASC"))
