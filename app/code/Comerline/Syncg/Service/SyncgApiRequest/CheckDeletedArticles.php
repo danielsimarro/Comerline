@@ -12,7 +12,6 @@ use Magento\Catalog\Model\ResourceModel\Product as ProductResource;
 use GuzzleHttp\ClientFactory;
 use GuzzleHttp\Psr7\ResponseFactory;
 use Magento\Catalog\Api\Data\ProductInterfaceFactory as ProductFactory;
-use Magento\Framework\Filesystem\DirectoryList;
 use Magento\Framework\Serialize\Serializer\Json;
 use Magento\Framework\Webapi\Rest\Request;
 use Psr\Log\LoggerInterface;
