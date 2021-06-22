@@ -216,7 +216,7 @@ class GetArticles extends SyncgApiService
                                 $relatedAttributes[$product->getEntityId()] = $this->getAttributesIds($page[$i]['tp_2'][0]);
                             }
                         }
-                        $this->syncgStatus = $this->syncgStatusRepository->updateEntityStatus($product->getEntityId(), $page[$i]['cod'], SyncgStatus::TYPE_PRODUCT, 1);
+                        $this->syncgStatus = $this->syncgStatusRepository->updateEntityStatus($product->getEntityId(), $page[$i]['cod'], SyncgStatus::TYPE_PRODUCT, SyncgStatus::STATUS_COMPLETED);
                         $this->getImages($page[$i], $product);
                 }
             }
@@ -517,7 +517,7 @@ class GetArticles extends SyncgApiService
                         $this->productResource->save($product);
                     }
                 }
-                $this->syncgStatus = $this->syncgStatusRepository->updateEntityStatus($product->getEntityId(), $image, SyncgStatus::TYPE_IMAGE, 1);
+                $this->syncgStatus = $this->syncgStatusRepository->updateEntityStatus($product->getEntityId(), $image, SyncgStatus::TYPE_IMAGE, SyncgStatus::STATUS_COMPLETED);
             }
             curl_close($ch);                              // Closing curl handle
         }

@@ -12,6 +12,7 @@ class SyncgStatus extends AbstractModel implements IdentityInterface
     const STATUS_PENDING = 0;
     const STATUS_COMPLETED = 1;
     const STATUS_FAILED = 2;
+    const STATUS_DELETED = 3;
 
     const TYPE_ORDER = 0;
     const TYPE_PRODUCT = 1;
