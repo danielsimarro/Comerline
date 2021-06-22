@@ -141,12 +141,14 @@ class CheckDeletedArticles extends SyncgApiService
                 if (!(in_array($syncgId, $ids))){ // If the ID is not in the array, that means the product is deleted
                     $collectionSyncg = $this->syncgStatusCollectionFactory->create()
                         ->addFieldToFilter('g_id', $syncgId)
-                        ->addFieldToFilter('type', SyncgStatus::TYPE_PRODUCT);
+                        ->addFieldToFilter('type', SyncgStatus::TYPE_PRODUCT)
+                        ->addFieldToFilter('status', SyncgStatus::STATUS_COMPLETED);
                     foreach ($collectionSyncg as $itemSyncg) {
                         $deletedId = $itemSyncg->getData('mg_id');
                         $product = $this->productRepository->getById($deletedId, true);
                         $product->setStatus(0);
                         $this->productRepository->save($product);
+                        $this->syncgStatus = $this->syncgStatusRepository->updateEntityStatus($deletedId, $syncgId, SyncgStatus::TYPE_PRODUCT, SyncgStatus::STATUS_DELETED);
                     }
                 }
             }
