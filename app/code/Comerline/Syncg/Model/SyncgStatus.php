@@ -16,6 +16,7 @@ class SyncgStatus extends AbstractModel implements IdentityInterface
 
     const TYPE_ORDER = 0;
     const TYPE_PRODUCT = 1;
+    const TYPE_CLIENT = 2;
     const TYPE_IMAGE = 6;
 //    const TYPE_CATEGORY = 1;  We will have more types in the future, so I leave this as a placeholder
 

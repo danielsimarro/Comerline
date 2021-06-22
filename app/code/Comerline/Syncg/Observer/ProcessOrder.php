@@ -50,7 +50,7 @@ class ProcessOrder implements ObserverInterface
         if ($this->config->getGeneralConfig('enable_order_sync') === "1") {
             $order = $observer->getOrder();
             $this->getClients->checkClients($order);
-            $this->syncgStatusRepository->updateEntityStatus($order->getData('increment_id'), SyncgStatus::TYPE_ORDER, SyncgStatus::STATUS_PENDING);
+            $this->syncgStatusRepository->updateEntityStatus($order->getData('increment_id'), '1', SyncgStatus::TYPE_ORDER, SyncgStatus::STATUS_PENDING);
         }
     }
 }
