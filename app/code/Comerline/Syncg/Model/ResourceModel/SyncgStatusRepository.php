@@ -59,7 +59,7 @@ class SyncgStatusRepository
         $this->logger = $logger;
     }
 
-    public function updateEntityStatus($mgId, $type, $status)
+    public function updateEntityStatus($mgId, $gId, $type, $status)
     {
         $collection = $this->syncgStatusCollectionFactory->create()
             ->addFieldToFilter('type', $type)
@@ -75,7 +75,7 @@ class SyncgStatusRepository
             $this->syncgStatus = $this->syncgStatusFactory->create();
             $this->syncgStatus->setType($type);
             $this->syncgStatus->setMgId($mgId);
-            $this->syncgStatus->setGId(0);
+            $this->syncgStatus->setGId($gId);
             $this->syncgStatus->setStatus($status);
             $this->syncgStatus->setCreatedAt($this->date->date());
             $this->saveSyncgStatus($this->syncgStatus);

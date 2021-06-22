@@ -12,8 +12,11 @@ class SyncgStatus extends AbstractModel implements IdentityInterface
     const STATUS_PENDING = 0;
     const STATUS_COMPLETED = 1;
     const STATUS_FAILED = 2;
+    const STATUS_DELETED = 3;
 
     const TYPE_ORDER = 0;
+    const TYPE_PRODUCT = 1;
+    const TYPE_IMAGE = 6;
 //    const TYPE_CATEGORY = 1;  We will have more types in the future, so I leave this as a placeholder
 
     protected $_cacheTag = 'comerline_syncg_status';
