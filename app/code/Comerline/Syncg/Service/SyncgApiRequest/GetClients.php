@@ -63,7 +63,7 @@ class GetClients extends SyncgApiService
         parent::__construct($configHelper, $json, $responseFactory, $clientFactory, $logger);
     }
 
-    public function buildParams($clientEmail, $search, $clientName, $clientAddress, $clientCity, $clientPhone, $clientProvince, $clientPostcode)
+    public function buildParams($clientEmail, $search, $client = null)
     {
         if ($search) {
             $fields = [
@@ -81,14 +81,14 @@ class GetClients extends SyncgApiService
         } else {
             $fields = [
                 'campos' => json_encode(array("nombre", "direccion1", "email", "poblacion", "telefono", "id_provincia", "cp")),
-                'datos' => json_encode(array($clientName, $clientAddress, $clientEmail, $clientCity, $clientPhone, $clientProvince, $clientPostcode))
+                'datos' => json_encode($client)
             ];
             $this->endpoint = $this->config->getGeneralConfig('database_id') . '/personas/guardar/0/?' . http_build_query($fields);
         }
     }
 
     public function checkClients($order){
-        $this->connectToAPI();
+        $this->connectToAPI(); // First we need to login
         $clientEmail = $order->getData('customer_email'); // Client's email
         $clientName = $order->getData('customer_firstname') . " " . $order->getData('customer_lastname'); // Client's name
         $clientAddress = $order->getData('addresses')[0]->getData('street'); // Client's street
@@ -96,18 +96,18 @@ class GetClients extends SyncgApiService
         $clientPhone = $order->getData('addresses')[0]->getData('telephone');
         $clientProvince = $this->getProvince->checkProvince($order->getData('addresses')[0]->getData('region')); // Client's province
         $clientPostcode = $order->getData('addresses')[0]->getData('postcode'); // Client's postcode
-        $this->buildParams($clientEmail, $search = true, $clientName, $clientAddress, $clientCity, $clientPhone, $clientProvince, $clientPostcode);
+        $client = array($clientName, $clientAddress, $clientEmail, $clientCity, $clientPhone, $clientProvince, $clientPostcode); // We put it all togheter on an array
+        $this->buildParams($clientEmail, $search = true); // First, we search if the client exists in G4100
         $response = $this->execute();
-        if (!empty($response['listado'])) {
+        if (!empty($response['listado'])) { // If it exists, we get it's ID
             $clientG4100 = $response['listado'][0];
             $clientG4100Id = $clientG4100['id'];
-            $clientMg = $this->customerRepository->get($clientG4100['email']);
-        } else {
-            $this->buildParams($clientEmail, $search = false, $clientName, $clientAddress, $clientCity, $clientPhone, $clientProvince, $clientPostcode);
+        } else { // If it doesn't exists, we create it and then we get the ID
+            $this->buildParams($clientEmail, $search = false, $client);
             $response = $this->execute();
             $clientG4100Id = $response['id'];
-            $clientMg = $this->customerRepository->get($clientEmail);
         }
+        $clientMg = $this->customerRepository->get($clientEmail); // We get the client from Magento using the email from the order
         $this->syncgStatus = $this->syncgStatusRepository->updateEntityStatus($clientMg->getId(), $clientG4100Id, SyncgStatus::TYPE_CLIENT, SyncgStatus::STATUS_COMPLETED);
     }
 

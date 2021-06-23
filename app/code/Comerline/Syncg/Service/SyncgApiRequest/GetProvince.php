@@ -81,8 +81,4 @@ class GetProvince extends SyncgApiService
         }
         return $provinceId;
     }
-
-    public function connectToAPI(){
-        $this->login->send();
-    }
 }
