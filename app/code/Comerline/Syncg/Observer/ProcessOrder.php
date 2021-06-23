@@ -2,6 +2,7 @@
 
 namespace Comerline\Syncg\Observer;
 
+use Comerline\Syncg\Service\SyncgApiRequest\CreateOrder;
 use Comerline\Syncg\Service\SyncgApiRequest\GetClients;
 use Magento\Framework\Event\ObserverInterface;
 use Magento\Framework\Event\Observer;
@@ -33,16 +34,23 @@ class ProcessOrder implements ObserverInterface
      */
     private $getClients;
 
+    /**
+     * @var CreateOrder
+     */
+    private $createOrder;
+
     public function __construct(
       Order $order,
       Config $configHelper,
       SyncgStatusRepository $syncgStatusRepository,
-      GetClients $getClients
+      GetClients $getClients,
+      CreateOrder $createOrder
     ) {
         $this->order = $order;
         $this->config = $configHelper;
         $this->syncgStatusRepository = $syncgStatusRepository;
         $this->getClients = $getClients;
+        $this->createOrder = $createOrder;
     }
 
     public function execute(Observer $observer)
@@ -50,7 +58,8 @@ class ProcessOrder implements ObserverInterface
         if ($this->config->getGeneralConfig('enable_order_sync') === "1") {
             $order = $observer->getOrder();
             $this->getClients->checkClients($order);
-            $this->syncgStatusRepository->updateEntityStatus($order->getData('increment_id'), 0, SyncgStatus::TYPE_ORDER, SyncgStatus::STATUS_PENDING); // Temporary GId, will change in the near future
+            $gId = $this->createOrder->createOrder($order);
+            $this->syncgStatusRepository->updateEntityStatus($order->getData('increment_id'), $gId, SyncgStatus::TYPE_ORDER, SyncgStatus::STATUS_PENDING); // Temporary GId, will change in the near future
         }
     }
 }
