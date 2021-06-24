@@ -9,6 +9,7 @@ use Comerline\Syncg\Model\Order;
 use Comerline\Syncg\Service\SyncgApiRequest\CheckDeletedArticles;
 use Comerline\Syncg\Service\SyncgApiRequest\Login;
 use Comerline\Syncg\Service\SyncgApiRequest\GetArticles;
+use Comerline\Syncg\Service\SyncgApiRequest\Logout;
 use Magento\Framework\Stdlib\DateTime\DateTime;
 use Psr\Log\LoggerInterface;
 
@@ -57,12 +58,18 @@ class Syncg
      */
     private $logger;
 
+    /**
+     * @var Logout
+     */
+    private $logout;
+
     public function __construct(
         SyncgStatusRepository $syncgStatusRepository,
         CollectionFactory $syncgStatusCollectionFactory,
         Order $order,
         Config $config,
         Login $login,
+        Logout $logout,
         GetArticles $getArticles,
         CheckDeletedArticles $checkDeletedArticles,
         DateTime $dateTime,
@@ -73,6 +80,7 @@ class Syncg
         $this->order = $order;
         $this->config = $config;
         $this->login = $login;
+        $this->logout = $logout;
         $this->getArticles = $getArticles;
         $this->checkDeletedArticles = $checkDeletedArticles;
         $this->dateTime = $dateTime;
@@ -90,6 +98,7 @@ class Syncg
             $this->config->setLastDateSyncProducts($this->dateTime->gmtDate());
             $this->config->setSyncInProgress(false);
         }
+        $this->disconnectFromAPI();
     }
 
     public function fetchPendingOrders(){
@@ -110,6 +119,10 @@ class Syncg
 
     public function connectToAPI(){
         $this->login->send();
+    }
+
+    public function disconnectFromAPI(){
+        $this->logout->send();
     }
 
     private function checkMakeSync(): bool
