@@ -47,7 +47,7 @@ class Order
             }
             fwrite($file, "] \n");
             fwrite($file, "Precio Total (con envío): " . $order->getData('base_grand_total') . "\n");
-            $this->syncgStatusRepository->updateEntityStatus($id, SyncgStatus::TYPE_ORDER, SyncgStatus::STATUS_COMPLETED);
+            $this->syncgStatusRepository->updateEntityStatus($id, 0, SyncgStatus::TYPE_ORDER, SyncgStatus::STATUS_COMPLETED);
         }
     }
 }

@@ -90,15 +90,15 @@ class Syncg
     public function syncgAll(){
         $this->connectToAPI();
         if ($this->config->getGeneralConfig('enable_order_sync') === "1") {
-            $this->fetchPendingOrders();
+//            $this->fetchPendingOrders();
         }
         if ($this->checkMakeSync()){
             $this->config->setSyncInProgress(true);
             $this->fetchArticles();
             $this->config->setLastDateSyncProducts($this->dateTime->gmtDate());
             $this->config->setSyncInProgress(false);
+            $this->disconnectFromAPI();
         }
-        $this->disconnectFromAPI();
     }
 
     public function fetchPendingOrders(){
