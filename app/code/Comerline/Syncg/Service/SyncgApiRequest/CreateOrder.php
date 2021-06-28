@@ -72,8 +72,8 @@ class CreateOrder extends SyncgApiService
             $this->endpoint = $this->config->getGeneralConfig('database_id') . '/articulos/catalogo?' . http_build_query($fields);
         } else {
             $fields = [
-                'cliente' => intval($clientId), // Here we have to add much more fields
-                'notas' => "", // Here we have to add much more fields
+                'cliente' => intval($clientId),
+                'notas' => "",
                 'lineas' => $lines
             ];
             $this->endpoint = $this->config->getGeneralConfig('database_id') . '/pedir/finalizar?pedido=' . json_encode($fields);
