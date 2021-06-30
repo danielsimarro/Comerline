@@ -2,7 +2,9 @@
 
 namespace Comerline\Syncg\Observer;
 
+use Comerline\Syncg\Service\SyncgApiRequest\CreateOrder;
 use Comerline\Syncg\Service\SyncgApiRequest\GetClients;
+use Comerline\Syncg\Service\SyncgApiRequest\Logout;
 use Magento\Framework\Event\ObserverInterface;
 use Magento\Framework\Event\Observer;
 use Comerline\Syncg\Model\Order;
@@ -33,24 +35,41 @@ class ProcessOrder implements ObserverInterface
      */
     private $getClients;
 
+    /**
+     * @var CreateOrder
+     */
+    private $createOrder;
+
+    /**
+     * @var Logout
+     */
+    private $logout;
+
     public function __construct(
       Order $order,
       Config $configHelper,
       SyncgStatusRepository $syncgStatusRepository,
-      GetClients $getClients
+      GetClients $getClients,
+      CreateOrder $createOrder,
+      Logout $logout
     ) {
         $this->order = $order;
         $this->config = $configHelper;
         $this->syncgStatusRepository = $syncgStatusRepository;
         $this->getClients = $getClients;
+        $this->createOrder = $createOrder;
+        $this->logout = $logout;
     }
 
     public function execute(Observer $observer)
     {
         if ($this->config->getGeneralConfig('enable_order_sync') === "1") {
             $order = $observer->getOrder();
-            $this->getClients->checkClients($order);
-            $this->syncgStatusRepository->updateEntityStatus($order->getData('increment_id'), 0, SyncgStatus::TYPE_ORDER, SyncgStatus::STATUS_PENDING); // Temporary GId, will change in the near future
+            $clientId = $this->getClients->checkClients($order);
+            $gId = $this->createOrder->createOrder($order, $clientId);
+            $this->syncgStatusRepository->updateEntityStatus($order->getData('increment_id'), $gId, SyncgStatus::TYPE_ORDER, SyncgStatus::STATUS_PENDING);
+            $this->logout->send();
         }
+
     }
 }

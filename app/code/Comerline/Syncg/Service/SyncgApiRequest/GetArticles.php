@@ -277,6 +277,7 @@ class GetArticles extends SyncgApiService
         } else {                                                                           // If ref_fabricante is empty, we use ref_proveedor
             $sku = $simpleProduct[$i]['ref_proveedor'] .= '-' . $simpleProduct[$i]['id'];
         }
+        $originalCod = $simpleProduct[$i]['cod'];
         $simpleProduct[$i]['cod'] .= '-' . $simpleProduct[$i]['id']; // We add the ID to the code to avoid errors
         try {
             $product = $this->productRepository->get($sku); // If the SKU exists, we load the product
@@ -293,6 +294,7 @@ class GetArticles extends SyncgApiService
             $product->save();
         }
         $this->getImages($simpleProduct[$i], $product);
+        $this->syncgStatus = $this->syncgStatusRepository->updateEntityStatus($product->getEntityId(), $originalCod, SyncgStatus::TYPE_PRODUCT, SyncgStatus::STATUS_COMPLETED);
         $magentoId = []; // Here we will store the Magento ID of the new product, to use it later
         $magentoId[$product_id] = $product->getId();
         return $magentoId;
@@ -324,6 +326,7 @@ class GetArticles extends SyncgApiService
         $product->setVisibility(4);
         $product->setWebsiteIds(array(1));
         $product->setUrlKey($url);
+        $product->setCustomAttribute('tax_class_id', 2);
         $product->setDescription($page[$i]['desc_detallada']);
         if (array_key_exists('familias', $page[$i])) {
             $categoryIds = $this->getCategoryIds($page[$i]['familias'][0]['nombre']);

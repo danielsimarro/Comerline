@@ -109,6 +109,7 @@ class GetClients extends SyncgApiService
         }
         $clientMg = $this->customerRepository->get($clientEmail); // We get the client from Magento using the email from the order
         $this->syncgStatus = $this->syncgStatusRepository->updateEntityStatus($clientMg->getId(), $clientG4100Id, SyncgStatus::TYPE_CLIENT, SyncgStatus::STATUS_COMPLETED);
+        return $clientG4100Id;
     }
 
     public function connectToAPI(){
