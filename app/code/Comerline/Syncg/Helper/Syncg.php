@@ -90,7 +90,7 @@ class Syncg
     public function syncgAll(){
         $this->connectToAPI();
         if ($this->config->getGeneralConfig('enable_order_sync') === "1") {
-//            $this->fetchPendingOrders();
+            $this->fetchPendingOrders();
         }
         if ($this->checkMakeSync()){
             $this->config->setSyncInProgress(true);
