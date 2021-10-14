@@ -140,7 +140,7 @@ class GetArticles extends SyncgApiService
         $newDate = $date->add(new DateInterval(("PT{$hours}H")));
 
         $fields = [
-            'campos' => json_encode(array("nombre", "ref_fabricante", "fecha_cambio", "borrado", "ref_proveedor", "descripcion", "desc_detallada" ,"pvp1", "modelo", "si_vender_en_web", "existencias_globales", "grupo")),
+            'campos' => json_encode(array("nombre", "ref_fabricante", "fecha_cambio", "borrado", "ref_proveedor", "descripcion", "desc_detallada", "envase", "frente", "fondo", "alto", "diametro", "diametro2", "pvp1", "modelo", "si_vender_en_web", "existencias_globales", "grupo")),
             'filtro' => json_encode(array(
                 "inicio" => $start,
                 "filtro" => array(
@@ -180,7 +180,7 @@ class GetArticles extends SyncgApiService
         if ($pages) {
             $attributeSetId = "";  // Variable where we will store the attribute set ID
             $relatedProducts =  []; // Array where we will store the products that have related products
-            $relatedAttributes = []; // Array where we will store the attributtes that are related
+            $relatedAttributes = []; // Array where we will store the attributes that are related
             $relatedProductsSons = []; // Array where we will store the related products
             foreach ($pages as $page){
                 for ($i = 0; $i < count($page); $i++){ //We navigate through the products in a page
@@ -312,8 +312,8 @@ class GetArticles extends SyncgApiService
         $product->setName($page[$i]['descripcion']);
         $product->setStoreId(0);
         $product->setAttributeSetId($attributeSetId);
-        if (array_key_exists('tp_2', $page[$i]) && !(array_key_exists('relacionados', $page[$i]))){
-            $this->insertAttributes($page[$i]['tp_2'][0], $product);
+        if (!(array_key_exists('relacionados', $page[$i]))){
+            $this->insertAttributes($page[$i], $product);
         }
         if ($page[$i]['si_vender_en_web'] === true) {
             $product->setStatus(1);
@@ -393,29 +393,29 @@ class GetArticles extends SyncgApiService
     {
         if ($attributes) { // If this is exists, that means we have attributes
             $code = []; // Array where we will store the attributes IDs
-            $thickness = $attributes['c_11'];
-            if ($thickness !== "") {
-                $code[] = $this->attributeHelper->getAttribute('thickness')->getAttributeId(); // With this helper we get the ID of the desired attribute
+            $width = $attributes['frente'];
+            if ($width !== "") {
+                $code[] = $this->attributeHelper->getAttribute('width')->getAttributeId(); // With this helper we get the ID of the desired attribute
             }
-            $type = $attributes['c_10'];
-            if ($type !== "") {
-                $code[] = $this->attributeHelper->getAttribute('type')->getAttributeId();
+            $offset = $attributes['fondo'];
+            if ($offset !== "") {
+                $code[] = $this->attributeHelper->getAttribute('offset')->getAttributeId();
             }
-            $diameter = $attributes['c_5'];
+            $diameter = $attributes['diametro'];
             if ($diameter !== "") {
                 $code[] = $this->attributeHelper->getAttribute('diameter')->getAttributeId();
             }
-            $size = $attributes['c_4'];
-            if ($size !== "") {
-                $code[] = $this->attributeHelper->getAttribute('size')->getAttributeId();
+            $hub = $attributes['alto'];
+            if ($hub !== "") {
+                $code[] = $this->attributeHelper->getAttribute('hub')->getAttributeId();
             }
-            $mounting = $attributes['c_9'];
+            $mounting = $attributes['envase'];
             if ($mounting !== "") {
                 $code[] = $this->attributeHelper->getAttribute('mounting')->getAttributeId();
             }
-            $color = $attributes['c_8'];
-            if ($color !== "") {
-                $code[] = $this->attributeHelper->getAttribute('color')->getAttributeId();
+            $load = $attributes['diametro2'];
+            if ($load !== "") {
+                $code[] = $this->attributeHelper->getAttribute('load')->getAttributeId();
             }
         }
         return $code;
@@ -424,47 +424,47 @@ class GetArticles extends SyncgApiService
     public function insertAttributes($attributes, $product)
     {
         if ($attributes) { // If this is exists, that means we have attributes
-            $thickness = $attributes['c_11'];
-            if ($thickness !== "") {
-                $thicknessId = $this->attributeHelper->createOrGetId('thickness', $thickness);
-                $product->setCustomAttribute('thickness', $thicknessId);
+            $width = $attributes['frente'];
+            if ($width !== "") {
+                $widthId = $this->attributeHelper->createOrGetId('width', $width);
+                $product->setCustomAttribute('width', $widthId);
             } else {
-                $product->setCustomAttribute('thickness', ''); // We do this to put it on empty in case that is what we get from the API
+                $product->setCustomAttribute('width', '');      // We do this to put it on empty in case that is what we get from the API
             }                                                  // Useful when we delete an attribute, this sets it to empty
-            $type = $attributes['c_10'];
-            if ($type !== "") {
-                $typeId = $this->attributeHelper->createOrGetId('type', $type);
-                $product->setCustomAttribute('type', $typeId);
+            $offset = $attributes['fondo'];
+            if ($offset !== "") {
+                $offsetId = $this->attributeHelper->createOrGetId('offset', $offset);
+                $product->setCustomAttribute('offset', $offsetId);
             } else {
-                $product->setCustomAttribute('type', '');
+                $product->setCustomAttribute('offset', '');
             }
-            $diameter = $attributes['c_5'];
+            $diameter = $attributes['diametro'];
             if ($diameter !== "") {
                 $diameterId = $this->attributeHelper->createOrGetId('diameter', $diameter);
                 $product->setCustomAttribute('diameter', $diameterId);
             } else {
                 $product->setCustomAttribute('diameter', '');
             }
-            $size = $attributes['c_4'];
-            if ($size !== "") {
-                $sizeId = $this->attributeHelper->createOrGetId('size', $size);
-                $product->setCustomAttribute('size', $sizeId);
+            $hub = $attributes['alto'];
+            if ($hub !== "") {
+                $hubId = $this->attributeHelper->createOrGetId('hub', $hub);
+                $product->setCustomAttribute('hub', $hubId);
             } else {
-                $product->setCustomAttribute('size', '');
+                $product->setCustomAttribute('hub', '');
             }
-            $mounting = $attributes['c_9'];
+            $mounting = $attributes['envase'];
             if ($mounting !== "") {
                 $mountingId = $this->attributeHelper->createOrGetId('mounting', $mounting);
                 $product->setCustomAttribute('mounting', $mountingId);
             } else {
                 $product->setCustomAttribute('mounting', '');
             }
-            $color = $attributes['c_8'];
-            if ($color !== "") {
-                $colorId = $this->attributeHelper->createOrGetId('color', $color);
-                $product->setCustomAttribute('color', $colorId);
+            $load = $attributes['diametro2'];
+            if ($load !== "") {
+                $loadId = $this->attributeHelper->createOrGetId('load', $load);
+                $product->setCustomAttribute('load', $loadId);
             } else {
-                $product->setCustomAttribute('color', '');
+                $product->setCustomAttribute('load', '');
             }
         }
     }
