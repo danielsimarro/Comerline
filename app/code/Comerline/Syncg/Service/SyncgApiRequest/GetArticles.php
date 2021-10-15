@@ -486,43 +486,45 @@ class GetArticles extends SyncgApiService
             $result = curl_exec($ch);
             $json = json_decode($result, true);
 
-            curl_setopt($ch, CURLOPT_URL, $baseUrl . "/?usr=" . $user . "&clave=" . md5($pass . $json['llave']));
-            $result = curl_exec($ch);
-            foreach ($article['imagenes'] as $image) {
-                $path = $this->dir->getPath('media') . '/images/' . $image . '.jpg';
-                $fp = fopen ($path, 'w+');              // Open file handle
+            if (array_key_exists($json['llave'])) { // To avoid import crashing if it can't donwload the image for whatever reason (API down, failed login...)
+                curl_setopt($ch, CURLOPT_URL, $baseUrl . "/?usr=" . $user . "&clave=" . md5($pass . $json['llave']));
+                $result = curl_exec($ch);
+                foreach ($article['imagenes'] as $image) {
+                    $path = $this->dir->getPath('media') . '/images/' . $image . '.jpg';
+                    $fp = fopen ($path, 'w+');              // Open file handle
 
-                curl_setopt($ch, CURLOPT_URL, $baseUrl. "/imagenes/" . $image);
-                curl_setopt($ch, CURLOPT_FILE, $fp);          // Output to file
-                curl_setopt($ch, CURLOPT_FOLLOWLOCATION, 1);
-                curl_setopt($ch, CURLOPT_TIMEOUT, 1000);
-                curl_setopt($ch, CURLOPT_USERAGENT, 'Mozilla/5.0');
-                curl_exec($ch);
+                    curl_setopt($ch, CURLOPT_URL, $baseUrl. "/imagenes/" . $image);
+                    curl_setopt($ch, CURLOPT_FILE, $fp);          // Output to file
+                    curl_setopt($ch, CURLOPT_FOLLOWLOCATION, 1);
+                    curl_setopt($ch, CURLOPT_TIMEOUT, 1000);
+                    curl_setopt($ch, CURLOPT_USERAGENT, 'Mozilla/5.0');
+                    curl_exec($ch);
 
-                fclose($fp);
-                $collectionProducts = $this->syncgStatusCollectionFactory->create()
-                    ->addFieldToFilter('g_id', $article['cod']);
-                if ($collectionProducts->getSize() > 0) { // If the product already exists, that means we only have to update it
-                    foreach ($collectionProducts as $itemProducts) {
-                        $product_id = $itemProducts->getData('mg_id');
-                        $product = $this->productRepository->getById($product_id, true);
+                    fclose($fp);
+                    $collectionProducts = $this->syncgStatusCollectionFactory->create()
+                        ->addFieldToFilter('g_id', $article['cod']);
+                    if ($collectionProducts->getSize() > 0) { // If the product already exists, that means we only have to update it
+                        foreach ($collectionProducts as $itemProducts) {
+                            $product_id = $itemProducts->getData('mg_id');
+                            $product = $this->productRepository->getById($product_id, true);
 
-                        $existingMediaGalleryEntries = $product->getMediaGalleryEntries();
+                            $existingMediaGalleryEntries = $product->getMediaGalleryEntries();
 
-                        foreach ($existingMediaGalleryEntries as $key => $entry) {
-                            unset($existingMediaGalleryEntries[$key]);
+                            foreach ($existingMediaGalleryEntries as $key => $entry) {
+                                unset($existingMediaGalleryEntries[$key]);
+                            }
+                            try {
+                                $product->addImageToMediaGallery($path, array('image', 'small_image', 'thumbnail'), false, false);
+                            } catch (Exception $e) {
+                                $this->logger->info('Syncg | ' . $e->getMessage());
+                            }
+                            $this->productResource->save($product);
                         }
-                        try {
-                            $product->addImageToMediaGallery($path, array('image', 'small_image', 'thumbnail'), false, false);
-                        } catch (Exception $e) {
-                            $this->logger->info('Syncg | ' . $e->getMessage());
-                        }
-                        $this->productResource->save($product);
                     }
+                    $this->syncgStatus = $this->syncgStatusRepository->updateEntityStatus($product->getEntityId(), $image, SyncgStatus::TYPE_IMAGE, SyncgStatus::STATUS_COMPLETED);
                 }
-                $this->syncgStatus = $this->syncgStatusRepository->updateEntityStatus($product->getEntityId(), $image, SyncgStatus::TYPE_IMAGE, SyncgStatus::STATUS_COMPLETED);
+                curl_close($ch);                              // Closing curl handle
             }
-            curl_close($ch);                              // Closing curl handle
         }
     }
 }
