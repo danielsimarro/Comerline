@@ -119,6 +119,7 @@ class CreateOrder extends SyncgApiService
                 array_push($lines, array("articulo" => $idG4100, "cantidad" => $qty, "precio" => $price));
             }
         }
+        array_push($lines, array("articulo" => $this->config->getGeneralConfig('shipping_rate_g4100_id'), "cantidad" => 1, "price" => 5.0)); // We add the shipping rates here
         return $lines;
     }
 }

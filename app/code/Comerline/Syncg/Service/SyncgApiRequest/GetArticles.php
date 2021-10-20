@@ -212,40 +212,42 @@ class GetArticles extends SyncgApiService
             $this->categories = $this->getMagentoCategories();
             foreach ($pages as $page) {
                 for ($i = 0; $i < count($page); $i++) { //We navigate through the products in a page
-                    $collectionSyncg = $this->syncgStatusCollectionFactory->create()
-                        ->addFieldToFilter('g_id', $page[$i]['cod']); // We check if the product already exists
-                    if (array_key_exists('familias', $page[$i])) { // We check if the product has an attribute set. If it does, then checks what it is
-                        $attributeSetCollection = $this->attributeCollectionFactory->create();
-                        $attributeSets = $attributeSetCollection->getItems();
-                        foreach ($attributeSets as $attributeSet) {
-                            if ($attributeSet->getAttributeSetName() === $page[$i]['familias'][0]['nombre']) { // If the name of the attribute set is the same as the one on G4100...
-                                $attributeSetId = $attributeSet->getAttributeSetId(); // We save the ID to use it later
+                    if ($page[$i]['descripcion'] !== 'Tasa Envío') {
+                        $collectionSyncg = $this->syncgStatusCollectionFactory->create()
+                            ->addFieldToFilter('g_id', $page[$i]['cod']); // We check if the product already exists
+                        if (array_key_exists('familias', $page[$i])) { // We check if the product has an attribute set. If it does, then checks what it is
+                            $attributeSetCollection = $this->attributeCollectionFactory->create();
+                            $attributeSets = $attributeSetCollection->getItems();
+                            foreach ($attributeSets as $attributeSet) {
+                                if ($attributeSet->getAttributeSetName() === $page[$i]['familias'][0]['nombre']) { // If the name of the attribute set is the same as the one on G4100...
+                                    $attributeSetId = $attributeSet->getAttributeSetId(); // We save the ID to use it later
+                                }
                             }
                         }
-                    }
-                    if ($collectionSyncg->getSize() > 0) { // If the product already exists, that means we only have to update it
-                        foreach ($collectionSyncg as $itemSyncg) {
-                            $product_id = $itemSyncg->getData('mg_id');
-                            $product = $this->productRepository->getById($product_id, true); // We load the product in edit mode
+                        if ($collectionSyncg->getSize() > 0) { // If the product already exists, that means we only have to update it
+                            foreach ($collectionSyncg as $itemSyncg) {
+                                $product_id = $itemSyncg->getData('mg_id');
+                                $product = $this->productRepository->getById($product_id, true); // We load the product in edit mode
+                                $this->createUpdateProduct($product, $page, $attributeSetId, $i);
+                                $this->productResource->save($product);
+                            }
+                        } else {
+                            $product = $this->productFactory->create(); // If the product doesn't exists, we create it
                             $this->createUpdateProduct($product, $page, $attributeSetId, $i);
-                            $this->productResource->save($product);
+                            $product->save();
                         }
-                    } else {
-                        $product = $this->productFactory->create(); // If the product doesn't exists, we create it
-                        $this->createUpdateProduct($product, $page, $attributeSetId, $i);
-                        $product->save();
-                    }
-                    if (array_key_exists('relacionados', $page[$i])) { // If the product has related products we get it's ID and save it on an array to work later with it
-                        $product_id = $product->getId();
-                        $magentoId[] = $this->createSimpleProduct($page, $i, $attributeSetId, $product_id); // We get the ID since we will create a duplicate of this product to avoid losing options
-                        $relatedProducts[] = $product->getEntityId();
-                        foreach ($page[$i]['relacionados'] as $r) {
-                            $relatedProductsSons[$product->getEntityId()][] = $r['cod'];
-                            $relatedAttributes[$product->getEntityId()] = $this->getAttributesIds($page[$i]);
+                        if (array_key_exists('relacionados', $page[$i])) { // If the product has related products we get it's ID and save it on an array to work later with it
+                            $product_id = $product->getId();
+                            $magentoId[] = $this->createSimpleProduct($page, $i, $attributeSetId, $product_id); // We get the ID since we will create a duplicate of this product to avoid losing options
+                            $relatedProducts[] = $product->getEntityId();
+                            foreach ($page[$i]['relacionados'] as $r) {
+                                $relatedProductsSons[$product->getEntityId()][] = $r['cod'];
+                                $relatedAttributes[$product->getEntityId()] = $this->getAttributesIds($page[$i]);
+                            }
                         }
+                        $this->syncgStatus = $this->syncgStatusRepository->updateEntityStatus($product->getEntityId(), $page[$i]['cod'], SyncgStatus::TYPE_PRODUCT, SyncgStatus::STATUS_COMPLETED);
+                        $this->getImages($page[$i], $product);
                     }
-                    $this->syncgStatus = $this->syncgStatusRepository->updateEntityStatus($product->getEntityId(), $page[$i]['cod'], SyncgStatus::TYPE_PRODUCT, SyncgStatus::STATUS_COMPLETED);
-                    $this->getImages($page[$i], $product);
                 }
             }
 
