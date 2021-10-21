@@ -8,6 +8,8 @@ use Comerline\Syncg\Model\SyncgStatus;
 use Comerline\Syncg\Model\ResourceModel\SyncgStatus\CollectionFactory;
 use Comerline\Syncg\Model\ResourceModel\SyncgStatusRepository;
 use Magento\Catalog\Api\ProductRepositoryInterface;
+use Magento\Catalog\Model\Category;
+use Magento\Catalog\Model\CategoryFactory;
 use Magento\Catalog\Model\ResourceModel\Category\CollectionFactory as CategoryCollectionFactory;
 use Magento\Eav\Model\ResourceModel\Entity\Attribute\Set\CollectionFactory as AttributeCollectionFactory;
 use Magento\Catalog\Model\ResourceModel\Product as ProductResource;
@@ -19,6 +21,7 @@ use Magento\Eav\Model\Entity\Attribute\SetFactory as AttributeSetFactory;
 use Magento\Framework\Filesystem\DirectoryList;
 use Magento\Framework\Serialize\Serializer\Json;
 use Magento\Framework\Webapi\Rest\Request;
+use Magento\Store\Model\StoreManagerInterface;
 use PHPUnit\Exception;
 use Magento\Framework\Exception\NoSuchEntityException;
 use Psr\Log\LoggerInterface;
@@ -97,6 +100,23 @@ class GetArticles extends SyncgApiService
      */
     private $attributeCollectionFactory;
 
+    /**
+     * @var Category
+     */
+    protected $category;
+
+    /**
+     * @var CategoryFactory
+     */
+    protected $categoryFactory;
+
+    /**
+     * @var StoreManagerInterface
+     */
+    protected $storeManager;
+
+    private $categories;
+
     public function __construct(
         Config                     $configHelper,
         Json                       $json,
@@ -113,7 +133,10 @@ class GetArticles extends SyncgApiService
         AttributeHelper            $attributeHelper,
         DirectoryList              $dir,
         CategoryCollectionFactory  $categoryCollectionFactory,
-        AttributeCollectionFactory $attributeCollectionFactory
+        AttributeCollectionFactory $attributeCollectionFactory,
+        Category                   $category,
+        CategoryFactory            $categoryFactory,
+        StoreManagerInterface      $storeManager
     )
     {
         $this->config = $configHelper;
@@ -128,6 +151,9 @@ class GetArticles extends SyncgApiService
         $this->dir = $dir;
         $this->categoryCollectionFactory = $categoryCollectionFactory;
         $this->attributeCollectionFactory = $attributeCollectionFactory;
+        $this->category = $category;
+        $this->categoryFactory = $categoryFactory;
+        $this->storeManager = $storeManager;
         parent::__construct($configHelper, $json, $responseFactory, $clientFactory, $logger);
     }
 
@@ -183,6 +209,7 @@ class GetArticles extends SyncgApiService
             $relatedProducts = []; // Array where we will store the products that have related products
             $relatedAttributes = []; // Array where we will store the attributes that are related
             $relatedProductsSons = []; // Array where we will store the related products
+            $this->categories = $this->getMagentoCategories();
             foreach ($pages as $page) {
                 for ($i = 0; $i < count($page); $i++) { //We navigate through the products in a page
                     $collectionSyncg = $this->syncgStatusCollectionFactory->create()
@@ -329,10 +356,12 @@ class GetArticles extends SyncgApiService
         $product->setUrlKey($url);
         $product->setCustomAttribute('tax_class_id', 2);
         $product->setDescription($page[$i]['desc_detallada']);
-        if (array_key_exists('familias', $page[$i])) {
-            $categoryIds = $this->getCategoryIds($page[$i]['familias'][0]['nombre']);
-            $product->setCategoryIds($categoryIds);
+        if (array_key_exists('familias', $page[$i]) && array_key_exists($page[$i]['familias'][0]['nombre'], $this->categories)) {
+            $categoryIds = $this->categories[$page[$i]['familias'][0]['nombre']];
+        } else {
+            $categoryIds = $this->createCategory($page[$i]['familias'][0]['nombre']);
         }
+        $product->setCategoryIds($categoryIds);
         $stock = 0;
         if ($page[$i]['existencias_globales'] > 0) { // If there are no existences, that means there is no stock
             $stock = 1;
@@ -356,6 +385,34 @@ class GetArticles extends SyncgApiService
             $categoryId[] = $categoryCollection->getFirstItem()->getId(); // If it does, we get the ID of the category
         }
         return $categoryId;
+    }
+
+    public function createCategory($name)
+    {
+        $parentId = $this->storeManager->getStore()->getRootCategoryId();
+
+        $parentCategory = $this->categoryFactory->create()->load($parentId);
+        $category = $this->categoryFactory->create();
+        $category->setName($name);
+        $category->setIsActive(true);
+        $category->setParentId($parentId);
+        $category->setPath($parentCategory->getPath());
+        $category->save();
+        $this->categories[$category->getName()] = $category->getId();
+
+        return $category->getId();
+    }
+
+
+    public function getMagentoCategories()
+    {
+        $categories = [];
+        $categoryCollection = $this->categoryCollectionFactory->create();
+        $categoryCollection->addAttributeToSelect('*');
+        foreach ($categoryCollection as $c) {
+            $categories[$c->getData('name')] = $c->getData('entity_id');
+        }
+        return $categories;
     }
 
     public function getRelatedProductsIds($rp, $relatedProductsSons, $magentoId)
