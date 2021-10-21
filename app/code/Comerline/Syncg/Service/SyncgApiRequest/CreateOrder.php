@@ -39,16 +39,17 @@ class CreateOrder extends SyncgApiService
     private $syncgStatusCollectionFactory;
 
     public function __construct(
-        Config $configHelper,
-        Json $json,
-        ClientFactory $clientFactory,
-        ResponseFactory $responseFactory,
-        SyncgStatus $syncgStatus,
-        SyncgStatusRepository $syncgStatusRepository,
-        LoggerInterface $logger,
+        Config                      $configHelper,
+        Json                        $json,
+        ClientFactory               $clientFactory,
+        ResponseFactory             $responseFactory,
+        SyncgStatus                 $syncgStatus,
+        SyncgStatusRepository       $syncgStatusRepository,
+        LoggerInterface             $logger,
         CustomerRepositoryInterface $customerRepository,
-        CollectionFactory $syncgStatusCollectionFactory
-    ) {
+        CollectionFactory           $syncgStatusCollectionFactory
+    )
+    {
         $this->customerRepository = $customerRepository;
         $this->syncgStatus = $syncgStatus;
         $this->syncgStatusRepository = $syncgStatusRepository;
@@ -60,7 +61,7 @@ class CreateOrder extends SyncgApiService
     {
         if ($codeG4100) {
             $fields = [
-                'campos' => json_encode(array("descripcion", "desc_detallada" ,"pvp1", "modelo", "si_vender_en_web")),
+                'campos' => json_encode(array("descripcion", "desc_detallada", "pvp1", "modelo", "si_vender_en_web")),
                 'filtro' => json_encode(array(
                     "inicio" => 0,
                     "filtro" => array(
@@ -80,34 +81,36 @@ class CreateOrder extends SyncgApiService
         }
     }
 
-    public function createOrder($order, $clientId){
+    public function createOrder($order, $clientId)
+    {
         $lines = $this->createLine($order); // We create the lines necessary with all the articles on the order
         $this->buildParams($lines, $clientId);
         $response = $this->execute();
         $orderId = 0;
-        if (!empty($response['listado'])) {
-            $orderId = $response['listado'][0]['id']; // After we create the order, we get the ID to put it in our database
+        if (!empty($response['id'])) {
+            $orderId = $response['id']; // After we create the order, we get the ID to put it in our database
         }
         return $orderId;
     }
 
-    public function createLine($order){
+    public function createLine($order)
+    {
         $items = $order->getData('items');
         $lines = array();
-        foreach ($items as $item){
+        foreach ($items as $item) {
             $price = floatval($item->getData('price'));
-            if ($price != 0.0){ // If the price is 0, that means that article is not right, so we don't add it to the order
+            if ($price != 0.0) { // If the price is 0, that means that article is not right, so we don't add it to the order
                 $qty = intval($item->getData('qty_ordered'));
-                if (array_key_exists('selected_configurable_option', $item->getData('product_options')['info_buyRequest'])){
+                if (array_key_exists('selected_configurable_option', $item->getData('product_options')['info_buyRequest'])) {
                     $idMg = $item->getData('product_options')['info_buyRequest']['selected_configurable_option'];
                 } else {
                     $idMg = $item->getData('product_id');
                 }
                 $collectionSyncg = $this->syncgStatusCollectionFactory->create() // With the Magento ID, we get the G4100 ID of the product
-                    ->addFieldToFilter('mg_id', $idMg)
+                ->addFieldToFilter('mg_id', $idMg)
                     ->addFieldToFilter('type', SyncgStatus::TYPE_PRODUCT);
                 if ($collectionSyncg->getSize() > 0) {
-                    foreach ($collectionSyncg as $itemSyncg){
+                    foreach ($collectionSyncg as $itemSyncg) {
                         $codeG4100 = $itemSyncg->getData('g_id');
                         $this->buildParams(null, null, $codeG4100);
                         $response = $this->execute();
@@ -119,7 +122,14 @@ class CreateOrder extends SyncgApiService
                 array_push($lines, array("articulo" => $idG4100, "cantidad" => $qty, "precio" => $price));
             }
         }
-        array_push($lines, array("articulo" => $this->config->getGeneralConfig('shipping_rate_g4100_id'), "cantidad" => 1, "price" => 5.0)); // We add the shipping rates here
+        $idUpdate = intval($this->config->getGeneralConfig('shipping_rate_g4100_id'));
+        $dataUpdate = strval($order->getData('base_shipping_amount'));
+        array_push($lines, array("articulo" => $idUpdate, "cantidad" => 1, "precio" => $dataUpdate)); // We add the shipping rates here
+        if ($order->getData('coupon_code')) {
+            $idDiscount = intval($this->config->getGeneralConfig('discount_g4100_id'));
+            $dataDiscount = strval($order->getData('discount_amount'));
+            array_push($lines, array("articulo" => $idDiscount, "cantidad" => 1, "precio" => $dataDiscount)); // We add the discount here (if exists)
+        }
         return $lines;
     }
 }

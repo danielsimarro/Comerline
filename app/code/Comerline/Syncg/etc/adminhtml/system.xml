@@ -31,6 +31,10 @@
                     <label>ID del producto encargado del envío</label>
                     <comment>Introduzca aquí el ID del producto que se encarga del precio del envío en G4100.</comment>
                 </field>
+                <field id="discount_g4100_id" translate="label" type="text" sortOrder="1" showInDefault="1" showInWebsite="0" showInStore="0">
+                    <label>ID del producto encargado de los descuentos</label>
+                    <comment>Introduzca aquí el ID del producto que se encarga del precio a descontar (si fuera necesario) en G4100.</comment>
+                </field>
                 <field id="enable_order_sync" translate="label" type="select" sortOrder="1" showInDefault="1" showInWebsite="0" showInStore="0">
                     <label>Sincronizar productos</label>
                     <source_model>Magento\Config\Model\Config\Source\Yesno</source_model>
