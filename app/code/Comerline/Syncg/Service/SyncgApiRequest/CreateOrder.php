@@ -124,11 +124,11 @@ class CreateOrder extends SyncgApiService
         }
         $idUpdate = intval($this->config->getGeneralConfig('shipping_rate_g4100_id'));
         $dataUpdate = strval($order->getData('base_shipping_amount'));
-        array_push($lines, array("articulo" => $idUpdate, "cantidad" => 1, "precio" => $dataUpdate)); // We add the shipping rates here
+        array_push($lines, array("articulo" => $idUpdate, "cantidad" => 1, "precio" => $dataUpdate, "descuento" => 0)); // We add the shipping rates here
         if ($order->getData('coupon_code')) {
             $idDiscount = intval($this->config->getGeneralConfig('discount_g4100_id'));
             $dataDiscount = strval($order->getData('discount_amount'));
-            array_push($lines, array("articulo" => $idDiscount, "cantidad" => 1, "precio" => $dataDiscount)); // We add the discount here (if exists)
+            array_push($lines, array("articulo" => $idDiscount, "cantidad" => 1, "precio" => $dataDiscount, "descuento" => 0)); // We add the discount here (if exists)
         }
         return $lines;
     }
