@@ -167,7 +167,9 @@ class GetArticles extends SyncgApiService
         $newDate = $date->add(new DateInterval(("PT{$hours}H")));
 
         $fields = [
-            'campos' => json_encode(array("nombre", "ref_fabricante", "fecha_cambio", "borrado", "ref_proveedor", "descripcion", "desc_detallada", "envase", "frente", "fondo", "alto", "diametro", "diametro2", "precio_coste_estimado", "modelo", "si_vender_en_web", "existencias_globales", "grupo")),
+            'campos' => json_encode(array("nombre", "ref_fabricante", "fecha_cambio", "borrado", "ref_proveedor", "descripcion",
+                "desc_detallada", "envase", "frente", "fondo", "alto", "diametro", "diametro2", "precio_coste_estimado", "modelo",
+                "si_vender_en_web", "existencias_globales", "grupo", "acotacion", "marca")),
             'filtro' => json_encode(array(
                 "inicio" => $start,
                 "filtro" => array(
@@ -241,8 +243,10 @@ class GetArticles extends SyncgApiService
                             $magentoId[] = $this->createSimpleProduct($page, $i, $attributeSetId, $product_id); // We get the ID since we will create a duplicate of this product to avoid losing options
                             $relatedProducts[] = $product->getEntityId();
                             foreach ($page[$i]['relacionados'] as $r) {
-                                $relatedProductsSons[$product->getEntityId()][] = $r['cod'];
-                                $relatedAttributes[$product->getEntityId()] = $this->getAttributesIds($page[$i]);
+                                if ($r['cod'] !== $page[$i]['cod']) { // If the related product is the same as the one we created, we skip it, since we already have duplicated it as a simple product
+                                    $relatedProductsSons[$product->getEntityId()][] = $r['cod'];
+                                    $relatedAttributes[$product->getEntityId()] = $this->getAttributesIds($page[$i]);
+                                }
                             }
                         }
                         $this->syncgStatus = $this->syncgStatusRepository->updateEntityStatus($product->getEntityId(), $page[$i]['cod'], SyncgStatus::TYPE_PRODUCT, SyncgStatus::STATUS_COMPLETED);
@@ -332,6 +336,7 @@ class GetArticles extends SyncgApiService
 
     public function createUpdateProduct($product, $page, $attributeSetId, $i)
     {
+        $categoryIds = [];
         if ($page[$i]['ref_fabricante'] !== "") {
             $product->setSku($page[$i]['ref_fabricante']);
             $url = strtolower(str_replace(" ", "-", $page[$i]['ref_fabricante']) . $page[$i]['cod']);
@@ -359,9 +364,15 @@ class GetArticles extends SyncgApiService
         $product->setCustomAttribute('tax_class_id', 2);
         $product->setDescription($page[$i]['desc_detallada']);
         if (array_key_exists('familias', $page[$i]) && array_key_exists($page[$i]['familias'][0]['nombre'], $this->categories)) {
-            $categoryIds = $this->categories[$page[$i]['familias'][0]['nombre']];
+            array_push($categoryIds, $this->categories[$page[$i]['familias'][0]['nombre']]);
         } else {
-            $categoryIds = $this->createCategory($page[$i]['familias'][0]['nombre']);
+            array_push($categoryIds, $this->createCategory($page[$i]['familias'][0]['nombre']));
+
+        }
+        if (isset($page[$i]['marca']) && array_key_exists($page[$i]['marca'], $this->categories)) {
+            array_push($categoryIds, $this->categories[$page[$i]['marca']]);
+        } else {
+            array_push($categoryIds, $this->createCategory($page[$i]['marca']));
         }
         $product->setCategoryIds($categoryIds);
         $stock = 0;
@@ -451,28 +462,32 @@ class GetArticles extends SyncgApiService
         if ($attributes) { // If this is exists, that means we have attributes
             $code = []; // Array where we will store the attributes IDs
             $width = $attributes['frente'];
-            if ($width !== "") {
+            if ($width !== "" && $width !== "0.00") {
                 $code[] = $this->attributeHelper->getAttribute('width')->getAttributeId(); // With this helper we get the ID of the desired attribute
             }
             $offset = $attributes['fondo'];
-            if ($offset !== "") {
+            if ($offset !== "" && $offset !== "0.00") {
                 $code[] = $this->attributeHelper->getAttribute('offset')->getAttributeId();
             }
             $diameter = $attributes['diametro'];
-            if ($diameter !== "") {
+            if ($diameter !== "" && $diameter !== "0.00") {
                 $code[] = $this->attributeHelper->getAttribute('diameter')->getAttributeId();
             }
             $hub = $attributes['alto'];
-            if ($hub !== "") {
+            if ($hub !== "" && $hub !== "0.00") {
                 $code[] = $this->attributeHelper->getAttribute('hub')->getAttributeId();
             }
             $mounting = $attributes['envase'];
-            if ($mounting !== "") {
+            if ($mounting !== "" && $mounting !== "0.00") {
                 $code[] = $this->attributeHelper->getAttribute('mounting')->getAttributeId();
             }
             $load = $attributes['diametro2'];
-            if ($load !== "") {
+            if ($load !== "" && $load !== "0.00") {
                 $code[] = $this->attributeHelper->getAttribute('load')->getAttributeId();
+            }
+            $variation = $attributes['acotacion'];
+            if ($variation !== "") {
+                $code[] = $this->attributeHelper->getAttribute('variation')->getAttributeId();
             }
         }
         return $code;
@@ -522,6 +537,13 @@ class GetArticles extends SyncgApiService
                 $product->setCustomAttribute('load', $loadId);
             } else {
                 $product->setCustomAttribute('load', '');
+            }
+            $variation = $attributes['acotacion'];
+            if ($variation !== "") {
+                $variationId = $this->attributeHelper->createOrGetId('variation', $variation);
+                $product->setCustomAttribute('variation', $variationId);
+            } else {
+                $product->setCustomAttribute('variation', '');
             }
         }
     }
