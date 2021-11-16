@@ -15,6 +15,9 @@ use Magento\Catalog\Api\Data\ProductInterfaceFactory as ProductFactory;
 use Magento\Framework\Serialize\Serializer\Json;
 use Magento\Framework\Webapi\Rest\Request;
 use Psr\Log\LoggerInterface;
+use DateTimeZone;
+use DateInterval;
+use Safe\DateTime;
 
 class CheckDeletedArticles extends SyncgApiService
 {
@@ -62,18 +65,19 @@ class CheckDeletedArticles extends SyncgApiService
     private $productResource;
 
     public function __construct(
-        Config $configHelper,
-        Json $json,
-        ClientFactory $clientFactory,
-        ResponseFactory $responseFactory,
-        LoggerInterface $logger,
-        SyncgStatus $syncgStatus,
-        CollectionFactory $syncgStatusCollectionFactory,
-        SyncgStatusRepository $syncgStatusRepository,
-        ProductFactory $productFactory,
+        Config                     $configHelper,
+        Json                       $json,
+        ClientFactory              $clientFactory,
+        ResponseFactory            $responseFactory,
+        LoggerInterface            $logger,
+        SyncgStatus                $syncgStatus,
+        CollectionFactory          $syncgStatusCollectionFactory,
+        SyncgStatusRepository      $syncgStatusRepository,
+        ProductFactory             $productFactory,
         ProductRepositoryInterface $productRepository,
-        ProductResource $productResource
-    ) {
+        ProductResource            $productResource
+    )
+    {
         $this->config = $configHelper;
         $this->syncgStatus = $syncgStatus;
         $this->syncgStatusCollectionFactory = $syncgStatusCollectionFactory;
@@ -86,12 +90,21 @@ class CheckDeletedArticles extends SyncgApiService
 
     public function buildParams($start)
     {
+        $coreConfigData = $this->config->getParamsWithoutSystem('syncg/general/last_date_sync_products')->getValue(); // We get the last sync date
+
+        $timezone = new DateTimeZone('Europe/Madrid');
+        $date = new DateTime($coreConfigData, $timezone);
+        $hours = $date->getOffset() / 3600; // We have to add the offset, since the date from the API comes in CEST
+        $newDate = $date->add(new DateInterval(("PT{$hours}H")));
+
         $fields = [
-            'campos' => json_encode(array("nombre", "ref_fabricante", "fecha_cambio", "borrado", "ref_proveedor", "descripcion", "desc_detallada" ,"pvp1", "modelo", "si_vender_en_web", "existencias_globales", "grupo")),
+            'campos' => json_encode(array("nombre", "ref_fabricante", "fecha_cambio", "borrado", "ref_proveedor", "descripcion", "desc_detallada", "pvp1", "modelo", "si_vender_en_web", "existencias_globales", "grupo")),
             'filtro' => json_encode(array(
                 "inicio" => $start,
                 "filtro" => array(
-                    array("campo" => "si_vender_en_web", "valor" => "1", "tipo" => 0)
+                    array("campo" => "si_vender_en_web", "valor" => "1", "tipo" => 0),
+                    array("campo" => "borrado", "valor" => "1", "tipo" => 0),
+                    array("campo" => "fecha_cambio", "valor" => $newDate->format('Y-m-d H:i'), "tipo" => 3)
                 )
             )),
             'orden' => json_encode(array("campo" => "id", "orden" => "ASC"))
@@ -105,12 +118,12 @@ class CheckDeletedArticles extends SyncgApiService
         $loop = true; // Variable to check if we need to break the loop or keep on it
         $start = 0; // Counter to check from which page we start the query
         $pages = []; // Array where we will store the items, ordered in pages
-        while ($loop){
+        while ($loop) {
             $this->buildParams($start);
             $response = $this->execute();
-            if($response['listado']){
+            if (array_key_exists('listado', $response)) {
                 $pages[] = $response['listado'];
-                if (strpos($this->order, 'ASC')){
+                if (strpos($this->order, 'ASC')) {
                     $start = intval($response['listado'][count($response['listado']) - 1]['id'] + 1);// If orden is ASC, the first item that the API gives us
                     // is the first, so we get it for the next query, and we add 1 to avoid duplicating that item
 
@@ -127,7 +140,7 @@ class CheckDeletedArticles extends SyncgApiService
             $syncgIds = []; // Array where we will store the IDs on our database
             $collectionSyncg = $this->syncgStatusCollectionFactory->create()
                 ->addFieldToFilter('type', SyncgStatus::TYPE_PRODUCT);
-            foreach ($pages as $page){
+            foreach ($pages as $page) {
                 for ($i = 0; $i < count($page); $i++) {
                     $ids[] = $page[$i]['cod'];
                 }
@@ -138,7 +151,7 @@ class CheckDeletedArticles extends SyncgApiService
             }
 
             foreach ($syncgIds as $syncgId) {
-                if (!(in_array($syncgId, $ids))){ // If the ID is not in the array, that means the product is deleted
+                if (!(in_array($syncgId, $ids))) { // If the ID is not in the array, that means the product is deleted
                     $collectionSyncg = $this->syncgStatusCollectionFactory->create()
                         ->addFieldToFilter('g_id', $syncgId)
                         ->addFieldToFilter('type', SyncgStatus::TYPE_PRODUCT)

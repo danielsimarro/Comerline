@@ -21,6 +21,7 @@ use Magento\Eav\Model\Entity\Attribute\SetFactory as AttributeSetFactory;
 use Magento\Framework\Filesystem\DirectoryList;
 use Magento\Framework\Serialize\Serializer\Json;
 use Magento\Framework\Webapi\Rest\Request;
+use Magento\ConfigurableProduct\Model\Product\Type\Configurable;
 use Magento\Store\Model\StoreManagerInterface;
 use PHPUnit\Exception;
 use Magento\Framework\Exception\NoSuchEntityException;
@@ -115,6 +116,11 @@ class GetArticles extends SyncgApiService
      */
     protected $storeManager;
 
+    /**
+     * @var Configurable
+     */
+    protected $configurable;
+
     private $categories;
 
     public function __construct(
@@ -136,7 +142,8 @@ class GetArticles extends SyncgApiService
         AttributeCollectionFactory $attributeCollectionFactory,
         Category                   $category,
         CategoryFactory            $categoryFactory,
-        StoreManagerInterface      $storeManager
+        StoreManagerInterface      $storeManager,
+        Configurable               $configurable
     )
     {
         $this->config = $configHelper;
@@ -154,6 +161,7 @@ class GetArticles extends SyncgApiService
         $this->category = $category;
         $this->categoryFactory = $categoryFactory;
         $this->storeManager = $storeManager;
+        $this->configurable = $configurable;
         parent::__construct($configHelper, $json, $responseFactory, $clientFactory, $logger);
     }
 
@@ -231,7 +239,7 @@ class GetArticles extends SyncgApiService
                                 $product_id = $itemSyncg->getData('mg_id');
                                 $product = $this->productRepository->getById($product_id, true); // We load the product in edit mode
                                 $this->createUpdateProduct($product, $page, $attributeSetId, $i);
-                                $this->productResource->save($product);
+                                $this->productRepository->save($product);
                             }
                         } else {
                             $product = $this->productFactory->create(); // If the product doesn't exists, we create it
@@ -293,7 +301,7 @@ class GetArticles extends SyncgApiService
                     $product->setExtensionAttributes($extensionConfigurableAttributes);
                     $product->setCanSaveConfigurableAttributes(true);
                     $this->productRepository->save($product);
-                    $this->setRelatedsNotVisible($relatedIds); // We need to make the simple products related to this one hidden
+                    $this->setRelatedsVisibility($relatedIds); // We need to make the simple products related to this one hidden
                 } catch (Exception $e) {
                     $this->logger->info('Syncg | ' . $e->getMessage());
                 }
@@ -336,13 +344,29 @@ class GetArticles extends SyncgApiService
 
     public function createUpdateProduct($product, $page, $attributeSetId, $i)
     {
+        $objectManager = ObjectManager::getInstance();
         $categoryIds = [];
-        if ($page[$i]['ref_fabricante'] !== "") {
-            $product->setSku($page[$i]['ref_fabricante']);
-            $url = strtolower(str_replace(" ", "-", $page[$i]['ref_fabricante']) . $page[$i]['cod']);
+        $id = $page[$i]['id'];
+        $manufacturerRef = $page[$i]['ref_fabricante'];
+        $manufacturerRefPlusId = $manufacturerRef . '-' . $id;
+        $vendorRef = $page[$i]['ref_proveedor'];
+        $vendorRefPlusId = $vendorRef . '-' . $id;
+        if ($manufacturerRef !== "") {
+            if ($product->getSku() !== $manufacturerRef && $product->getSku() !== $manufacturerRefPlusId) {
+                $product->setSku($manufacturerRef);
+            }
+            if ($product->getUrlKey() === null) {
+                $url = strtolower(str_replace(" ", "-", $manufacturerRef) . $id);
+                $product->setUrlKey($url);
+            }
         } else {
-            $product->setSku($page[$i]['ref_proveedor']);
-            $url = strtolower(str_replace(" ", "-", $page[$i]['ref_proveedor']) . $page[$i]['cod']);
+            if ($product->getSku() !== $vendorRef && $product->getSku() !== $vendorRefPlusId) {
+                $product->setSku($vendorRef);
+            }
+            if ($product->getUrlKey() === null) {
+                $url = strtolower(str_replace(" ", "-", $vendorRef) . $id);
+                $product->setUrlKey($url);
+            }
         }
         $product->setName($page[$i]['descripcion']);
         $product->setStoreId(0);
@@ -356,11 +380,25 @@ class GetArticles extends SyncgApiService
             $product->setStatus(0);
         }
         $product->setTaxClassId(0);
+        if ($product->getTypeId() === 'configurable') {
+            $oldRelateds = [];
+            $configProduct = $objectManager->create('Magento\Catalog\Model\Product')->load($product->getId());
+            $childrenProducts = $configProduct->getTypeInstance()->getUsedProducts($configProduct);
+            foreach ($childrenProducts as $cp) {
+                $oldRelateds[] = $cp->getID();
+            }
+            $this->setRelatedsVisibility($oldRelateds, true);
+        } else {
+            $parentProduct = $this->configurable->getParentIdsByChild($product->getId());
+            if (isset($parentProduct[0])) {
+                $product->setVisibility(1);
+            } else {
+                $product->setVisibility(4);
+            }
+        }
         $product->setTypeId('simple');
         $product->setPrice($page[$i]['precio_coste_estimado']);
-        $product->setVisibility(4);
         $product->setWebsiteIds(array(1));
-        $product->setUrlKey($url);
         $product->setCustomAttribute('tax_class_id', 2);
         $product->setDescription($page[$i]['desc_detallada']);
         if (array_key_exists('familias', $page[$i]) && array_key_exists($page[$i]['familias'][0]['nombre'], $this->categories)) {
@@ -447,12 +485,16 @@ class GetArticles extends SyncgApiService
         return $related;
     }
 
-    public function setRelatedsNotVisible($related)
+    public function setRelatedsVisibility($related, $current = null)
     {
         foreach ($related as $r) {
             $product = $this->productRepository->getById($r);
             $product->load('media_gallery');
-            $product->setVisibility(1);
+            if ($current) {
+                $product->setVisibility(4);
+            } else {
+                $product->setVisibility(1);
+            }
             $this->productRepository->save($product);
         }
     }
@@ -550,6 +592,7 @@ class GetArticles extends SyncgApiService
 
     public function getImages($article, $product)
     {
+        $objectManager = ObjectManager::getInstance();
         if (array_key_exists('imagenes', $article)) {
             $baseUrl = $this->config->getGeneralConfig('installation_url') . $this->config->getGeneralConfig('database_id');
             $user = $this->config->getGeneralConfig('email');
@@ -567,9 +610,11 @@ class GetArticles extends SyncgApiService
             if (array_key_exists('llave', $json)) { // To avoid import crashing if it can't donwload the image for whatever reason (API down, failed login...)
                 curl_setopt($ch, CURLOPT_URL, $baseUrl . "/?usr=" . $user . "&clave=" . md5($pass . $json['llave']));
                 $result = curl_exec($ch);
+                $path = [];
+                $count = 0;
                 foreach ($article['imagenes'] as $image) {
-                    $path = $this->dir->getPath('media') . '/images/' . $image . '.jpg';
-                    $fp = fopen($path, 'w+');              // Open file handle
+                    $path[$count] = $this->dir->getPath('media') . '/images/' . $image . '.jpg';
+                    $fp = fopen($path[$count], 'w+');              // Open file handle
 
                     curl_setopt($ch, CURLOPT_URL, $baseUrl . "/imagenes/" . $image);
                     curl_setopt($ch, CURLOPT_FILE, $fp);          // Output to file
@@ -579,29 +624,46 @@ class GetArticles extends SyncgApiService
                     curl_exec($ch);
 
                     fclose($fp);
-                    $collectionProducts = $this->syncgStatusCollectionFactory->create()
-                        ->addFieldToFilter('g_id', $article['cod']);
-                    if ($collectionProducts->getSize() > 0) { // If the product already exists, that means we only have to update it
-                        foreach ($collectionProducts as $itemProducts) {
-                            $product_id = $itemProducts->getData('mg_id');
-                            $product = $this->productRepository->getById($product_id, true);
-
-                            $existingMediaGalleryEntries = $product->getMediaGalleryEntries();
-
-                            foreach ($existingMediaGalleryEntries as $key => $entry) {
-                                unset($existingMediaGalleryEntries[$key]);
-                            }
-                            try {
-                                $product->addImageToMediaGallery($path, array('image', 'small_image', 'thumbnail'), false, false);
-                            } catch (Exception $e) {
-                                $this->logger->info('Syncg | ' . $e->getMessage());
-                            }
-                            $this->productResource->save($product);
-                        }
-                    }
-                    $this->syncgStatus = $this->syncgStatusRepository->updateEntityStatus($product->getEntityId(), $image, SyncgStatus::TYPE_IMAGE, SyncgStatus::STATUS_COMPLETED);
+                    $count++;
                 }
                 curl_close($ch);                              // Closing curl handle
+                $collectionProducts = $this->syncgStatusCollectionFactory->create()
+                    ->addFieldToFilter('g_id', $article['cod']);
+                if ($collectionProducts->getSize() > 0) { // If the product already exists, that means we only have to update it
+                    foreach ($collectionProducts as $itemProducts) {
+                        $product_id = $itemProducts->getData('mg_id');
+                        $product = $this->productRepository->getById($product_id, true);
+
+                        $imageProcessor = $objectManager->create('\Magento\Catalog\Model\Product\Gallery\Processor');
+                        $existingMediaGalleryEntries = $product->getMediaGalleryEntries();
+
+                        foreach ($existingMediaGalleryEntries as $key => $entry) {
+                            unset($existingMediaGalleryEntries[$key]);
+                            $image = $entry->getFile();
+                            $imageProcessor->removeImage($product, $image);
+                            $image = 'pub/media/catalog/product' . $image;
+                            if (file_exists($image)) {
+                                unlink($image);
+                            }
+                        }
+                        $product->setMediaGalleryEntries($existingMediaGalleryEntries);
+                        $this->productResource->save($product);
+                        try {
+                            foreach ($path as $key => $p) {
+                                if ($key === 0) {
+                                    $types = array('image', 'small_image', 'thumbnail');
+                                } else {
+                                    $types = array('small_image');
+                                }
+                                $product->addImageToMediaGallery($p, $types, false, false);
+                            }
+                        } catch (Exception $e) {
+                            $this->logger->info('Syncg | ' . $e->getMessage());
+                        }
+                        $product->save();
+                    }
+                }
+                $this->syncgStatus = $this->syncgStatusRepository->updateEntityStatus($product->getEntityId(), $image, SyncgStatus::TYPE_IMAGE, SyncgStatus::STATUS_COMPLETED);
             }
         }
     }
