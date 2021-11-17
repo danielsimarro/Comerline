@@ -19,6 +19,9 @@ use GuzzleHttp\Psr7\ResponseFactory;
 use Magento\Catalog\Api\Data\ProductInterfaceFactory as ProductFactory;
 use Magento\Eav\Model\Entity\Attribute\SetFactory as AttributeSetFactory;
 use Magento\Framework\Filesystem\DirectoryList;
+use Magento\Framework\Phrase;
+use Magento\Catalog\Model\Product\Gallery\Processor;
+use Magento\Catalog\Model\ResourceModel\Eav\Attribute as EavModel;
 use Magento\Framework\Serialize\Serializer\Json;
 use Magento\Framework\Webapi\Rest\Request;
 use Magento\ConfigurableProduct\Model\Product\Type\Configurable;
@@ -121,6 +124,21 @@ class GetArticles extends SyncgApiService
      */
     protected $configurable;
 
+    /**
+     * @var LoggerInterface
+     */
+    protected $logger;
+
+    /**
+     * @var Processor
+     */
+    protected $imageProcessor;
+
+    /**
+     * @var EavModel
+     */
+    private $eavModel;
+
     private $categories;
 
     public function __construct(
@@ -143,7 +161,9 @@ class GetArticles extends SyncgApiService
         Category                   $category,
         CategoryFactory            $categoryFactory,
         StoreManagerInterface      $storeManager,
-        Configurable               $configurable
+        Configurable               $configurable,
+        Processor                  $imageProcessor,
+        EavModel                   $eavModel
     )
     {
         $this->config = $configHelper;
@@ -162,6 +182,9 @@ class GetArticles extends SyncgApiService
         $this->categoryFactory = $categoryFactory;
         $this->storeManager = $storeManager;
         $this->configurable = $configurable;
+        $this->logger = $logger;
+        $this->imageProcessor = $imageProcessor;
+        $this->eavModel = $eavModel;
         parent::__construct($configHelper, $json, $responseFactory, $clientFactory, $logger);
     }
 
@@ -176,7 +199,7 @@ class GetArticles extends SyncgApiService
 
         $fields = [
             'campos' => json_encode(array("nombre", "ref_fabricante", "fecha_cambio", "borrado", "ref_proveedor", "descripcion",
-                "desc_detallada", "envase", "frente", "fondo", "alto", "diametro", "diametro2", "precio_coste_estimado", "modelo",
+                "desc_detallada", "envase", "frente", "fondo", "alto", "diametro", "diametro2", "pvp2", "precio_coste_estimado", "modelo",
                 "si_vender_en_web", "existencias_globales", "grupo", "acotacion", "marca")),
             'filtro' => json_encode(array(
                 "inicio" => $start,
@@ -196,23 +219,29 @@ class GetArticles extends SyncgApiService
         $loop = true; // Variable to check if we need to break the loop or keep on it
         $start = 0; // Counter to check from which page we start the query
         $pages = []; // Array where we will store the items, ordered in pages
+        $this->logger->info(new Phrase('G4100 Sync | Fetching products'));
         while ($loop) {
             $this->buildParams($start);
             $response = $this->execute();
-            if ($response['listado']) {
-                $pages[] = $response['listado'];
-                if (strpos($this->order, 'ASC')) {
-                    $start = intval($response['listado'][count($response['listado']) - 1]['id'] + 1);// If orden is ASC, the first item that the API gives us
-                    // is the first, so we get it for the next query, and we add 1 to avoid duplicating that item
+            if (array_key_exists('listado', $response)) {
+                if ($response['listado']) {
+                    $pages[] = $response['listado'];
+                    if (strpos($this->order, 'ASC')) {
+                        $start = intval($response['listado'][count($response['listado']) - 1]['id'] + 1);// If orden is ASC, the first item that the API gives us
+                        // is the first, so we get it for the next query, and we add 1 to avoid duplicating that item
 
+                    } else {
+                        $start = intval($response['listado'][0]['id']) + 1; // If orden is not ASC, the first item that the API gives us is the one with highest ID,
+                        // so we get it for the next query, and we add 1 to avoid duplicating that item
+                    }
                 } else {
-                    $start = intval($response['listado'][0]['id']) + 1; // If orden is not ASC, the first item that the API gives us is the one with highest ID,
-                    // so we get it for the next query, and we add 1 to avoid duplicating that item
+                    $loop = false;  // If $response['listado'] is empty, we end the while loop
                 }
             } else {
-                $loop = false;  // If $response['listado'] is empty, we end the while loop
+                $this->logger->error(new Phrase('G4100 Sync | Error fetching products.'));
             }
         }
+        $this->logger->info(new Phrase('G4100 Sync | Fetching products successful.'));
         $objectManager = ObjectManager::getInstance(); // Instance of Object Manager. We need it for some of the operations that didn't work with dependency injection
         if ($pages) {
             $attributeSetId = "";  // Variable where we will store the attribute set ID
@@ -240,11 +269,13 @@ class GetArticles extends SyncgApiService
                                 $product = $this->productRepository->getById($product_id, true); // We load the product in edit mode
                                 $this->createUpdateProduct($product, $page, $attributeSetId, $i);
                                 $this->productRepository->save($product);
+                                $this->logger->info(new Phrase('G4100 Sync | [G4100 Product: ' . $page[$i]['cod'] . '] | [Magento Product: ' . $product_id . '] | EDITED.'));
                             }
                         } else {
                             $product = $this->productFactory->create(); // If the product doesn't exists, we create it
                             $this->createUpdateProduct($product, $page, $attributeSetId, $i);
                             $product->save();
+                            $this->logger->info(new Phrase('G4100 Sync | [G4100 Product: ' . $page[$i]['cod'] . '] | [Magento Product: ' . $product->getId() . '] | CREATED.'));
                         }
                         if (array_key_exists('relacionados', $page[$i])) { // If the product has related products we get it's ID and save it on an array to work later with it
                             $product_id = $product->getId();
@@ -271,7 +302,7 @@ class GetArticles extends SyncgApiService
                     $count = 0;
                     foreach ($attributes as $attributeId) {
                         $attributeModel = $objectManager->create('Magento\ConfigurableProduct\Model\Product\Type\Configurable\Attribute');
-                        $eavModel = $objectManager->create('Magento\Catalog\Model\ResourceModel\Eav\Attribute');
+                        $eavModel = $this->eavModel;
                         $attr = $eavModel->load($attributeId);
                         $data = array(
                             'attribute_id' => $attributeId,
@@ -286,13 +317,13 @@ class GetArticles extends SyncgApiService
                         try {
                             $attributeModel->setData($data)->save(); // We create the attribute model
                         } catch (\Magento\Framework\Exception\AlreadyExistsException $e) {
-                            $this->logger->info('Syncg | ' . $e->getMessage()); // If the attribute model already exists, it throws an exception,
+                            $this->logger->error('G4100 Sync | ' . $e->getMessage()); // If the attribute model already exists, it throws an exception,
                         }                                                       // so we need to catch it to avoid execution from stopping
                     }
                     $product->load('media_gallery');
                     $product->setTypeId("configurable"); // We change the type of the product to configurable
                     $product->setAttributeSetId($product->getData('attribute_set_id'));
-                    $objectManager->create('Magento\ConfigurableProduct\Model\Product\Type\Configurable')->setUsedProductAttributeIds($attributes, $product);
+                    $this->configurable->setUsedProductAttributeIds($attributes, $product);
                     $product->setNewVariationsAttributeSetId(intval($product->getData('attribute_set_id')));
                     $relatedIds = $this->getRelatedProductsIds($rp, $relatedProductsSons, $magentoId);
                     $extensionConfigurableAttributes = $product->getExtensionAttributes();
@@ -301,9 +332,10 @@ class GetArticles extends SyncgApiService
                     $product->setExtensionAttributes($extensionConfigurableAttributes);
                     $product->setCanSaveConfigurableAttributes(true);
                     $this->productRepository->save($product);
+                    $this->logger->info(new Phrase('G4100 Sync | [Magento Product: ' . $rp . '] | CHANGED TO CONFIGURABLE.'));
                     $this->setRelatedsVisibility($relatedIds); // We need to make the simple products related to this one hidden
                 } catch (Exception $e) {
-                    $this->logger->info('Syncg | ' . $e->getMessage());
+                    $this->logger->error('G4100 Sync | ' . $e->getMessage());
                 }
             }
         }
@@ -329,11 +361,12 @@ class GetArticles extends SyncgApiService
         if ($product) {
             $this->createUpdateProduct($product, $simpleProduct, $attributeSetId, $i);
             $this->productResource->save($product);
-
+            $this->logger->info(new Phrase('G4100 Sync | [Magento Product: ' . $product->getId() . '] | EDITED.'));
         } else {
             $product = $this->productFactory->create();
             $this->createUpdateProduct($product, $simpleProduct, $attributeSetId, $i);
             $product->save();
+            $this->logger->info(new Phrase('G4100 Sync | [G4100 Product: ' . $simpleProduct[$i]['cod'] . '] | [Magento Product: ' . $product->getId() . '] | CREATED.'));
         }
         $this->getImages($simpleProduct[$i], $product);
         $this->syncgStatus = $this->syncgStatusRepository->updateEntityStatus($product->getEntityId(), $originalCod, SyncgStatus::TYPE_PRODUCT, SyncgStatus::STATUS_COMPLETED);
@@ -344,7 +377,6 @@ class GetArticles extends SyncgApiService
 
     public function createUpdateProduct($product, $page, $attributeSetId, $i)
     {
-        $objectManager = ObjectManager::getInstance();
         $categoryIds = [];
         $id = $page[$i]['id'];
         $manufacturerRef = $page[$i]['ref_fabricante'];
@@ -382,8 +414,7 @@ class GetArticles extends SyncgApiService
         $product->setTaxClassId(0);
         if ($product->getTypeId() === 'configurable') {
             $oldRelateds = [];
-            $configProduct = $objectManager->create('Magento\Catalog\Model\Product')->load($product->getId());
-            $childrenProducts = $configProduct->getTypeInstance()->getUsedProducts($configProduct);
+            $childrenProducts = $product->getTypeInstance()->getUsedProducts($product);
             foreach ($childrenProducts as $cp) {
                 $oldRelateds[] = $cp->getID();
             }
@@ -397,7 +428,8 @@ class GetArticles extends SyncgApiService
             }
         }
         $product->setTypeId('simple');
-        $product->setPrice($page[$i]['precio_coste_estimado']);
+        $product->setPrice($page[$i]['pvp2']);
+        $product->setCost($page[$i]['precio_coste_estimado']);
         $product->setWebsiteIds(array(1));
         $product->setCustomAttribute('tax_class_id', 2);
         $product->setDescription($page[$i]['desc_detallada']);
@@ -474,11 +506,15 @@ class GetArticles extends SyncgApiService
                 ->addFieldToFilter('g_id', $son); // We get the IDs that are equal to the one we passed form comerline_syncg_status
             foreach ($collectionSon as $itemSon) {
                 $related[] = $itemSon->getData('mg_id'); // For each of them, we save the Magento ID to use it later
+                $this->logger->info(new Phrase('G4100 Sync | [G4100 Product: ' . $itemSon->getData('g_id')
+                    . '] | [Magento Product: ' . $itemSon->getData('mg_id') . '] | RELATED TO CONFIGURABLE | [' . 'Magento Product: ' . $rp . '].'));
             }
         }
         foreach ($magentoId as $id) {
             if (array_key_exists($rp, $id)) {
                 $related[] = $id[$rp]; // We also add $magentoId, as we need it
+                $this->logger->info(new Phrase('G4100 Sync | [Magento Product: ' . $id[$rp]
+                    . '] | RELATED TO CONFIGURABLE | [' . 'Magento Product: ' . $rp . '].'));
             }
         }
 
@@ -592,7 +628,6 @@ class GetArticles extends SyncgApiService
 
     public function getImages($article, $product)
     {
-        $objectManager = ObjectManager::getInstance();
         if (array_key_exists('imagenes', $article)) {
             $baseUrl = $this->config->getGeneralConfig('installation_url') . $this->config->getGeneralConfig('database_id');
             $user = $this->config->getGeneralConfig('email');
@@ -634,13 +669,12 @@ class GetArticles extends SyncgApiService
                         $product_id = $itemProducts->getData('mg_id');
                         $product = $this->productRepository->getById($product_id, true);
 
-                        $imageProcessor = $objectManager->create('\Magento\Catalog\Model\Product\Gallery\Processor');
                         $existingMediaGalleryEntries = $product->getMediaGalleryEntries();
 
                         foreach ($existingMediaGalleryEntries as $key => $entry) {
                             unset($existingMediaGalleryEntries[$key]);
                             $image = $entry->getFile();
-                            $imageProcessor->removeImage($product, $image);
+                            $this->imageProcessor->removeImage($product, $image);
                             $image = 'pub/media/catalog/product' . $image;
                             if (file_exists($image)) {
                                 unlink($image);
@@ -656,9 +690,10 @@ class GetArticles extends SyncgApiService
                                     $types = array('small_image');
                                 }
                                 $product->addImageToMediaGallery($p, $types, false, false);
+                                $this->logger->info(new Phrase('G4100 Sync | [G4100 Product: ' . $article['cod'] . '] | [Magento Product: ' . $product->getId() . '] | Image ' . $key . ' | ADDED IMAGE.'));
                             }
                         } catch (Exception $e) {
-                            $this->logger->info('Syncg | ' . $e->getMessage());
+                            $this->logger->error('G4100 Sync | ' . $e->getMessage());
                         }
                         $product->save();
                     }
