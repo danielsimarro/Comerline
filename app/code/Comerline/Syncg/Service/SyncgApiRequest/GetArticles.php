@@ -199,7 +199,7 @@ class GetArticles extends SyncgApiService
 
         $fields = [
             'campos' => json_encode(array("nombre", "ref_fabricante", "fecha_cambio", "borrado", "ref_proveedor", "descripcion",
-                "desc_detallada", "envase", "frente", "fondo", "alto", "diametro", "diametro2", "pvp2", "precio_coste_estimado", "modelo",
+                "desc_detallada", "envase", "frente", "fondo", "alto", "diametro", "diametro2", "pvp1", "pvp2", "precio_coste_estimado", "modelo",
                 "si_vender_en_web", "existencias_globales", "grupo", "acotacion", "marca")),
             'filtro' => json_encode(array(
                 "inicio" => $start,
@@ -251,45 +251,49 @@ class GetArticles extends SyncgApiService
             $this->categories = $this->getMagentoCategories();
             foreach ($pages as $page) {
                 for ($i = 0; $i < count($page); $i++) { //We navigate through the products in a page
-                    if ($page[$i]['descripcion'] !== 'Tasa Envío') {
-                        $collectionSyncg = $this->syncgStatusCollectionFactory->create()
-                            ->addFieldToFilter('g_id', $page[$i]['cod']); // We check if the product already exists
-                        if (array_key_exists('familias', $page[$i])) { // We check if the product has an attribute set. If it does, then checks what it is
-                            $attributeSetCollection = $this->attributeCollectionFactory->create();
-                            $attributeSets = $attributeSetCollection->getItems();
-                            foreach ($attributeSets as $attributeSet) {
-                                if ($attributeSet->getAttributeSetName() === $page[$i]['familias'][0]['nombre']) { // If the name of the attribute set is the same as the one on G4100...
-                                    $attributeSetId = $attributeSet->getAttributeSetId(); // We save the ID to use it later
+                    if ($this->checkRequiredData($page[$i])) {
+                        if ($page[$i]['descripcion'] !== 'Tasa Envío') {
+                            $collectionSyncg = $this->syncgStatusCollectionFactory->create()
+                                ->addFieldToFilter('g_id', $page[$i]['cod']); // We check if the product already exists
+                            if (array_key_exists('familias', $page[$i])) { // We check if the product has an attribute set. If it does, then checks what it is
+                                $attributeSetCollection = $this->attributeCollectionFactory->create();
+                                $attributeSets = $attributeSetCollection->getItems();
+                                foreach ($attributeSets as $attributeSet) {
+                                    if ($attributeSet->getAttributeSetName() === $page[$i]['familias'][0]['nombre']) { // If the name of the attribute set is the same as the one on G4100...
+                                        $attributeSetId = $attributeSet->getAttributeSetId(); // We save the ID to use it later
+                                    }
                                 }
                             }
-                        }
-                        if ($collectionSyncg->getSize() > 0) { // If the product already exists, that means we only have to update it
-                            foreach ($collectionSyncg as $itemSyncg) {
-                                $product_id = $itemSyncg->getData('mg_id');
-                                $product = $this->productRepository->getById($product_id, true); // We load the product in edit mode
+                            if ($collectionSyncg->getSize() > 0) { // If the product already exists, that means we only have to update it
+                                foreach ($collectionSyncg as $itemSyncg) {
+                                    $product_id = $itemSyncg->getData('mg_id');
+                                    $product = $this->productRepository->getById($product_id, true); // We load the product in edit mode
+                                    $this->createUpdateProduct($product, $page, $attributeSetId, $i);
+                                    $this->productRepository->save($product);
+                                    $this->logger->info(new Phrase('G4100 Sync | [G4100 Product: ' . $page[$i]['cod'] . '] | [Magento Product: ' . $product_id . '] | EDITED.'));
+                                }
+                            } else {
+                                $product = $this->productFactory->create(); // If the product doesn't exists, we create it
                                 $this->createUpdateProduct($product, $page, $attributeSetId, $i);
-                                $this->productRepository->save($product);
-                                $this->logger->info(new Phrase('G4100 Sync | [G4100 Product: ' . $page[$i]['cod'] . '] | [Magento Product: ' . $product_id . '] | EDITED.'));
+                                $product->save();
+                                $this->logger->info(new Phrase('G4100 Sync | [G4100 Product: ' . $page[$i]['cod'] . '] | [Magento Product: ' . $product->getId() . '] | CREATED.'));
                             }
-                        } else {
-                            $product = $this->productFactory->create(); // If the product doesn't exists, we create it
-                            $this->createUpdateProduct($product, $page, $attributeSetId, $i);
-                            $product->save();
-                            $this->logger->info(new Phrase('G4100 Sync | [G4100 Product: ' . $page[$i]['cod'] . '] | [Magento Product: ' . $product->getId() . '] | CREATED.'));
-                        }
-                        if (array_key_exists('relacionados', $page[$i])) { // If the product has related products we get it's ID and save it on an array to work later with it
-                            $product_id = $product->getId();
-                            $magentoId[] = $this->createSimpleProduct($page, $i, $attributeSetId, $product_id); // We get the ID since we will create a duplicate of this product to avoid losing options
-                            $relatedProducts[] = $product->getEntityId();
-                            foreach ($page[$i]['relacionados'] as $r) {
-                                if ($r['cod'] !== $page[$i]['cod']) { // If the related product is the same as the one we created, we skip it, since we already have duplicated it as a simple product
-                                    $relatedProductsSons[$product->getEntityId()][] = $r['cod'];
-                                    $relatedAttributes[$product->getEntityId()] = $this->getAttributesIds($page[$i]);
+                            if (array_key_exists('relacionados', $page[$i])) { // If the product has related products we get it's ID and save it on an array to work later with it
+                                $product_id = $product->getId();
+                                $magentoId[] = $this->createSimpleProduct($page, $i, $attributeSetId, $product_id); // We get the ID since we will create a duplicate of this product to avoid losing options
+                                $relatedProducts[] = $product->getEntityId();
+                                foreach ($page[$i]['relacionados'] as $r) {
+                                    if ($r['cod'] !== $page[$i]['cod']) { // If the related product is the same as the one we created, we skip it, since we already have duplicated it as a simple product
+                                        $relatedProductsSons[$product->getEntityId()][] = $r['cod'];
+                                        $relatedAttributes[$product->getEntityId()] = $this->getAttributesIds($page[$i]);
+                                    }
                                 }
                             }
+                            $this->syncgStatus = $this->syncgStatusRepository->updateEntityStatus($product->getEntityId(), $page[$i]['cod'], SyncgStatus::TYPE_PRODUCT, SyncgStatus::STATUS_COMPLETED);
+                            $this->getImages($page[$i], $product);
                         }
-                        $this->syncgStatus = $this->syncgStatusRepository->updateEntityStatus($product->getEntityId(), $page[$i]['cod'], SyncgStatus::TYPE_PRODUCT, SyncgStatus::STATUS_COMPLETED);
-                        $this->getImages($page[$i], $product);
+                    } else {
+                        $this->logger->error(new Phrase('G4100 Sync | [G4100 Product: ' . $page[$i]['cod'] . '] | PRODUCT NOT VALID.'));
                     }
                 }
             }
@@ -339,6 +343,28 @@ class GetArticles extends SyncgApiService
                 }
             }
         }
+    }
+
+    public function checkRequiredData($product): bool {
+        $valid = false;
+        $requiredKeys = ['descripcion', 'existencias_globales', 'modelo', 'marca', 'cod', 'id'];
+        $references = [
+            'ref_proveedor'     => $product['ref_proveedor'],
+            'ref_fabricante'    => $product['ref_fabricante']
+        ];
+        $validFields = 0;
+        foreach ($requiredKeys as $rk) {
+            if (isset($product[$rk]) && ($product[$rk] !== "")){
+                $validFields++;
+            }
+        }
+        if ($references['ref_proveedor'] !== "" || $references['ref_fabricante'] !== "") {
+            $validFields++;
+        }
+        if ($validFields === 7) {
+            $valid = true;
+        }
+        return $valid;
     }
 
     public function createSimpleProduct($page, $i, $attributeSetId, $product_id)
@@ -428,7 +454,11 @@ class GetArticles extends SyncgApiService
             }
         }
         $product->setTypeId('simple');
-        $product->setPrice($page[$i]['pvp2']);
+        if ($page[$i]['pvp1'] !== "0.00") {
+            $product->setPrice($page[$i]['pvp1']);
+        } else {
+            $product->setPrice($page[$i]['pvp2']);
+        }
         $product->setCost($page[$i]['precio_coste_estimado']);
         $product->setWebsiteIds(array(1));
         $product->setCustomAttribute('tax_class_id', 2);
@@ -642,63 +672,67 @@ class GetArticles extends SyncgApiService
             $result = curl_exec($ch);
             $json = json_decode($result, true);
 
-            if (array_key_exists('llave', $json)) { // To avoid import crashing if it can't donwload the image for whatever reason (API down, failed login...)
-                curl_setopt($ch, CURLOPT_URL, $baseUrl . "/?usr=" . $user . "&clave=" . md5($pass . $json['llave']));
-                $result = curl_exec($ch);
-                $path = [];
-                $count = 0;
-                foreach ($article['imagenes'] as $image) {
-                    $path[$count] = $this->dir->getPath('media') . '/images/' . $image . '.jpg';
-                    $fp = fopen($path[$count], 'w+');              // Open file handle
+            if ($json !== null) {
+                if (array_key_exists('llave', $json)) { // To avoid import crashing if it can't donwload the image for whatever reason (API down, failed login...)
+                    curl_setopt($ch, CURLOPT_URL, $baseUrl . "/?usr=" . $user . "&clave=" . md5($pass . $json['llave']));
+                    $result = curl_exec($ch);
+                    $path = [];
+                    $count = 0;
+                    foreach ($article['imagenes'] as $image) {
+                        $path[$count] = $this->dir->getPath('media') . '/images/' . $image . '.jpg';
+                        $fp = fopen($path[$count], 'w+');              // Open file handle
 
-                    curl_setopt($ch, CURLOPT_URL, $baseUrl . "/imagenes/" . $image);
-                    curl_setopt($ch, CURLOPT_FILE, $fp);          // Output to file
-                    curl_setopt($ch, CURLOPT_FOLLOWLOCATION, 1);
-                    curl_setopt($ch, CURLOPT_TIMEOUT, 1000);
-                    curl_setopt($ch, CURLOPT_USERAGENT, 'Mozilla/5.0');
-                    curl_exec($ch);
+                        curl_setopt($ch, CURLOPT_URL, $baseUrl . "/imagenes/" . $image);
+                        curl_setopt($ch, CURLOPT_FILE, $fp);          // Output to file
+                        curl_setopt($ch, CURLOPT_FOLLOWLOCATION, 1);
+                        curl_setopt($ch, CURLOPT_TIMEOUT, 1000);
+                        curl_setopt($ch, CURLOPT_USERAGENT, 'Mozilla/5.0');
+                        curl_exec($ch);
 
-                    fclose($fp);
-                    $count++;
-                }
-                curl_close($ch);                              // Closing curl handle
-                $collectionProducts = $this->syncgStatusCollectionFactory->create()
-                    ->addFieldToFilter('g_id', $article['cod']);
-                if ($collectionProducts->getSize() > 0) { // If the product already exists, that means we only have to update it
-                    foreach ($collectionProducts as $itemProducts) {
-                        $product_id = $itemProducts->getData('mg_id');
-                        $product = $this->productRepository->getById($product_id, true);
-
-                        $existingMediaGalleryEntries = $product->getMediaGalleryEntries();
-
-                        foreach ($existingMediaGalleryEntries as $key => $entry) {
-                            unset($existingMediaGalleryEntries[$key]);
-                            $image = $entry->getFile();
-                            $this->imageProcessor->removeImage($product, $image);
-                            $image = 'pub/media/catalog/product' . $image;
-                            if (file_exists($image)) {
-                                unlink($image);
-                            }
-                        }
-                        $product->setMediaGalleryEntries($existingMediaGalleryEntries);
-                        $this->productResource->save($product);
-                        try {
-                            foreach ($path as $key => $p) {
-                                if ($key === 0) {
-                                    $types = array('image', 'small_image', 'thumbnail');
-                                } else {
-                                    $types = array('small_image');
-                                }
-                                $product->addImageToMediaGallery($p, $types, false, false);
-                                $this->logger->info(new Phrase('G4100 Sync | [G4100 Product: ' . $article['cod'] . '] | [Magento Product: ' . $product->getId() . '] | Image ' . $key . ' | ADDED IMAGE.'));
-                            }
-                        } catch (Exception $e) {
-                            $this->logger->error('G4100 Sync | ' . $e->getMessage());
-                        }
-                        $product->save();
+                        fclose($fp);
+                        $count++;
                     }
+                    curl_close($ch);                              // Closing curl handle
+                    $collectionProducts = $this->syncgStatusCollectionFactory->create()
+                        ->addFieldToFilter('g_id', $article['cod']);
+                    if ($collectionProducts->getSize() > 0) { // If the product already exists, that means we only have to update it
+                        foreach ($collectionProducts as $itemProducts) {
+                            $product_id = $itemProducts->getData('mg_id');
+                            $product = $this->productRepository->getById($product_id, true);
+
+                            $existingMediaGalleryEntries = $product->getMediaGalleryEntries();
+
+                            foreach ($existingMediaGalleryEntries as $key => $entry) {
+                                unset($existingMediaGalleryEntries[$key]);
+                                $image = $entry->getFile();
+                                $this->imageProcessor->removeImage($product, $image);
+                                $image = 'pub/media/catalog/product' . $image;
+                                if (file_exists($image)) {
+                                    unlink($image);
+                                }
+                            }
+                            $product->setMediaGalleryEntries($existingMediaGalleryEntries);
+                            $this->productResource->save($product);
+                            try {
+                                foreach ($path as $key => $p) {
+                                    if ($key === 0) {
+                                        $types = array('image', 'small_image', 'thumbnail');
+                                    } else {
+                                        $types = array('small_image');
+                                    }
+                                    $product->addImageToMediaGallery($p, $types, false, false);
+                                    $this->logger->info(new Phrase('G4100 Sync | [G4100 Product: ' . $article['cod'] . '] | [Magento Product: ' . $product->getId() . '] | Image ' . $key . ' | ADDED IMAGE.'));
+                                }
+                            } catch (Exception $e) {
+                                $this->logger->error('G4100 Sync | ' . $e->getMessage());
+                            }
+                            $product->save();
+                        }
+                    }
+                    $this->syncgStatus = $this->syncgStatusRepository->updateEntityStatus($product->getEntityId(), $image, SyncgStatus::TYPE_IMAGE, SyncgStatus::STATUS_COMPLETED);
                 }
-                $this->syncgStatus = $this->syncgStatusRepository->updateEntityStatus($product->getEntityId(), $image, SyncgStatus::TYPE_IMAGE, SyncgStatus::STATUS_COMPLETED);
+            } else {
+                $this->logger->error(new Phrase('G4100 Sync | [G4100 Product: ' . $article['cod'] . '] | [Magento Product: ' . $product->getId() . '] | FAILED TO ADD IMAGE.'));
             }
         }
     }
