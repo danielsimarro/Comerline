@@ -18,6 +18,7 @@ use Comerline\Syncg\Helper\AttributeHelper;
 use GuzzleHttp\Psr7\ResponseFactory;
 use Magento\Catalog\Api\Data\ProductInterfaceFactory as ProductFactory;
 use Magento\Eav\Model\Entity\Attribute\SetFactory as AttributeSetFactory;
+use Magento\Framework\Exception\InputException;
 use Magento\Framework\Filesystem\DirectoryList;
 use Magento\Framework\Phrase;
 use Magento\Catalog\Model\Product\Gallery\Processor;
@@ -300,7 +301,7 @@ class GetArticles extends SyncgApiService
 
             foreach ($relatedProducts as $rp) {
                 $product = $this->productRepository->getById($rp);
-                try {
+                if (array_key_exists($rp, $relatedAttributes)) {
                     $attributes = $relatedAttributes[$rp]; // Array with the attributes we want to make configurable
                     $attributeModels = [];
                     $count = 0;
@@ -335,11 +336,15 @@ class GetArticles extends SyncgApiService
                     $extensionConfigurableAttributes->setConfigurableProductOptions($attributeModels); // Linking the options that are configurable
                     $product->setExtensionAttributes($extensionConfigurableAttributes);
                     $product->setCanSaveConfigurableAttributes(true);
-                    $this->productRepository->save($product);
-                    $this->logger->info(new Phrase('G4100 Sync | [Magento Product: ' . $rp . '] | CHANGED TO CONFIGURABLE.'));
-                    $this->setRelatedsVisibility($relatedIds); // We need to make the simple products related to this one hidden
-                } catch (Exception $e) {
-                    $this->logger->error('G4100 Sync | ' . $e->getMessage());
+                    try {
+                        $this->productRepository->save($product);
+                        $this->logger->info(new Phrase('G4100 Sync | [Magento Product: ' . $rp . '] | CHANGED TO CONFIGURABLE.'));
+                        $this->setRelatedsVisibility($relatedIds); // We need to make the simple products related to this one hidden
+                    } catch (InputException $e) {
+                        $this->logger->error(new Phrase('G4100 Sync | [Magento Product: ' . $rp . "] | ERROR CHANGING TO CONFIGURABLE."));
+                    }
+                } else {
+                    $this->logger->error(new Phrase('G4100 Sync | [Magento Product: ' . $rp . "] | CAN'T CHANGE TO CONFIGURABLE (ONLY PARENT OPTION AVAILABLE)."));
                 }
             }
         }
@@ -463,11 +468,12 @@ class GetArticles extends SyncgApiService
         $product->setWebsiteIds(array(1));
         $product->setCustomAttribute('tax_class_id', 2);
         $product->setDescription($page[$i]['desc_detallada']);
-        if (array_key_exists('familias', $page[$i]) && array_key_exists($page[$i]['familias'][0]['nombre'], $this->categories)) {
-            array_push($categoryIds, $this->categories[$page[$i]['familias'][0]['nombre']]);
-        } else {
-            array_push($categoryIds, $this->createCategory($page[$i]['familias'][0]['nombre']));
-
+        if (array_key_exists('familias', $page[$i])){
+            if(array_key_exists($page[$i]['familias'][0]['nombre'], $this->categories)) {
+                array_push($categoryIds, $this->categories[$page[$i]['familias'][0]['nombre']]);
+            } else {
+                array_push($categoryIds, $this->createCategory($page[$i]['familias'][0]['nombre']));
+            }
         }
         if (isset($page[$i]['marca']) && array_key_exists($page[$i]['marca'], $this->categories)) {
             array_push($categoryIds, $this->categories[$page[$i]['marca']]);
