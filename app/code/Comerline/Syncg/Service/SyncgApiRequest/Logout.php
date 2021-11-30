@@ -13,7 +13,7 @@ use Psr\Log\LoggerInterface;
 class Logout extends SyncgApiService
 {
 
-    protected $method = Request::HTTP_METHOD_GET;
+    protected $method = Request::HTTP_METHOD_DELETE;
 
     public function __construct(
         Config $configHelper,
@@ -27,7 +27,7 @@ class Logout extends SyncgApiService
 
     public function buildParams()
     {
-        $this->endpoint .= '/cerrarSesion';
+        $this->endpoint .= '/api/users/logout';
     }
 
     public function send()

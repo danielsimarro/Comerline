@@ -54,7 +54,7 @@ abstract class SyncgApiService
         $this->responseFactory = $responseFactory;
         $this->logger = $logger;
         $this->uri = $this->config->getGeneralConfig('installation_url');
-        $this->endpoint = $this->config->getGeneralConfig('database_id');
+        $this->endpoint = '';
     }
 
     public function execute(){
@@ -83,6 +83,7 @@ abstract class SyncgApiService
             'base_uri' => $this->uri,
             'cookies' => new FileCookieJar('cookie_path', true),
         ]]);
+
 
         try {
             $response = $client->request(

@@ -38,7 +38,7 @@ use Safe\DateTime;
 class GetArticles extends SyncgApiService
 {
 
-    protected $method = Request::HTTP_METHOD_GET;
+    protected $method = Request::HTTP_METHOD_POST;
 
     /**
      * @var Config
@@ -198,21 +198,27 @@ class GetArticles extends SyncgApiService
         $hours = $date->getOffset() / 3600; // We have to add the offset, since the date from the API comes in CEST
         $newDate = $date->add(new DateInterval(("PT{$hours}H")));
 
-        $fields = [
-            'campos' => json_encode(array("nombre", "ref_fabricante", "fecha_cambio", "borrado", "ref_proveedor", "descripcion",
-                "desc_detallada", "envase", "frente", "fondo", "alto", "diametro", "diametro2", "pvp1", "pvp2", "precio_coste_estimado", "modelo",
-                "si_vender_en_web", "existencias_globales", "grupo", "acotacion", "marca")),
-            'filtro' => json_encode(array(
-                "inicio" => $start,
-                "filtro" => array(
-                    array("campo" => "si_vender_en_web", "valor" => "1", "tipo" => 0),
-                    array("campo" => "fecha_cambio", "valor" => $newDate->format('Y-m-d H:i'), "tipo" => 3)
-                )
-            )),
-            'orden' => json_encode(array("campo" => "id", "orden" => "ASC"))
+        $this->endpoint = 'api/g4100/list';
+        $this->params = [
+            'headers' => ['Accept' => 'application/json'],
+            'auth' => ['Bearer', $this->config->getGeneralConfig('g4100_middleware_token')],
+            'allow_redirects' => true,
+            'form_params' => [
+                'endpoint' => 'articulos/listar',
+                'fields' => json_encode(array("nombre", "ref_fabricante", "fecha_cambio", "borrado", "ref_proveedor", "descripcion",
+                    "desc_detallada", "envase", "frente", "fondo", "alto", "diametro", "diametro2", "pvp1", "pvp2", "precio_coste_estimado", "modelo",
+                    "si_vender_en_web", "existencias_globales", "grupo", "acotacion", "marca")),
+                'filters' => json_encode(array(
+                    "inicio" => $start,
+                    "filtro" => array(
+                        array("campo" => "si_vender_en_web", "valor" => "1", "tipo" => 0),
+                        array("campo" => "fecha_cambio", "valor" => $newDate->format('Y-m-d H:i'), "tipo" => 3)
+                    )
+                )),
+                'order' => json_encode(array("campo" => "id", "orden" => "ASC"))
+            ],
         ];
-        $this->endpoint = $this->config->getGeneralConfig('database_id') . '/articulos/catalogo?' . http_build_query($fields);
-        $this->order = $fields['orden']; // We will need this to get the products correctly
+        $this->order = $this->params['form_params']['order']; // We will need this to get the products correctly
     }
 
     public function send()

@@ -11,21 +11,17 @@
             <resource>Comerline_Syncg::Comerline_Syncg</resource>
             <group id="general" translate="label" type="text" sortOrder="10" showInDefault="1" showInWebsite="0" showInStore="0">
                 <label>Configuración API</label>
-                <field id="email" translate="label" type="text" sortOrder="1" showInDefault="1" showInWebsite="0" showInStore="0">
-                    <label>E-mail de usuario</label>
-                    <comment>Introduzca aquí su e-mail.</comment>
+                <field id="username" translate="label" type="text" sortOrder="1" showInDefault="1" showInWebsite="0" showInStore="0">
+                    <label>Nombre de usuario</label>
+                    <comment>Introduzca aquí su nombre de usuario.</comment>
                 </field>
-                <field id="user_key" translate="label" type="text" sortOrder="1" showInDefault="1" showInWebsite="0" showInStore="0">
-                    <label>Clave de usuario</label>
-                    <comment>Introduzca aquí su clave.</comment>
+                <field id="password" translate="label" type="text" sortOrder="1" showInDefault="1" showInWebsite="0" showInStore="0">
+                    <label>Contraseña</label>
+                    <comment>Introduzca aquí su contraseña.</comment>
                 </field>
                 <field id="installation_url" translate="label" type="text" sortOrder="1" showInDefault="1" showInWebsite="0" showInStore="0">
-                    <label>URL de instalación</label>
-                    <comment>Introduzca aquí la URL de instalación que le ha sido procurada.</comment>
-                </field>
-                <field id="database_id" translate="label" type="text" sortOrder="1" showInDefault="1" showInWebsite="0" showInStore="0">
-                    <label>ID de la Base de Datos</label>
-                    <comment>Introduzca aquí el ID de la Base de Datos que le ha sido procurado.</comment>
+                    <label>URL de API</label>
+                    <comment>Introduzca aquí la URL de la API.</comment>
                 </field>
                 <field id="shipping_rate_g4100_id" translate="label" type="text" sortOrder="1" showInDefault="1" showInWebsite="0" showInStore="0">
                     <label>ID del producto encargado del envío</label>

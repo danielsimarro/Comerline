@@ -6,6 +6,7 @@ use Comerline\Syncg\Helper\Config;
 use Comerline\Syncg\Service\SyncgApiService;
 use GuzzleHttp\ClientFactory;
 use GuzzleHttp\Psr7\ResponseFactory;
+use Magento\Framework\App\Config\Storage\WriterInterface;
 use Magento\Framework\Serialize\Serializer\Json;
 use Magento\Framework\Webapi\Rest\Request;
 use Psr\Log\LoggerInterface;
@@ -13,28 +14,43 @@ use Psr\Log\LoggerInterface;
 class Login extends SyncgApiService
 {
 
-    protected $method = Request::HTTP_METHOD_GET;
+    protected $method = Request::HTTP_METHOD_POST;
+    const PATH = 'syncg/';
+
+    /**
+     * @var WriterInterface
+     */
+    private $configWriter;
 
     public function __construct(
         Config $configHelper,
+        WriterInterface $writer,
         Json $json,
         ClientFactory $clientFactory,
         ResponseFactory $responseFactory,
         LoggerInterface $logger
     ) {
+        $this->configWriter = $writer;
         parent::__construct($configHelper, $json, $responseFactory, $clientFactory, $logger);
     }
 
-    public function buildParams(string $key)
+    public function buildParams()
     {
-        $this->endpoint .= '/?usr=' . $this->config->getGeneralConfig('email') . '&clave=' . $key;
+        $this->endpoint .= 'api/users/login';
+        $this->params = [
+            'form_params' => [
+                'name' => $this->config->getGeneralConfig('username'),
+                'password' => $this->config->getGeneralConfig('password')
+            ],
+        ];
     }
 
     public function send()
     {
+        $this->buildParams();
         $response = $this->execute();
-        $key = md5($this->config->getGeneralConfig('user_key') . $response['llave']);
-        $this->buildParams($key);
-        $response = $this->execute();
+        if (array_key_exists('success', $response)) {
+            $this->configWriter->save(self::PATH .'general/g4100_middleware_token', $response['success']['token'], 'default');
+        }
     }
 }
