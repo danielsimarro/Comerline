@@ -88,7 +88,7 @@ class Syncg
     }
 
     public function syncgAll(){
-        $this->disconnectFromAPI(); // Tries to disconnect in case a request went wrong, to avoid the API to crash
+//        $this->disconnectFromAPI(); // Tries to disconnect in case a request went wrong, to avoid the API to crash
         $this->connectToAPI();
         if ($this->config->getGeneralConfig('enable_order_sync') === "1") {
             $this->fetchPendingOrders();

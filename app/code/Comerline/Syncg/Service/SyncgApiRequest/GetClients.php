@@ -16,7 +16,7 @@ use Psr\Log\LoggerInterface;
 
 class GetClients extends SyncgApiService
 {
-    protected $method = Request::HTTP_METHOD_GET;
+    protected $method = Request::HTTP_METHOD_POST;
 
     /**
      * @var Login
@@ -66,24 +66,44 @@ class GetClients extends SyncgApiService
     public function buildParams($clientEmail, $search, $client = null)
     {
         if ($search) {
-            $fields = [
-                'campos' => json_encode(array("nombre", "direccion1", "email", "poblacion", "telefono", "id_provincia", "cp")),
-                'filtro' => json_encode(array(
-                    "inicio" => 0,
-                    "filtro" => array(
-                        array("campo" => "email", "valor" => $clientEmail, "tipo" => 0),
-                    )
-                )),
-                'orden' => json_encode(array("campo" => "id", "orden" => "ASC"))
+            $this->endpoint = 'api/g4100/list';
+            $this->params = [
+                'allow_redirects' => true,
+                'headers' => [
+                    'Content-Type' => 'application/json',
+                    'Accept' => 'application/json',
+                    'Authorization' => "Bearer {$this->config->getTokenFromDatabase('syncg/general/g4100_middleware_token')}",
+                ],
+                'body' => json_encode([
+                    'endpoint' => 'personas/listar',
+                    'fields' => json_encode(array("nombre", "direccion1", "email", "poblacion", "telefono", "id_provincia", "cp")),
+                    'filters' => json_encode(array(
+                        "inicio" => 0,
+                        "filtro" => array(
+                            array("campo" => "email", "valor" => $clientEmail, "tipo" => 0),
+                        )
+                    )),
+                    'order' => json_encode(array("campo" => "id", "orden" => "ASC"))
+                ]),
             ];
-            $this->endpoint = $this->config->getGeneralConfig('database_id') . '/personas/listar?' . http_build_query($fields);
-            $this->order = $fields['orden']; // We will need this to get the products correctly
+            $decoded = json_decode($this->params['body']);
+            $decoded = (array)$decoded;
+            $this->order = $decoded['order']; // We will need this to get the products correctly
         } else {
-            $fields = [
-                'campos' => json_encode(array("nombre", "direccion1", "email", "poblacion", "telefono", "id_provincia", "cp")),
-                'datos' => json_encode($client)
+            $this->endpoint = 'api/g4100/create';
+            $this->params = [
+                'allow_redirects' => true,
+                'headers' => [
+                    'Content-Type' => 'application/json',
+                    'Accept' => 'application/json',
+                    'Authorization' => "Bearer {$this->config->getTokenFromDatabase('syncg/general/g4100_middleware_token')}",
+                ],
+                'body' => json_encode([
+                    'endpoint' => 'personas',
+                    'fields' => json_encode(array("nombre", "direccion1", "email", "poblacion", "telefono", "id_provincia", "cp")),
+                    'datas' => json_encode($client)
+                ]),
             ];
-            $this->endpoint = $this->config->getGeneralConfig('database_id') . '/personas/guardar/0/?' . http_build_query($fields);
         }
     }
 

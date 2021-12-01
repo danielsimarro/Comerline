@@ -200,11 +200,14 @@ class GetArticles extends SyncgApiService
 
         $this->endpoint = 'api/g4100/list';
         $this->params = [
-            'headers' => ['Accept' => 'application/json'],
-            'auth' => ['Bearer', $this->config->getGeneralConfig('g4100_middleware_token')],
             'allow_redirects' => true,
-            'form_params' => [
-                'endpoint' => 'articulos/listar',
+            'headers' => [
+                'Content-Type' => 'application/json',
+                'Accept' => 'application/json',
+                'Authorization' => "Bearer {$this->config->getTokenFromDatabase('syncg/general/g4100_middleware_token')}",
+            ],
+            'body' => json_encode([
+                'endpoint' => 'articulos/catalogo',
                 'fields' => json_encode(array("nombre", "ref_fabricante", "fecha_cambio", "borrado", "ref_proveedor", "descripcion",
                     "desc_detallada", "envase", "frente", "fondo", "alto", "diametro", "diametro2", "pvp1", "pvp2", "precio_coste_estimado", "modelo",
                     "si_vender_en_web", "existencias_globales", "grupo", "acotacion", "marca")),
@@ -216,9 +219,11 @@ class GetArticles extends SyncgApiService
                     )
                 )),
                 'order' => json_encode(array("campo" => "id", "orden" => "ASC"))
-            ],
+            ]),
         ];
-        $this->order = $this->params['form_params']['order']; // We will need this to get the products correctly
+        $decoded = json_decode($this->params['body']);
+        $decoded = (array)$decoded;
+        $this->order = $decoded['order']; // We will need this to get the products correctly
     }
 
     public function send()
@@ -230,7 +235,7 @@ class GetArticles extends SyncgApiService
         while ($loop) {
             $this->buildParams($start);
             $response = $this->execute();
-            if (array_key_exists('listado', $response)) {
+            if ($response !== null && array_key_exists('listado', $response)) {
                 if ($response['listado']) {
                     $pages[] = $response['listado'];
                     if (strpos($this->order, 'ASC')) {
@@ -245,6 +250,7 @@ class GetArticles extends SyncgApiService
                     $loop = false;  // If $response['listado'] is empty, we end the while loop
                 }
             } else {
+                $loop = false;
                 $this->logger->error(new Phrase('G4100 Sync | Error fetching products.'));
             }
         }
@@ -356,16 +362,17 @@ class GetArticles extends SyncgApiService
         }
     }
 
-    public function checkRequiredData($product): bool {
+    public function checkRequiredData($product): bool
+    {
         $valid = false;
         $requiredKeys = ['descripcion', 'existencias_globales', 'modelo', 'marca', 'cod', 'id'];
         $references = [
-            'ref_proveedor'     => $product['ref_proveedor'],
-            'ref_fabricante'    => $product['ref_fabricante']
+            'ref_proveedor' => $product['ref_proveedor'],
+            'ref_fabricante' => $product['ref_fabricante']
         ];
         $validFields = 0;
         foreach ($requiredKeys as $rk) {
-            if (isset($product[$rk]) && ($product[$rk] !== "")){
+            if (isset($product[$rk]) && ($product[$rk] !== "")) {
                 $validFields++;
             }
         }
@@ -474,8 +481,8 @@ class GetArticles extends SyncgApiService
         $product->setWebsiteIds(array(1));
         $product->setCustomAttribute('tax_class_id', 2);
         $product->setDescription($page[$i]['desc_detallada']);
-        if (array_key_exists('familias', $page[$i])){
-            if(array_key_exists($page[$i]['familias'][0]['nombre'], $this->categories)) {
+        if (array_key_exists('familias', $page[$i])) {
+            if (array_key_exists($page[$i]['familias'][0]['nombre'], $this->categories)) {
                 array_push($categoryIds, $this->categories[$page[$i]['familias'][0]['nombre']]);
             } else {
                 array_push($categoryIds, $this->createCategory($page[$i]['familias'][0]['nombre']));
@@ -671,81 +678,73 @@ class GetArticles extends SyncgApiService
     public function getImages($article, $product)
     {
         if (array_key_exists('imagenes', $article)) {
-            $baseUrl = $this->config->getGeneralConfig('installation_url') . $this->config->getGeneralConfig('database_id');
-            $user = $this->config->getGeneralConfig('email');
-            $pass = $this->config->getGeneralConfig('user_key');
+            $baseUrl = $this->config->getGeneralConfig('installation_url') . 'api/g4100/image/';
+            $header = [
+                'Content-Type: application/json',
+                'Accept: application/json',
+                "Authorization: Bearer {$this->config->getTokenFromDatabase('syncg/general/g4100_middleware_token')}",
+            ];
 
             $ch = curl_init();
             curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-            curl_setopt($ch, CURLOPT_COOKIESESSION, true);
-            curl_setopt($ch, CURLOPT_COOKIEJAR, 'session');
+            curl_setopt($ch, CURLOPT_HTTPHEADER, $header);
 
             curl_setopt($ch, CURLOPT_URL, $baseUrl);
-            $result = curl_exec($ch);
-            $json = json_decode($result, true);
 
-            if ($json !== null) {
-                if (array_key_exists('llave', $json)) { // To avoid import crashing if it can't donwload the image for whatever reason (API down, failed login...)
-                    curl_setopt($ch, CURLOPT_URL, $baseUrl . "/?usr=" . $user . "&clave=" . md5($pass . $json['llave']));
-                    $result = curl_exec($ch);
-                    $path = [];
-                    $count = 0;
-                    foreach ($article['imagenes'] as $image) {
-                        $path[$count] = $this->dir->getPath('media') . '/images/' . $image . '.jpg';
-                        $fp = fopen($path[$count], 'w+');              // Open file handle
+            $path = [];
+            $count = 0;
+            foreach ($article['imagenes'] as $image) {
+                $path[$count] = $this->dir->getPath('media') . '/images/' . $image . '.jpg';
+                $fp = fopen($path[$count], 'w+');              // Open file handle
 
-                        curl_setopt($ch, CURLOPT_URL, $baseUrl . "/imagenes/" . $image);
-                        curl_setopt($ch, CURLOPT_FILE, $fp);          // Output to file
-                        curl_setopt($ch, CURLOPT_FOLLOWLOCATION, 1);
-                        curl_setopt($ch, CURLOPT_TIMEOUT, 1000);
-                        curl_setopt($ch, CURLOPT_USERAGENT, 'Mozilla/5.0');
-                        curl_exec($ch);
+                curl_setopt($ch, CURLOPT_URL, $baseUrl . $image);
+                curl_setopt($ch, CURLOPT_FILE, $fp);          // Output to file
+                curl_setopt($ch, CURLOPT_FOLLOWLOCATION, 1);
+                curl_setopt($ch, CURLOPT_TIMEOUT, 1000);
+                curl_setopt($ch, CURLOPT_USERAGENT, 'Mozilla/5.0');
+                curl_exec($ch);
 
-                        fclose($fp);
-                        $count++;
-                    }
-                    curl_close($ch);                              // Closing curl handle
-                    $collectionProducts = $this->syncgStatusCollectionFactory->create()
-                        ->addFieldToFilter('g_id', $article['cod']);
-                    if ($collectionProducts->getSize() > 0) { // If the product already exists, that means we only have to update it
-                        foreach ($collectionProducts as $itemProducts) {
-                            $product_id = $itemProducts->getData('mg_id');
-                            $product = $this->productRepository->getById($product_id, true);
+                fclose($fp);
+                $count++;
+            }
+            curl_close($ch);                              // Closing curl handle
+            $collectionProducts = $this->syncgStatusCollectionFactory->create()
+                ->addFieldToFilter('g_id', $article['cod']);
+            if ($collectionProducts->getSize() > 0) { // If the product already exists, that means we only have to update it
+                foreach ($collectionProducts as $itemProducts) {
+                    $product_id = $itemProducts->getData('mg_id');
+                    $product = $this->productRepository->getById($product_id, true);
 
-                            $existingMediaGalleryEntries = $product->getMediaGalleryEntries();
+                    $existingMediaGalleryEntries = $product->getMediaGalleryEntries();
 
-                            foreach ($existingMediaGalleryEntries as $key => $entry) {
-                                unset($existingMediaGalleryEntries[$key]);
-                                $image = $entry->getFile();
-                                $this->imageProcessor->removeImage($product, $image);
-                                $image = 'pub/media/catalog/product' . $image;
-                                if (file_exists($image)) {
-                                    unlink($image);
-                                }
-                            }
-                            $product->setMediaGalleryEntries($existingMediaGalleryEntries);
-                            $this->productResource->save($product);
-                            try {
-                                foreach ($path as $key => $p) {
-                                    if ($key === 0) {
-                                        $types = array('image', 'small_image', 'thumbnail');
-                                    } else {
-                                        $types = array('small_image');
-                                    }
-                                    $product->addImageToMediaGallery($p, $types, false, false);
-                                    $this->logger->info(new Phrase('G4100 Sync | [G4100 Product: ' . $article['cod'] . '] | [Magento Product: ' . $product->getId() . '] | Image ' . $key . ' | ADDED IMAGE.'));
-                                }
-                            } catch (Exception $e) {
-                                $this->logger->error('G4100 Sync | ' . $e->getMessage());
-                            }
-                            $product->save();
+                    foreach ($existingMediaGalleryEntries as $key => $entry) {
+                        unset($existingMediaGalleryEntries[$key]);
+                        $image = $entry->getFile();
+                        $this->imageProcessor->removeImage($product, $image);
+                        $image = 'pub/media/catalog/product' . $image;
+                        if (file_exists($image)) {
+                            unlink($image);
                         }
                     }
-                    $this->syncgStatus = $this->syncgStatusRepository->updateEntityStatus($product->getEntityId(), $image, SyncgStatus::TYPE_IMAGE, SyncgStatus::STATUS_COMPLETED);
+                    $product->setMediaGalleryEntries($existingMediaGalleryEntries);
+                    $this->productResource->save($product);
+                    try {
+                        foreach ($path as $key => $p) {
+                            if ($key === 0) {
+                                $types = array('image', 'small_image', 'thumbnail');
+                            } else {
+                                $types = array('small_image');
+                            }
+                            $product->addImageToMediaGallery($p, $types, false, false);
+                            $this->logger->info(new Phrase('G4100 Sync | [G4100 Product: ' . $article['cod'] . '] | [Magento Product: ' . $product->getId() . '] | Image ' . $key . ' | ADDED IMAGE.'));
+                        }
+                    } catch (Exception $e) {
+                        $this->logger->error('G4100 Sync | ' . $e->getMessage());
+                    }
+                    $product->save();
                 }
-            } else {
-                $this->logger->error(new Phrase('G4100 Sync | [G4100 Product: ' . $article['cod'] . '] | [Magento Product: ' . $product->getId() . '] | FAILED TO ADD IMAGE.'));
             }
+            $this->syncgStatus = $this->syncgStatusRepository->updateEntityStatus($product->getEntityId(), $image, SyncgStatus::TYPE_IMAGE, SyncgStatus::STATUS_COMPLETED);
         }
     }
 }

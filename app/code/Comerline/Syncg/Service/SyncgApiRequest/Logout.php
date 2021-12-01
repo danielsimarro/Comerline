@@ -27,6 +27,14 @@ class Logout extends SyncgApiService
 
     public function buildParams()
     {
+        $this->params = [
+            'allow_redirects' => true,
+            'headers' => [
+                'Content-Type' => 'application/json',
+                'Accept' => 'application/json',
+                'Authorization' => "Bearer {$this->config->getTokenFromDatabase('syncg/general/g4100_middleware_token')}",
+            ],
+        ];
         $this->endpoint .= '/api/users/logout';
     }
 

@@ -16,7 +16,7 @@ use Psr\Log\LoggerInterface;
 
 class CreateOrder extends SyncgApiService
 {
-    protected $method = Request::HTTP_METHOD_GET;
+    protected $method = Request::HTTP_METHOD_POST;
 
     /**
      * @var CustomerRepositoryInterface
@@ -60,24 +60,41 @@ class CreateOrder extends SyncgApiService
     public function buildParams($lines = null, $clientId = null, $codeG4100 = null)
     {
         if ($codeG4100) {
-            $fields = [
-                'campos' => json_encode(array("descripcion", "desc_detallada", "pvp1", "modelo", "si_vender_en_web")),
-                'filtro' => json_encode(array(
-                    "inicio" => 0,
-                    "filtro" => array(
-                        array("campo" => "cod", "valor" => $codeG4100, "tipo" => 0),
-                    )
-                )),
-                'orden' => json_encode(array("campo" => "id", "orden" => "ASC"))
+            $this->endpoint = 'api/g4100/list';
+            $this->params = [
+                'allow_redirects' => true,
+                'headers' => [
+                    'Content-Type' => 'application/json',
+                    'Accept' => 'application/json',
+                    'Authorization' => "Bearer {$this->config->getTokenFromDatabase('syncg/general/g4100_middleware_token')}",
+                ],
+                'body' => json_encode([
+                    'endpoint' => 'articulos/catalogo',
+                    'fields' => json_encode(array("descripcion", "desc_detallada", "pvp1", "modelo", "si_vender_en_web")),
+                    'filters' => json_encode(array(
+                        "inicio" => 0,
+                        "filtro" => array(
+                            array("campo" => "cod", "valor" => $codeG4100, "tipo" => 0),
+                        )
+                    )),
+                    'order' => json_encode(array("campo" => "id", "orden" => "ASC"))
+                ]),
             ];
-            $this->endpoint = $this->config->getGeneralConfig('database_id') . '/articulos/catalogo?' . http_build_query($fields);
         } else {
-            $fields = [
-                'cliente' => intval($clientId),
-                'notas' => "",
-                'lineas' => $lines
+            $this->endpoint = 'api/g4100/create/order';
+            $this->params = [
+                'allow_redirects' => true,
+                'headers' => [
+                    'Content-Type' => 'application/x-www-form-urlencoded',
+                    'Accept' => 'application/json',
+                    'Authorization' => "Bearer {$this->config->getTokenFromDatabase('syncg/general/g4100_middleware_token')}",
+                ],
+                'form_params' => [
+                    'customer' => intval($clientId),
+                    'notes' => "Nota",
+                    'lines' => json_encode($lines)
+                ],
             ];
-            $this->endpoint = $this->config->getGeneralConfig('database_id') . '/pedir/finalizar?pedido=' . json_encode($fields);
         }
     }
 

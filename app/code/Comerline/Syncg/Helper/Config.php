@@ -43,6 +43,13 @@ class Config extends AbstractHelper
         );
     }
 
+    public function getTokenFromDatabase($path) {
+        $collection = $this->coreConfigDataCollection->create();
+        $collection->addFieldToFilter('path', $path)
+            ->getFirstItem();
+        return $collection->getFirstItem()->getData('value');
+    }
+
     public function setSyncInProgress(bool $syncInProgress)
     {
         $this->configWriter->save(self::PATH .'general/sync_in_progress', $syncInProgress, 'default');

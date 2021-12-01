@@ -16,7 +16,7 @@ use Psr\Log\LoggerInterface;
 
 class GetProvince extends SyncgApiService
 {
-    protected $method = Request::HTTP_METHOD_GET;
+    protected $method = Request::HTTP_METHOD_POST;
 
     /**
      * @var Login
@@ -58,18 +58,29 @@ class GetProvince extends SyncgApiService
 
     public function buildParams($clientProvince)
     {
-        $fields = [
-            'campos' => json_encode(array("nombre", "comunidad", "pais")),
-            'filtro' => json_encode(array(
-                "inicio" => 0,
-                "filtro" => array(
-                    array("campo" => "nombre", "valor" => $clientProvince, "tipo" => 0),
-                )
-            )),
-            'orden' => json_encode(array("campo" => "id", "orden" => "ASC"))
+        $this->endpoint = 'api/g4100/list';
+        $this->params = [
+            'allow_redirects' => true,
+            'headers' => [
+                'Content-Type' => 'application/json',
+                'Accept' => 'application/json',
+                'Authorization' => "Bearer {$this->config->getTokenFromDatabase('syncg/general/g4100_middleware_token')}",
+            ],
+            'body' => json_encode([
+                'endpoint' => 'provincias/listar',
+                'fields' => json_encode(array("nombre", "comunidad", "pais")),
+                'filters' => json_encode(array(
+                    "inicio" => 0,
+                    "filtro" => array(
+                        array("campo" => "nombre", "valor" => $clientProvince, "tipo" => 0),
+                    )
+                )),
+                'order' => json_encode(array("campo" => "id", "orden" => "ASC"))
+            ]),
         ];
-        $this->endpoint = $this->config->getGeneralConfig('database_id') . '/provincias/listar?' . http_build_query($fields);
-        $this->order = $fields['orden']; // We will need this to get the products correctly
+        $decoded = json_decode($this->params['body']);
+        $decoded = (array)$decoded;
+        $this->order = $decoded['order']; // We will need this to get the products correctly
     }
 
     public function checkProvince($clientProvince){

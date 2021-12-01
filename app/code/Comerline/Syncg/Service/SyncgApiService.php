@@ -84,7 +84,6 @@ abstract class SyncgApiService
             'cookies' => new FileCookieJar('cookie_path', true),
         ]]);
 
-
         try {
             $response = $client->request(
                 $requestMethod,
