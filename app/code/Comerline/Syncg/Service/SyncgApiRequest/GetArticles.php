@@ -721,7 +721,7 @@ class GetArticles extends SyncgApiService
                         unset($existingMediaGalleryEntries[$key]);
                         $image = $entry->getFile();
                         $this->imageProcessor->removeImage($product, $image);
-                        $image = 'pub/media/catalog/product' . $image;
+                        $image = 'pub/media/images' . $image;
                         if (file_exists($image)) {
                             unlink($image);
                         }

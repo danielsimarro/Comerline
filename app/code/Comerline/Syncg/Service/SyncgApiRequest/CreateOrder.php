@@ -57,51 +57,52 @@ class CreateOrder extends SyncgApiService
         parent::__construct($configHelper, $json, $responseFactory, $clientFactory, $logger);
     }
 
-    public function buildParams($lines = null, $clientId = null, $codeG4100 = null)
+    public function buildParams($codeG4100)
     {
-        if ($codeG4100) {
-            $this->endpoint = 'api/g4100/list';
-            $this->params = [
-                'allow_redirects' => true,
-                'headers' => [
-                    'Content-Type' => 'application/json',
-                    'Accept' => 'application/json',
-                    'Authorization' => "Bearer {$this->config->getTokenFromDatabase('syncg/general/g4100_middleware_token')}",
-                ],
-                'body' => json_encode([
-                    'endpoint' => 'articulos/catalogo',
-                    'fields' => json_encode(array("descripcion", "desc_detallada", "pvp1", "modelo", "si_vender_en_web")),
-                    'filters' => json_encode(array(
-                        "inicio" => 0,
-                        "filtro" => array(
-                            array("campo" => "cod", "valor" => $codeG4100, "tipo" => 0),
-                        )
-                    )),
-                    'order' => json_encode(array("campo" => "id", "orden" => "ASC"))
-                ]),
-            ];
-        } else {
-            $this->endpoint = 'api/g4100/create/order';
-            $this->params = [
-                'allow_redirects' => true,
-                'headers' => [
-                    'Content-Type' => 'application/x-www-form-urlencoded',
-                    'Accept' => 'application/json',
-                    'Authorization' => "Bearer {$this->config->getTokenFromDatabase('syncg/general/g4100_middleware_token')}",
-                ],
-                'form_params' => [
-                    'customer' => intval($clientId),
-                    'notes' => "Nota",
-                    'lines' => json_encode($lines)
-                ],
-            ];
-        }
+        $this->endpoint = 'api/g4100/list';
+        $this->params = [
+            'allow_redirects' => true,
+            'headers' => [
+                'Content-Type' => 'application/json',
+                'Accept' => 'application/json',
+                'Authorization' => "Bearer {$this->config->getTokenFromDatabase('syncg/general/g4100_middleware_token')}",
+            ],
+            'body' => json_encode([
+                'endpoint' => 'articulos/catalogo',
+                'fields' => json_encode(array("descripcion", "desc_detallada", "pvp1", "modelo", "si_vender_en_web")),
+                'filters' => json_encode(array(
+                    "inicio" => 0,
+                    "filtro" => array(
+                        array("campo" => "cod", "valor" => $codeG4100, "tipo" => 0),
+                    )
+                )),
+                'order' => json_encode(array("campo" => "id", "orden" => "ASC"))
+            ]),
+        ];
+    }
+
+    public function buildOrderParams($order, $lines, $clientId)
+    {
+        $this->endpoint = 'api/g4100/create/order';
+        $this->params = [
+            'allow_redirects' => true,
+            'headers' => [
+                'Content-Type' => 'application/x-www-form-urlencoded',
+                'Accept' => 'application/json',
+                'Authorization' => "Bearer {$this->config->getTokenFromDatabase('syncg/general/g4100_middleware_token')}",
+            ],
+            'form_params' => [
+                'customer' => intval($clientId),
+                'notes' => "ID de pedido Magento: " . $order->getData(''),
+                'lines' => json_encode($lines)
+            ],
+        ];
     }
 
     public function createOrder($order, $clientId)
     {
         $lines = $this->createLine($order); // We create the lines necessary with all the articles on the order
-        $this->buildParams($lines, $clientId);
+        $this->buildOrderParams($order, $lines, $clientId);
         $response = $this->execute();
         $orderId = 0;
         if (!empty($response['id'])) {
@@ -129,7 +130,7 @@ class CreateOrder extends SyncgApiService
                 if ($collectionSyncg->getSize() > 0) {
                     foreach ($collectionSyncg as $itemSyncg) {
                         $codeG4100 = $itemSyncg->getData('g_id');
-                        $this->buildParams(null, null, $codeG4100);
+                        $this->buildParams($codeG4100);
                         $response = $this->execute();
                         if ($response) {
                             $idG4100 = intval($response['listado'][0]['id']);
