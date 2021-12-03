@@ -93,7 +93,7 @@ class CreateOrder extends SyncgApiService
             ],
             'form_params' => [
                 'customer' => intval($clientId),
-                'notes' => "ID de pedido Magento: " . $order->getData(''),
+                'notes' => "ID de pedido Magento: " . $order->getData('increment_id'),
                 'lines' => json_encode($lines)
             ],
         ];
