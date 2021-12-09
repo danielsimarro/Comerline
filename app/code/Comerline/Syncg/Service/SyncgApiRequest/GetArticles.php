@@ -209,7 +209,7 @@ class GetArticles extends SyncgApiService
             'body' => json_encode([
                 'endpoint' => 'articulos/catalogo',
                 'fields' => json_encode(["nombre", "ref_fabricante", "fecha_cambio", "borrado", "ref_proveedor", "descripcion",
-                    "desc_detallada", "envase", "frente", "fondo", "alto", "diametro", "diametro2", "pvp1", "pvp2", "precio_coste_estimado", "modelo",
+                    "desc_detallada", "envase", "frente", "fondo", "alto", "peso", "diametro", "diametro2", "pvp1", "pvp2", "precio_coste_estimado", "modelo",
                     "si_vender_en_web", "existencias_globales", "grupo", "acotacion", "marca"]),
                 'filters' => json_encode([
                     "inicio" => $start,
@@ -431,7 +431,7 @@ class GetArticles extends SyncgApiService
                 $product->setSku($manufacturerRef);
             }
             if ($product->getUrlKey() === null) {
-                $url = strtolower(str_replace(" ", "-", $manufacturerRef) . $id);
+                $url = strtolower(str_replace(" ", "-", $page[$i]['descripcion']) . '-' . $id . '-' . $manufacturerRef);
                 $product->setUrlKey($url);
             }
         } else {
@@ -439,7 +439,7 @@ class GetArticles extends SyncgApiService
                 $product->setSku($vendorRef);
             }
             if ($product->getUrlKey() === null) {
-                $url = strtolower(str_replace(" ", "-", $vendorRef) . $id);
+                $url = strtolower(str_replace(" ", "-", $page[$i]['descripcion']) . '-' . $id . '-' . $vendorRef);
                 $product->setUrlKey($url);
             }
         }
@@ -479,6 +479,7 @@ class GetArticles extends SyncgApiService
         $product->setCost($page[$i]['precio_coste_estimado']);
         $product->setWebsiteIds([1]);
         $product->setCustomAttribute('tax_class_id', 2);
+        $product->setWeight($page[$i]['peso']);
         $product->setDescription($page[$i]['desc_detallada']);
         if (array_key_exists('familias', $page[$i])) {
             if (array_key_exists($page[$i]['familias'][0]['nombre'], $this->categories)) {

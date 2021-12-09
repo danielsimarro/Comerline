@@ -69,3 +69,4 @@ atlassian*
 /.utils/*.txt
 /.utils/*.csv
 /pub/order.txt
+/app/code/Comerline/Syncg/Console/Sayhello.php
