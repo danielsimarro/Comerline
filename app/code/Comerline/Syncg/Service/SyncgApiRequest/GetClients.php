@@ -72,18 +72,18 @@ class GetClients extends SyncgApiService
                 'headers' => [
                     'Content-Type' => 'application/json',
                     'Accept' => 'application/json',
-                    'Authorization' => "Bearer {$this->config->getTokenFromDatabase('syncg/general/g4100_middleware_token')}",
+                    'Authorization' => "Bearer {$this->config->getTokenFromDatabase()}",
                 ],
                 'body' => json_encode([
                     'endpoint' => 'personas/listar',
-                    'fields' => json_encode(array("nombre", "direccion1", "email", "poblacion", "telefono", "id_provincia", "cp")),
-                    'filters' => json_encode(array(
+                    'fields' => json_encode(["nombre", "direccion1", "email", "poblacion", "telefono", "id_provincia", "cp"]),
+                    'filters' => json_encode([
                         "inicio" => 0,
-                        "filtro" => array(
-                            array("campo" => "email", "valor" => $clientEmail, "tipo" => 0),
-                        )
-                    )),
-                    'order' => json_encode(array("campo" => "id", "orden" => "ASC"))
+                        "filtro" => [
+                            ["campo" => "email", "valor" => $clientEmail, "tipo" => 0],
+                        ]
+                    ]),
+                    'order' => json_encode(["campo" => "id", "orden" => "ASC"])
                 ]),
             ];
             $decoded = json_decode($this->params['body']);
@@ -96,11 +96,11 @@ class GetClients extends SyncgApiService
                 'headers' => [
                     'Content-Type' => 'application/json',
                     'Accept' => 'application/json',
-                    'Authorization' => "Bearer {$this->config->getTokenFromDatabase('syncg/general/g4100_middleware_token')}",
+                    'Authorization' => "Bearer {$this->config->getTokenFromDatabase()}",
                 ],
                 'body' => json_encode([
                     'endpoint' => 'personas',
-                    'fields' => json_encode(array("nombre", "direccion1", "email", "poblacion", "telefono", "id_provincia", "cp")),
+                    'fields' => json_encode(["nombre", "direccion1", "email", "poblacion", "telefono", "id_provincia", "cp"]),
                     'datas' => json_encode($client)
                 ]),
             ];
@@ -116,7 +116,7 @@ class GetClients extends SyncgApiService
         $clientPhone = $order->getData('addresses')[0]->getData('telephone');
         $clientProvince = $this->getProvince->checkProvince($order->getData('addresses')[0]->getData('region')); // Client's province
         $clientPostcode = $order->getData('addresses')[0]->getData('postcode'); // Client's postcode
-        $client = array($clientName, $clientAddress, $clientEmail, $clientCity, $clientPhone, $clientProvince, $clientPostcode); // We put it all togheter on an array
+        $client = [$clientName, $clientAddress, $clientEmail, $clientCity, $clientPhone, $clientProvince, $clientPostcode]; // We put it all togheter on an array
         $this->buildParams($clientEmail, $search = true); // First, we search if the client exists in G4100
         $response = $this->execute();
         if (!empty($response['listado'])) { // If it exists, we get it's ID

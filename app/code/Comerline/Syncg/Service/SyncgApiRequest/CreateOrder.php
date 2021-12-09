@@ -65,18 +65,18 @@ class CreateOrder extends SyncgApiService
             'headers' => [
                 'Content-Type' => 'application/json',
                 'Accept' => 'application/json',
-                'Authorization' => "Bearer {$this->config->getTokenFromDatabase('syncg/general/g4100_middleware_token')}",
+                'Authorization' => "Bearer {$this->config->getTokenFromDatabase()}",
             ],
             'body' => json_encode([
                 'endpoint' => 'articulos/catalogo',
-                'fields' => json_encode(array("descripcion", "desc_detallada", "pvp1", "modelo", "si_vender_en_web")),
-                'filters' => json_encode(array(
+                'fields' => json_encode(["descripcion", "desc_detallada", "pvp1", "modelo", "si_vender_en_web"]),
+                'filters' => json_encode([
                     "inicio" => 0,
-                    "filtro" => array(
-                        array("campo" => "cod", "valor" => $codeG4100, "tipo" => 0),
-                    )
-                )),
-                'order' => json_encode(array("campo" => "id", "orden" => "ASC"))
+                    "filtro" => [
+                        ["campo" => "cod", "valor" => $codeG4100, "tipo" => 0],
+                    ]
+                ]),
+                'order' => json_encode(["campo" => "id", "orden" => "ASC"])
             ]),
         ];
     }
@@ -89,7 +89,7 @@ class CreateOrder extends SyncgApiService
             'headers' => [
                 'Content-Type' => 'application/x-www-form-urlencoded',
                 'Accept' => 'application/json',
-                'Authorization' => "Bearer {$this->config->getTokenFromDatabase('syncg/general/g4100_middleware_token')}",
+                'Authorization' => "Bearer {$this->config->getTokenFromDatabase()}",
             ],
             'form_params' => [
                 'customer' => intval($clientId),
@@ -114,7 +114,7 @@ class CreateOrder extends SyncgApiService
     public function createLine($order)
     {
         $items = $order->getData('items');
-        $lines = array();
+        $lines = [];
         foreach ($items as $item) {
             $price = floatval($item->getData('price'));
             if ($price != 0.0) { // If the price is 0, that means that article is not right, so we don't add it to the order
@@ -137,16 +137,16 @@ class CreateOrder extends SyncgApiService
                         }
                     }
                 }
-                array_push($lines, array("articulo" => $idG4100, "cantidad" => $qty, "precio" => $price, "descuento" => 0));
+                array_push($lines, ["articulo" => $idG4100, "cantidad" => $qty, "precio" => $price, "descuento" => 0]);
             }
         }
         $idUpdate = intval($this->config->getGeneralConfig('shipping_rate_g4100_id'));
         $dataUpdate = strval($order->getData('base_shipping_amount'));
-        array_push($lines, array("articulo" => $idUpdate, "cantidad" => 1, "precio" => $dataUpdate, "descuento" => 0)); // We add the shipping rates here
+        array_push($lines, ["articulo" => $idUpdate, "cantidad" => 1, "precio" => $dataUpdate, "descuento" => 0]); // We add the shipping rates here
         if ($order->getData('coupon_code')) {
             $idDiscount = intval($this->config->getGeneralConfig('discount_g4100_id'));
             $dataDiscount = strval($order->getData('discount_amount'));
-            array_push($lines, array("articulo" => $idDiscount, "cantidad" => 1, "precio" => $dataDiscount, "descuento" => 0)); // We add the discount here (if exists)
+            array_push($lines, ["articulo" => $idDiscount, "cantidad" => 1, "precio" => $dataDiscount, "descuento" => 0]); // We add the discount here (if exists)
         }
         return $lines;
     }

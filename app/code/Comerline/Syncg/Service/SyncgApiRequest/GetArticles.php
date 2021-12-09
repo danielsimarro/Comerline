@@ -204,21 +204,21 @@ class GetArticles extends SyncgApiService
             'headers' => [
                 'Content-Type' => 'application/json',
                 'Accept' => 'application/json',
-                'Authorization' => "Bearer {$this->config->getTokenFromDatabase('syncg/general/g4100_middleware_token')}",
+                'Authorization' => "Bearer {$this->config->getTokenFromDatabase()}",
             ],
             'body' => json_encode([
                 'endpoint' => 'articulos/catalogo',
-                'fields' => json_encode(array("nombre", "ref_fabricante", "fecha_cambio", "borrado", "ref_proveedor", "descripcion",
+                'fields' => json_encode(["nombre", "ref_fabricante", "fecha_cambio", "borrado", "ref_proveedor", "descripcion",
                     "desc_detallada", "envase", "frente", "fondo", "alto", "diametro", "diametro2", "pvp1", "pvp2", "precio_coste_estimado", "modelo",
-                    "si_vender_en_web", "existencias_globales", "grupo", "acotacion", "marca")),
-                'filters' => json_encode(array(
+                    "si_vender_en_web", "existencias_globales", "grupo", "acotacion", "marca"]),
+                'filters' => json_encode([
                     "inicio" => $start,
-                    "filtro" => array(
-                        array("campo" => "si_vender_en_web", "valor" => "1", "tipo" => 0),
-                        array("campo" => "fecha_cambio", "valor" => $newDate->format('Y-m-d H:i'), "tipo" => 3)
-                    )
-                )),
-                'order' => json_encode(array("campo" => "id", "orden" => "ASC"))
+                    "filtro" => [
+                        ["campo" => "si_vender_en_web", "valor" => "1", "tipo" => 0],
+                        ["campo" => "fecha_cambio", "valor" => $newDate->format('Y-m-d H:i'), "tipo" => 3]
+                    ]
+                ]),
+                'order' => json_encode(["campo" => "id", "orden" => "ASC"])
             ]),
         ];
         $decoded = json_decode($this->params['body']);
@@ -241,7 +241,6 @@ class GetArticles extends SyncgApiService
                     if (strpos($this->order, 'ASC')) {
                         $start = intval($response['listado'][count($response['listado']) - 1]['id'] + 1);// If orden is ASC, the first item that the API gives us
                         // is the first, so we get it for the next query, and we add 1 to avoid duplicating that item
-
                     } else {
                         $start = intval($response['listado'][0]['id']) + 1; // If orden is not ASC, the first item that the API gives us is the one with highest ID,
                         // so we get it for the next query, and we add 1 to avoid duplicating that item
@@ -321,13 +320,13 @@ class GetArticles extends SyncgApiService
                         $attributeModel = $objectManager->create('Magento\ConfigurableProduct\Model\Product\Type\Configurable\Attribute');
                         $eavModel = $this->eavModel;
                         $attr = $eavModel->load($attributeId);
-                        $data = array(
+                        $data = [
                             'attribute_id' => $attributeId,
                             'product_id' => $product->getId(),
                             'position' => strval($count),
                             'sku' => $product->getSku(),
                             'label' => $attr->getData('frontend_label')
-                        );
+                        ];
                         $count++;
                         $new = $attributeModel->setData($data);
                         array_push($attributeModels, $new);
@@ -478,7 +477,7 @@ class GetArticles extends SyncgApiService
             $product->setPrice($page[$i]['pvp2']);
         }
         $product->setCost($page[$i]['precio_coste_estimado']);
-        $product->setWebsiteIds(array(1));
+        $product->setWebsiteIds([1]);
         $product->setCustomAttribute('tax_class_id', 2);
         $product->setDescription($page[$i]['desc_detallada']);
         if (array_key_exists('familias', $page[$i])) {
@@ -498,14 +497,12 @@ class GetArticles extends SyncgApiService
         if ($page[$i]['existencias_globales'] > 0) { // If there are no existences, that means there is no stock
             $stock = 1;
         }
-        $product->setStockData(
-            array(
+        $product->setStockData([
                 'use_config_manage_stock' => 0,
                 'manage_stock' => 1,
                 'is_in_stock' => $stock,
                 'qty' => $page[$i]['existencias_globales']
-            )
-        );
+        ]);
     }
 
     public function getCategoryIds($categoryName)
@@ -682,7 +679,7 @@ class GetArticles extends SyncgApiService
             $header = [
                 'Content-Type: application/json',
                 'Accept: application/json',
-                "Authorization: Bearer {$this->config->getTokenFromDatabase('syncg/general/g4100_middleware_token')}",
+                "Authorization: Bearer {$this->config->getTokenFromDatabase()}",
             ];
 
             $ch = curl_init();
@@ -731,9 +728,9 @@ class GetArticles extends SyncgApiService
                     try {
                         foreach ($path as $key => $p) {
                             if ($key === 0) {
-                                $types = array('image', 'small_image', 'thumbnail');
+                                $types = ['image', 'small_image', 'thumbnail'];
                             } else {
-                                $types = array('small_image');
+                                $types = ['small_image'];
                             }
                             $product->addImageToMediaGallery($p, $types, false, false);
                             $this->logger->info(new Phrase('G4100 Sync | [G4100 Product: ' . $article['cod'] . '] | [Magento Product: ' . $product->getId() . '] | Image ' . $key . ' | ADDED IMAGE.'));

@@ -64,18 +64,18 @@ class GetProvince extends SyncgApiService
             'headers' => [
                 'Content-Type' => 'application/json',
                 'Accept' => 'application/json',
-                'Authorization' => "Bearer {$this->config->getTokenFromDatabase('syncg/general/g4100_middleware_token')}",
+                'Authorization' => "Bearer {$this->config->getTokenFromDatabase()}",
             ],
             'body' => json_encode([
                 'endpoint' => 'provincias/listar',
-                'fields' => json_encode(array("nombre", "comunidad", "pais")),
-                'filters' => json_encode(array(
+                'fields' => json_encode(["nombre", "comunidad", "pais"]),
+                'filters' => json_encode([
                     "inicio" => 0,
-                    "filtro" => array(
-                        array("campo" => "nombre", "valor" => $clientProvince, "tipo" => 0),
-                    )
-                )),
-                'order' => json_encode(array("campo" => "id", "orden" => "ASC"))
+                    "filtro" => [
+                        ["campo" => "nombre", "valor" => $clientProvince, "tipo" => 0],
+                    ]
+                ]),
+                'order' => json_encode(["campo" => "id", "orden" => "ASC"])
             ]),
         ];
         $decoded = json_decode($this->params['body']);

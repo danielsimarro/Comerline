@@ -105,19 +105,19 @@ class CheckDeletedArticles extends SyncgApiService
             'headers' => [
                 'Content-Type' => 'application/json',
                 'Accept' => 'application/json',
-                'Authorization' => "Bearer {$this->config->getTokenFromDatabase('syncg/general/g4100_middleware_token')}",
+                'Authorization' => "Bearer {$this->config->getTokenFromDatabase()}",
             ],
             'body' => json_encode([
                 'endpoint' => 'articulos/papelera',
-                'fields' => json_encode(array("nombre", "ref_fabricante", "fecha_cambio", "ref_proveedor", "descripcion", "desc_detallada", "pvp1", "modelo", "si_vender_en_web", "existencias_globales", "grupo")),
-                'filters' => json_encode(array(
+                'fields' => json_encode(["nombre", "ref_fabricante", "fecha_cambio", "ref_proveedor", "descripcion", "desc_detallada", "pvp1", "modelo", "si_vender_en_web", "existencias_globales", "grupo"]),
+                'filters' => json_encode([
                     "inicio" => $start,
-                    "filtro" => array(
-                        array("campo" => "si_vender_en_web", "valor" => "1", "tipo" => 0),
-                        array("campo" => "fecha_cambio", "valor" => $newDate->format('Y-m-d H:i'), "tipo" => 3)
-                    )
-                )),
-                'order' => json_encode(array("campo" => "id", "orden" => "ASC"))
+                    "filtro" => [
+                        ["campo" => "si_vender_en_web", "valor" => "1", "tipo" => 0],
+                        ["campo" => "fecha_cambio", "valor" => $newDate->format('Y-m-d H:i'), "tipo" => 3]
+                    ]
+                ]),
+                'order' => json_encode(["campo" => "id", "orden" => "ASC"])
             ]),
         ];
         $decoded = json_decode($this->params['body']);

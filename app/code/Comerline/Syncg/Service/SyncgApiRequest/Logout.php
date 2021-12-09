@@ -32,7 +32,7 @@ class Logout extends SyncgApiService
             'headers' => [
                 'Content-Type' => 'application/json',
                 'Accept' => 'application/json',
-                'Authorization' => "Bearer {$this->config->getTokenFromDatabase('syncg/general/g4100_middleware_token')}",
+                'Authorization' => "Bearer {$this->config->getTokenFromDatabase()}",
             ],
         ];
         $this->endpoint .= '/api/users/logout';
