@@ -690,10 +690,10 @@ class GetArticles extends SyncgApiService
 
             $cached = [];
             $count = 0;
-            $g4100CacheFolder = $this->dir->getRoot() . '/g4100_cache/';
-            $mediaImagesFolder = $this->dir->getPath('media') . '/images/';
+            $g4100CacheFolder = $this->dir->getRoot() . '/g4100_cache/'; // Folder where we will cache all the images
+            $mediaImagesFolder = $this->dir->getPath('media') . '/images/'; // Folder where we have to copy the cached images
             foreach ($article['imagenes'] as $image) {
-                $imageSplit = str_split($image);
+                $imageSplit = str_split($image);  // Here we split all the characters in the image to create the folders
                 $cached[$count]['path'] = $g4100CacheFolder;
                 $cached[$count]['image'] = $image;
                 foreach ($imageSplit as $char) {
@@ -701,7 +701,7 @@ class GetArticles extends SyncgApiService
                 }
                 if (!file_exists($cached[$count]['path'] . $cached[$count]['image'] . '.jpg')) {
                     if (!file_exists($cached[$count]['path'])) {
-                        mkdir($cached[$count]['path'], 0777, true);
+                        mkdir($cached[$count]['path'], 0777, true); // We create the folders we need
                     }
                     $fp = fopen($cached[$count]['path'] . $cached[$count]['image'] . '.jpg', 'w+');              // Open file handle
 
@@ -732,10 +732,10 @@ class GetArticles extends SyncgApiService
                     foreach ($existingMediaGalleryEntries as $key => $entry) {
                         unset($existingMediaGalleryEntries[$key]);
                         $magentoImage = $entry->getFile();
-                        $this->imageProcessor->removeImage($product, $magentoImage);
+                        $this->imageProcessor->removeImage($product, $magentoImage); // We remove the image from Magento
                         $magentoImage = 'pub/media/catalog/product' . $magentoImage;
                         if (file_exists($magentoImage)) {
-                            unlink($magentoImage);
+                            unlink($magentoImage); // We remove the image from the HDD to save storage
                         }
                     }
                     $product->setMediaGalleryEntries($existingMediaGalleryEntries);
