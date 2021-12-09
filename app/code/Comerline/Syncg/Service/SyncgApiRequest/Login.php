@@ -49,7 +49,7 @@ class Login extends SyncgApiService
     {
         $this->buildParams();
         $response = $this->execute();
-        if (array_key_exists('success', $response)) {
+        if ($response && array_key_exists('success', $response)) {
             $this->configWriter->save(self::PATH .'general/g4100_middleware_token', $response['success']['token'], 'default');
         }
     }
