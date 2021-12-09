@@ -688,22 +688,22 @@ class GetArticles extends SyncgApiService
 
             curl_setopt($ch, CURLOPT_URL, $baseUrl);
 
-            $cachedPath = [];
+            $cached = [];
             $count = 0;
             $g4100CacheFolder = $this->dir->getRoot() . '/g4100_cache/';
             $mediaImagesFolder = $this->dir->getPath('media') . '/images/';
             foreach ($article['imagenes'] as $image) {
                 $imageSplit = str_split($image);
-                $cachedPath[$count]['path'] = $g4100CacheFolder;
-                $cachedPath[$count]['image'] = $image;
+                $cached[$count]['path'] = $g4100CacheFolder;
+                $cached[$count]['image'] = $image;
                 foreach ($imageSplit as $char) {
-                    $cachedPath[$count]['path'] .= $char . '/';
+                    $cached[$count]['path'] .= $char . '/';
                 }
-                if (!file_exists($cachedPath[$count]['path'] . $cachedPath[$count]['image'] . '.jpg')) {
-                    if (!file_exists($cachedPath[$count]['path'])) {
-                        mkdir($cachedPath[$count]['path'], 0777, true);
+                if (!file_exists($cached[$count]['path'] . $cached[$count]['image'] . '.jpg')) {
+                    if (!file_exists($cached[$count]['path'])) {
+                        mkdir($cached[$count]['path'], 0777, true);
                     }
-                    $fp = fopen($cachedPath[$count]['path'] . $cachedPath[$count]['image'] . '.jpg', 'w+');              // Open file handle
+                    $fp = fopen($cached[$count]['path'] . $cached[$count]['image'] . '.jpg', 'w+');              // Open file handle
 
                     curl_setopt($ch, CURLOPT_URL, $baseUrl . $image);
                     curl_setopt($ch, CURLOPT_FILE, $fp);          // Output to file
@@ -715,7 +715,7 @@ class GetArticles extends SyncgApiService
                     fclose($fp);
                 }
                 if (!file_exists($mediaImagesFolder  . $image . '.jpg')) {
-                    copy($cachedPath[$count]['path'] . $cachedPath[$count]['image'] . '.jpg', $mediaImagesFolder  . $image . '.jpg');
+                    copy($cached[$count]['path'] . $cached[$count]['image'] . '.jpg', $mediaImagesFolder  . $image . '.jpg');
                 }
                 $count++;
             }
@@ -741,13 +741,13 @@ class GetArticles extends SyncgApiService
                     $product->setMediaGalleryEntries($existingMediaGalleryEntries);
                     $this->productResource->save($product);
                     try {
-                        foreach ($cachedPath as $key => $p) {
+                        foreach ($cached as $key => $c) {
                             if ($key === 0) {
                                 $types = ['image', 'small_image', 'thumbnail'];
                             } else {
                                 $types = ['small_image'];
                             }
-                            $product->addImageToMediaGallery($mediaImagesFolder . $p['image'] . '.jpg', $types, false, false);
+                            $product->addImageToMediaGallery($mediaImagesFolder . $c['image'] . '.jpg', $types, false, false);
                             $this->logger->info(new Phrase('G4100 Sync | [G4100 Product: ' . $article['cod'] . '] | [Magento Product: ' . $product->getId() . '] | Image ' . $key . ' | ADDED IMAGE.'));
                         }
                     } catch (Exception $e) {
