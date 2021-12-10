@@ -278,11 +278,11 @@ class GetArticles extends SyncgApiService
                             }
                             if ($collectionSyncg->getSize() > 0) { // If the product already exists, that means we only have to update it
                                 foreach ($collectionSyncg as $itemSyncg) {
-                                    $product_id = $itemSyncg->getData('mg_id');
-                                    $product = $this->productRepository->getById($product_id, true); // We load the product in edit mode
+                                    $productId = $itemSyncg->getData('mg_id');
+                                    $product = $this->productRepository->getById($productId, true); // We load the product in edit mode
                                     $this->createUpdateProduct($product, $page, $attributeSetId, $i);
                                     $this->productRepository->save($product);
-                                    $this->logger->info(new Phrase('G4100 Sync | [G4100 Product: ' . $page[$i]['cod'] . '] | [Magento Product: ' . $product_id . '] | EDITED.'));
+                                    $this->logger->info(new Phrase('G4100 Sync | [G4100 Product: ' . $page[$i]['cod'] . '] | [Magento Product: ' . $productId . '] | EDITED.'));
                                 }
                             } else {
                                 $product = $this->productFactory->create(); // If the product doesn't exists, we create it
@@ -291,8 +291,8 @@ class GetArticles extends SyncgApiService
                                 $this->logger->info(new Phrase('G4100 Sync | [G4100 Product: ' . $page[$i]['cod'] . '] | [Magento Product: ' . $product->getId() . '] | CREATED.'));
                             }
                             if (array_key_exists('relacionados', $page[$i])) { // If the product has related products we get it's ID and save it on an array to work later with it
-                                $product_id = $product->getId();
-                                $magentoId[] = $this->createSimpleProduct($page, $i, $attributeSetId, $product_id); // We get the ID since we will create a duplicate of this product to avoid losing options
+                                $productId = $product->getId();
+                                $magentoId[] = $this->createSimpleProduct($page, $i, $attributeSetId, $productId); // We get the ID since we will create a duplicate of this product to avoid losing options
                                 $relatedProducts[] = $product->getEntityId();
                                 foreach ($page[$i]['relacionados'] as $r) {
                                     if ($r['cod'] !== $page[$i]['cod']) { // If the related product is the same as the one we created, we skip it, since we already have duplicated it as a simple product
@@ -384,7 +384,7 @@ class GetArticles extends SyncgApiService
         return $valid;
     }
 
-    public function createSimpleProduct($page, $i, $attributeSetId, $product_id)
+    public function createSimpleProduct($page, $i, $attributeSetId, $productId)
     {
         $simpleProduct[$i] = $page[$i];
         unset($simpleProduct[$i]['relacionados']); // We remove related products as we don't need them
@@ -414,7 +414,7 @@ class GetArticles extends SyncgApiService
         $this->getImages($simpleProduct[$i], $product);
         $this->syncgStatus = $this->syncgStatusRepository->updateEntityStatus($product->getEntityId(), $originalCod, SyncgStatus::TYPE_PRODUCT, SyncgStatus::STATUS_COMPLETED);
         $magentoId = []; // Here we will store the Magento ID of the new product, to use it later
-        $magentoId[$product_id] = $product->getId();
+        $magentoId[$productId] = $product->getId();
         return $magentoId;
     }
 
@@ -688,20 +688,35 @@ class GetArticles extends SyncgApiService
 
             curl_setopt($ch, CURLOPT_URL, $baseUrl);
 
-            $path = [];
+            $cached = [];
             $count = 0;
+            $g4100CacheFolder = $this->dir->getRoot() . '/g4100_cache/'; // Folder where we will cache all the images
+            $mediaImagesFolder = $this->dir->getPath('media') . '/images/'; // Folder where we have to copy the cached images
             foreach ($article['imagenes'] as $image) {
-                $path[$count] = $this->dir->getPath('media') . '/images/' . $image . '.jpg';
-                $fp = fopen($path[$count], 'w+');              // Open file handle
+                $imageSplit = str_split($image);  // Here we split all the characters in the image to create the folders
+                $cached[$count]['path'] = $g4100CacheFolder;
+                $cached[$count]['image'] = $image;
+                foreach ($imageSplit as $char) {
+                    $cached[$count]['path'] .= $char . '/';
+                }
+                if (!file_exists($cached[$count]['path'] . $cached[$count]['image'] . '.jpg')) {
+                    if (!file_exists($cached[$count]['path'])) {
+                        mkdir($cached[$count]['path'], 0777, true); // We create the folders we need
+                    }
+                    $fp = fopen($cached[$count]['path'] . $cached[$count]['image'] . '.jpg', 'w+');              // Open file handle
 
-                curl_setopt($ch, CURLOPT_URL, $baseUrl . $image);
-                curl_setopt($ch, CURLOPT_FILE, $fp);          // Output to file
-                curl_setopt($ch, CURLOPT_FOLLOWLOCATION, 1);
-                curl_setopt($ch, CURLOPT_TIMEOUT, 1000);
-                curl_setopt($ch, CURLOPT_USERAGENT, 'Mozilla/5.0');
-                curl_exec($ch);
+                    curl_setopt($ch, CURLOPT_URL, $baseUrl . $image);
+                    curl_setopt($ch, CURLOPT_FILE, $fp);          // Output to file
+                    curl_setopt($ch, CURLOPT_FOLLOWLOCATION, 1);
+                    curl_setopt($ch, CURLOPT_TIMEOUT, 1000);
+                    curl_setopt($ch, CURLOPT_USERAGENT, 'Mozilla/5.0');
+                    curl_exec($ch);
 
-                fclose($fp);
+                    fclose($fp);
+                }
+                if (!file_exists($mediaImagesFolder  . $image . '.jpg')) {
+                    copy($cached[$count]['path'] . $cached[$count]['image'] . '.jpg', $mediaImagesFolder  . $image . '.jpg');
+                }
                 $count++;
             }
             curl_close($ch);                              // Closing curl handle
@@ -709,30 +724,30 @@ class GetArticles extends SyncgApiService
                 ->addFieldToFilter('g_id', $article['cod']);
             if ($collectionProducts->getSize() > 0) { // If the product already exists, that means we only have to update it
                 foreach ($collectionProducts as $itemProducts) {
-                    $product_id = $itemProducts->getData('mg_id');
-                    $product = $this->productRepository->getById($product_id, true);
+                    $productId = $itemProducts->getData('mg_id');
+                    $product = $this->productRepository->getById($productId, true);
 
                     $existingMediaGalleryEntries = $product->getMediaGalleryEntries();
 
                     foreach ($existingMediaGalleryEntries as $key => $entry) {
                         unset($existingMediaGalleryEntries[$key]);
-                        $image = $entry->getFile();
-                        $this->imageProcessor->removeImage($product, $image);
-                        $image = 'pub/media/images' . $image;
-                        if (file_exists($image)) {
-                            unlink($image);
+                        $magentoImage = $entry->getFile();
+                        $this->imageProcessor->removeImage($product, $magentoImage); // We remove the image from Magento
+                        $magentoImage = 'pub/media/catalog/product' . $magentoImage;
+                        if (file_exists($magentoImage)) {
+                            unlink($magentoImage); // We remove the image from the HDD to save storage
                         }
                     }
                     $product->setMediaGalleryEntries($existingMediaGalleryEntries);
                     $this->productResource->save($product);
                     try {
-                        foreach ($path as $key => $p) {
+                        foreach ($cached as $key => $c) {
                             if ($key === 0) {
                                 $types = ['image', 'small_image', 'thumbnail'];
                             } else {
                                 $types = ['small_image'];
                             }
-                            $product->addImageToMediaGallery($p, $types, false, false);
+                            $product->addImageToMediaGallery($mediaImagesFolder . $c['image'] . '.jpg', $types, false, false);
                             $this->logger->info(new Phrase('G4100 Sync | [G4100 Product: ' . $article['cod'] . '] | [Magento Product: ' . $product->getId() . '] | Image ' . $key . ' | ADDED IMAGE.'));
                         }
                     } catch (Exception $e) {
