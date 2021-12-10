@@ -333,7 +333,7 @@ class GetArticles extends SyncgApiService
                         try {
                             $attributeModel->setData($data)->save(); // We create the attribute model
                         } catch (\Magento\Framework\Exception\AlreadyExistsException $e) {
-                            $this->logger->error('G4100 Sync | ' . $e->getMessage()); // If the attribute model already exists, it throws an exception,
+                            $this->logger->error('G4100 Sync | Attribute model already exists. Skipping creation....'); // If the attribute model already exists, it throws an exception,
                         }                                                       // so we need to catch it to avoid execution from stopping
                     }
                     $product->load('media_gallery');
@@ -430,24 +430,21 @@ class GetArticles extends SyncgApiService
             if ($product->getSku() !== $manufacturerRef && $product->getSku() !== $manufacturerRefPlusId) {
                 $product->setSku($manufacturerRef);
             }
-            if ($product->getUrlKey() === null) {
-                $url = strtolower(str_replace(" ", "-", $page[$i]['descripcion']) . '-' . $id . '-' . $manufacturerRef);
-                $product->setUrlKey($url);
-            }
         } else {
             if ($product->getSku() !== $vendorRef && $product->getSku() !== $vendorRefPlusId) {
                 $product->setSku($vendorRef);
-            }
-            if ($product->getUrlKey() === null) {
-                $url = strtolower(str_replace(" ", "-", $page[$i]['descripcion']) . '-' . $id . '-' . $vendorRef);
-                $product->setUrlKey($url);
             }
         }
         $product->setName($page[$i]['descripcion']);
         $product->setStoreId(0);
         $product->setAttributeSetId($attributeSetId);
+        $url = strtolower(str_replace(" ", "-", $page[$i]['descripcion']));
         if (!(array_key_exists('relacionados', $page[$i]))) {
             $this->insertAttributes($page[$i], $product);
+            $url .= '-' . $id;
+        }
+        if ($product->getUrlKey() === null) {
+            $product->setUrlKey($url);
         }
         if ($page[$i]['si_vender_en_web'] === true) {
             $product->setStatus(1);
@@ -548,13 +545,20 @@ class GetArticles extends SyncgApiService
     public function getRelatedProductsIds($rp, $relatedProductsSons, $magentoId)
     {
         $related = [];
+        $arrayCombination = [];
         foreach ($relatedProductsSons[$rp] as $son) {
             $collectionSon = $this->syncgStatusCollectionFactory->create()
                 ->addFieldToFilter('g_id', $son); // We get the IDs that are equal to the one we passed form comerline_syncg_status
             foreach ($collectionSon as $itemSon) {
-                $related[] = $itemSon->getData('mg_id'); // For each of them, we save the Magento ID to use it later
-                $this->logger->info(new Phrase('G4100 Sync | [G4100 Product: ' . $itemSon->getData('g_id')
-                    . '] | [Magento Product: ' . $itemSon->getData('mg_id') . '] | RELATED TO CONFIGURABLE | [' . 'Magento Product: ' . $rp . '].'));
+                $productSon = $this->productRepository->getById($itemSon->getData('mg_id')); // For each of them, we save the Magento ID to use it later
+                $options = $productSon->getData('width') . $productSon->getData('load') . $productSon->getData('hub') .
+                    $productSon->getData('diameter') . $productSon->getData('mounting') . $productSon->getData('offset');
+                if (!in_array($options, $arrayCombination)) {
+                    $related[] = $itemSon->getData('mg_id'); // For each of them, we save the Magento ID to use it later
+                    $arrayCombination[] = $options;
+                    $this->logger->info(new Phrase('G4100 Sync | [G4100 Product: ' . $itemSon->getData('g_id')
+                        . '] | [Magento Product: ' . $itemSon->getData('mg_id') . '] | RELATED TO CONFIGURABLE | [' . 'Magento Product: ' . $rp . '].'));
+                }
             }
         }
         foreach ($magentoId as $id) {
@@ -599,7 +603,7 @@ class GetArticles extends SyncgApiService
                 $code[] = $this->attributeHelper->getAttribute('diameter')->getAttributeId();
             }
             $hub = $attributes['alto'];
-            if ($hub !== "" && $hub !== "0.00") {
+            if ($hub !== "") {
                 $code[] = $this->attributeHelper->getAttribute('hub')->getAttributeId();
             }
             $mounting = $attributes['envase'];
@@ -643,7 +647,7 @@ class GetArticles extends SyncgApiService
                 $product->setCustomAttribute('diameter', '');
             }
             $hub = $attributes['alto'];
-            if ($hub !== "" && $hub !== "0.00") {
+            if ($hub !== "") {
                 $hubId = $this->attributeHelper->createOrGetId('hub', $hub);
                 $product->setCustomAttribute('hub', $hubId);
             } else {
@@ -659,7 +663,7 @@ class GetArticles extends SyncgApiService
             $load = $attributes['diametro2'];
             if ($load !== "" && $load !== "0.00") {
                 $loadId = $this->attributeHelper->createOrGetId('load', $load);
-                $product->setCustomAttribute('load', $loadId);
+                $product->setCustomAttribute('load', strval($loadId));
             } else {
                 $product->setCustomAttribute('load', '');
             }
