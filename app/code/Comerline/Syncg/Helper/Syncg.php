@@ -88,7 +88,6 @@ class Syncg
     }
 
     public function syncgAll(){
-        $this->disconnectFromAPI(); // Tries to disconnect in case a request went wrong, to avoid the API to crash
         $this->connectToAPI();
         if ($this->config->getGeneralConfig('enable_order_sync') === "1") {
             $this->fetchPendingOrders();
@@ -129,16 +128,10 @@ class Syncg
     private function checkMakeSync(): bool
     {
         $makeSync = true;
-        $currentDate = $this->dateTime->gmtTimestamp();
-        $lastSyncPlusFiveMinutes = $this->config->getLastSyncPlusFiveMinutes();
         if ($this->config->syncInProgress()) {
             $makeSync = false;
             $this->logger->info('Syncg | Sync in progress');
         }
-//        if ($currentDate < $lastSyncPlusFiveMinutes) {
-//            $makeSync = false;
-//            $this->logger->info("Syncg | Five minutes haven't passed");
-//        }
         return $makeSync;
     }
 }

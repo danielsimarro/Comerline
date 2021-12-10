@@ -16,7 +16,7 @@ use Psr\Log\LoggerInterface;
 
 class CreateOrder extends SyncgApiService
 {
-    protected $method = Request::HTTP_METHOD_GET;
+    protected $method = Request::HTTP_METHOD_POST;
 
     /**
      * @var CustomerRepositoryInterface
@@ -57,34 +57,52 @@ class CreateOrder extends SyncgApiService
         parent::__construct($configHelper, $json, $responseFactory, $clientFactory, $logger);
     }
 
-    public function buildParams($lines = null, $clientId = null, $codeG4100 = null)
+    public function buildParams($codeG4100)
     {
-        if ($codeG4100) {
-            $fields = [
-                'campos' => json_encode(array("descripcion", "desc_detallada", "pvp1", "modelo", "si_vender_en_web")),
-                'filtro' => json_encode(array(
+        $this->endpoint = 'api/g4100/list';
+        $this->params = [
+            'allow_redirects' => true,
+            'headers' => [
+                'Content-Type' => 'application/json',
+                'Accept' => 'application/json',
+                'Authorization' => "Bearer {$this->config->getTokenFromDatabase()}",
+            ],
+            'body' => json_encode([
+                'endpoint' => 'articulos/catalogo',
+                'fields' => json_encode(["descripcion", "desc_detallada", "pvp1", "modelo", "si_vender_en_web"]),
+                'filters' => json_encode([
                     "inicio" => 0,
-                    "filtro" => array(
-                        array("campo" => "cod", "valor" => $codeG4100, "tipo" => 0),
-                    )
-                )),
-                'orden' => json_encode(array("campo" => "id", "orden" => "ASC"))
-            ];
-            $this->endpoint = $this->config->getGeneralConfig('database_id') . '/articulos/catalogo?' . http_build_query($fields);
-        } else {
-            $fields = [
-                'cliente' => intval($clientId),
-                'notas' => "",
-                'lineas' => $lines
-            ];
-            $this->endpoint = $this->config->getGeneralConfig('database_id') . '/pedir/finalizar?pedido=' . json_encode($fields);
-        }
+                    "filtro" => [
+                        ["campo" => "cod", "valor" => $codeG4100, "tipo" => 0],
+                    ]
+                ]),
+                'order' => json_encode(["campo" => "id", "orden" => "ASC"])
+            ]),
+        ];
+    }
+
+    public function buildOrderParams($order, $lines, $clientId)
+    {
+        $this->endpoint = 'api/g4100/create/order';
+        $this->params = [
+            'allow_redirects' => true,
+            'headers' => [
+                'Content-Type' => 'application/x-www-form-urlencoded',
+                'Accept' => 'application/json',
+                'Authorization' => "Bearer {$this->config->getTokenFromDatabase()}",
+            ],
+            'form_params' => [
+                'customer' => intval($clientId),
+                'notes' => "ID de pedido Magento: " . $order->getData('increment_id'),
+                'lines' => json_encode($lines)
+            ],
+        ];
     }
 
     public function createOrder($order, $clientId)
     {
         $lines = $this->createLine($order); // We create the lines necessary with all the articles on the order
-        $this->buildParams($lines, $clientId);
+        $this->buildOrderParams($order, $lines, $clientId);
         $response = $this->execute();
         $orderId = 0;
         if (!empty($response['id'])) {
@@ -96,7 +114,7 @@ class CreateOrder extends SyncgApiService
     public function createLine($order)
     {
         $items = $order->getData('items');
-        $lines = array();
+        $lines = [];
         foreach ($items as $item) {
             $price = floatval($item->getData('price'));
             if ($price != 0.0) { // If the price is 0, that means that article is not right, so we don't add it to the order
@@ -112,23 +130,23 @@ class CreateOrder extends SyncgApiService
                 if ($collectionSyncg->getSize() > 0) {
                     foreach ($collectionSyncg as $itemSyncg) {
                         $codeG4100 = $itemSyncg->getData('g_id');
-                        $this->buildParams(null, null, $codeG4100);
+                        $this->buildParams($codeG4100);
                         $response = $this->execute();
                         if ($response) {
                             $idG4100 = intval($response['listado'][0]['id']);
                         }
                     }
                 }
-                array_push($lines, array("articulo" => $idG4100, "cantidad" => $qty, "precio" => $price, "descuento" => 0));
+                array_push($lines, ["articulo" => $idG4100, "cantidad" => $qty, "precio" => $price, "descuento" => 0]);
             }
         }
         $idUpdate = intval($this->config->getGeneralConfig('shipping_rate_g4100_id'));
         $dataUpdate = strval($order->getData('base_shipping_amount'));
-        array_push($lines, array("articulo" => $idUpdate, "cantidad" => 1, "precio" => $dataUpdate, "descuento" => 0)); // We add the shipping rates here
+        array_push($lines, ["articulo" => $idUpdate, "cantidad" => 1, "precio" => $dataUpdate, "descuento" => 0]); // We add the shipping rates here
         if ($order->getData('coupon_code')) {
             $idDiscount = intval($this->config->getGeneralConfig('discount_g4100_id'));
             $dataDiscount = strval($order->getData('discount_amount'));
-            array_push($lines, array("articulo" => $idDiscount, "cantidad" => 1, "precio" => $dataDiscount, "descuento" => 0)); // We add the discount here (if exists)
+            array_push($lines, ["articulo" => $idDiscount, "cantidad" => 1, "precio" => $dataDiscount, "descuento" => 0]); // We add the discount here (if exists)
         }
         return $lines;
     }

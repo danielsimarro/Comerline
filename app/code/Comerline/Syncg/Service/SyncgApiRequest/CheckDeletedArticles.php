@@ -24,7 +24,7 @@ use Safe\DateTime;
 class CheckDeletedArticles extends SyncgApiService
 {
 
-    protected $method = Request::HTTP_METHOD_GET;
+    protected $method = Request::HTTP_METHOD_POST;
 
     /**
      * @var Config
@@ -99,19 +99,30 @@ class CheckDeletedArticles extends SyncgApiService
         $hours = $date->getOffset() / 3600; // We have to add the offset, since the date from the API comes in CEST
         $newDate = $date->add(new DateInterval(("PT{$hours}H")));
 
-        $fields = [
-            'campos' => json_encode(array("nombre", "ref_fabricante", "fecha_cambio", "ref_proveedor", "descripcion", "desc_detallada", "pvp1", "modelo", "si_vender_en_web", "existencias_globales", "grupo")),
-            'filtro' => json_encode(array(
-                "inicio" => $start,
-                "filtro" => array(
-                    array("campo" => "si_vender_en_web", "valor" => "1", "tipo" => 0),
-                    array("campo" => "fecha_cambio", "valor" => $newDate->format('Y-m-d H:i'), "tipo" => 3)
-                )
-            )),
-            'orden' => json_encode(array("campo" => "id", "orden" => "ASC"))
+        $this->endpoint = 'api/g4100/list';
+        $this->params = [
+            'allow_redirects' => true,
+            'headers' => [
+                'Content-Type' => 'application/json',
+                'Accept' => 'application/json',
+                'Authorization' => "Bearer {$this->config->getTokenFromDatabase()}",
+            ],
+            'body' => json_encode([
+                'endpoint' => 'articulos/papelera',
+                'fields' => json_encode(["nombre", "ref_fabricante", "fecha_cambio", "ref_proveedor", "descripcion", "desc_detallada", "pvp1", "modelo", "si_vender_en_web", "existencias_globales", "grupo"]),
+                'filters' => json_encode([
+                    "inicio" => $start,
+                    "filtro" => [
+                        ["campo" => "si_vender_en_web", "valor" => "1", "tipo" => 0],
+                        ["campo" => "fecha_cambio", "valor" => $newDate->format('Y-m-d H:i'), "tipo" => 3]
+                    ]
+                ]),
+                'order' => json_encode(["campo" => "id", "orden" => "ASC"])
+            ]),
         ];
-        $this->endpoint = $this->config->getGeneralConfig('database_id') . '/articulos/papelera?' . http_build_query($fields);
-        $this->order = $fields['orden']; // We will need this to get the products correctly
+        $decoded = json_decode($this->params['body']);
+        $decoded = (array)$decoded;
+        $this->order = $decoded['order']; // We will need this to get the products correctly
     }
 
     public function send()
@@ -123,7 +134,7 @@ class CheckDeletedArticles extends SyncgApiService
         while ($loop) {
             $this->buildParams($start);
             $response = $this->execute();
-            if (array_key_exists('listado', $response)) {
+            if ($response !== null && array_key_exists('listado', $response)) {
                 if ($response['listado']) {
                     $pages[] = $response['listado'];
                     if (strpos($this->order, 'ASC')) {
@@ -138,6 +149,7 @@ class CheckDeletedArticles extends SyncgApiService
                     $loop = false; // If $response['listado'] is empty, we end the while loop
                 }
             } else {
+                $loop = false;
                 $this->logger->error(new Phrase('G4100 Sync | Error fetching deleted products.'));
             }
         }

@@ -35,12 +35,20 @@ class Config extends AbstractHelper
     }
 
     const PATH = 'syncg/';
+    const TOKEN_PATH = 'syncg/general/g4100_middleware_token';
 
     public function getConfigValue($field, $storeId = null)
     {
         return $this->scopeConfig->getValue(
             $field, ScopeInterface::SCOPE_STORE, $storeId
         );
+    }
+
+    public function getTokenFromDatabase() {
+        $collection = $this->coreConfigDataCollection->create();
+        $collection->addFieldToFilter('path', self::TOKEN_PATH)
+            ->getFirstItem();
+        return $collection->getFirstItem()->getData('value');
     }
 
     public function setSyncInProgress(bool $syncInProgress)
@@ -52,14 +60,9 @@ class Config extends AbstractHelper
     {
         $syncInProgress = false;
         $coreConfigData = $this->getParamsWithoutSystem('syncg/general/sync_in_progress');
-        $lastSyncPlusHalfHour = $this->getLastSyncPlusHalfHour();
-        $currentDate = $this->dateTime->gmtTimestamp();
         if ($coreConfigData) {
             $syncInProgress = $coreConfigData->getValue() ?? false;
         }
-//        if ($syncInProgress && $lastSyncPlusHalfHour <= $currentDate) {
-//            $syncInProgress = false;
-//        }
         return $syncInProgress;
     }
 
