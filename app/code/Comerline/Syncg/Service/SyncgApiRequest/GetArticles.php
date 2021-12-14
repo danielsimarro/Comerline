@@ -476,6 +476,7 @@ class GetArticles extends SyncgApiService
         $product->setCost($page[$i]['precio_coste_estimado']);
         $product->setWebsiteIds([1]);
         $product->setCustomAttribute('tax_class_id', 2);
+        $product->setCustomAttribute('g4100_id', $page[$i]['cod']);
         $product->setWeight($page[$i]['peso']);
         $product->setDescription($page[$i]['desc_detallada']);
         if (array_key_exists('familias', $page[$i])) {
@@ -553,7 +554,7 @@ class GetArticles extends SyncgApiService
                 $productSon = $this->productRepository->getById($itemSon->getData('mg_id')); // For each of them, we save the Magento ID to use it later
                 $options = $productSon->getData('width') . $productSon->getData('load') . $productSon->getData('hub') .
                     $productSon->getData('diameter') . $productSon->getData('mounting') . $productSon->getData('offset');
-                if (!in_array($options, $arrayCombination)) {
+                if (!in_array($options, $arrayCombination) && $itemSon->getData('mg_id') !== $rp) {
                     $related[] = $itemSon->getData('mg_id'); // For each of them, we save the Magento ID to use it later
                     $arrayCombination[] = $options;
                     $this->logger->info(new Phrase('G4100 Sync | [G4100 Product: ' . $itemSon->getData('g_id')
@@ -627,6 +628,7 @@ class GetArticles extends SyncgApiService
         if ($attributes) { // If this is exists, that means we have attributes
             $width = $attributes['frente'];
             if ($width !== "" && $width !== "0.00") {
+                $width .= "cm";
                 $widthId = $this->attributeHelper->createOrGetId('width', $width);
                 $product->setCustomAttribute('width', $widthId);
             } else {
@@ -634,6 +636,7 @@ class GetArticles extends SyncgApiService
             }                                                  // Useful when we delete an attribute, this sets it to empty
             $offset = $attributes['fondo'];
             if ($offset !== "" && $offset !== "0.00") {
+                $offset .= "mm";
                 $offsetId = $this->attributeHelper->createOrGetId('offset', $offset);
                 $product->setCustomAttribute('offset', $offsetId);
             } else {
@@ -641,6 +644,7 @@ class GetArticles extends SyncgApiService
             }
             $diameter = $attributes['diametro'];
             if ($diameter !== "" && $diameter !== "0.00") {
+                $diameter .= "''";
                 $diameterId = $this->attributeHelper->createOrGetId('diameter', $diameter);
                 $product->setCustomAttribute('diameter', $diameterId);
             } else {
@@ -648,6 +652,7 @@ class GetArticles extends SyncgApiService
             }
             $hub = $attributes['alto'];
             if ($hub !== "") {
+                $hub .= "mm";
                 $hubId = $this->attributeHelper->createOrGetId('hub', $hub);
                 $product->setCustomAttribute('hub', $hubId);
             } else {
@@ -662,6 +667,7 @@ class GetArticles extends SyncgApiService
             }
             $load = $attributes['diametro2'];
             if ($load !== "" && $load !== "0.00") {
+                $load .= "kg";
                 $loadId = $this->attributeHelper->createOrGetId('load', $load);
                 $product->setCustomAttribute('load', strval($loadId));
             } else {
