@@ -254,7 +254,6 @@ class GetArticles extends SyncgApiService
             }
         }
         $this->logger->info(new Phrase('G4100 Sync | Fetching products successful.'));
-        $objectManager = ObjectManager::getInstance(); // Instance of Object Manager. We need it for some of the operations that didn't work with dependency injection
         if ($pages) {
             $attributeSetId = "";  // Variable where we will store the attribute set ID
             $relatedProducts = []; // Array where we will store the products that have related products
@@ -309,55 +308,7 @@ class GetArticles extends SyncgApiService
                     }
                 }
             }
-
-            foreach ($relatedProducts as $rp) {
-                $product = $this->productRepository->getById($rp);
-                if (array_key_exists($rp, $relatedAttributes)) {
-                    $attributes = $relatedAttributes[$rp]; // Array with the attributes we want to make configurable
-                    $attributeModels = [];
-                    $count = 0;
-                    foreach ($attributes as $attributeId) {
-                        $attributeModel = $objectManager->create('Magento\ConfigurableProduct\Model\Product\Type\Configurable\Attribute');
-                        $eavModel = $this->eavModel;
-                        $attr = $eavModel->load($attributeId);
-                        $data = [
-                            'attribute_id' => $attributeId,
-                            'product_id' => $product->getId(),
-                            'position' => strval($count),
-                            'sku' => $product->getSku(),
-                            'label' => $attr->getData('frontend_label')
-                        ];
-                        $count++;
-                        $new = $attributeModel->setData($data);
-                        array_push($attributeModels, $new);
-                        try {
-                            $attributeModel->setData($data)->save(); // We create the attribute model
-                        } catch (\Magento\Framework\Exception\AlreadyExistsException $e) {
-                            $this->logger->error('G4100 Sync | Attribute model already exists. Skipping creation....'); // If the attribute model already exists, it throws an exception,
-                        }                                                       // so we need to catch it to avoid execution from stopping
-                    }
-                    $product->load('media_gallery');
-                    $product->setTypeId("configurable"); // We change the type of the product to configurable
-                    $product->setAttributeSetId($product->getData('attribute_set_id'));
-                    $this->configurable->setUsedProductAttributeIds($attributes, $product);
-                    $product->setNewVariationsAttributeSetId(intval($product->getData('attribute_set_id')));
-                    $relatedIds = $this->getRelatedProductsIds($rp, $relatedProductsSons, $magentoId);
-                    $extensionConfigurableAttributes = $product->getExtensionAttributes();
-                    $extensionConfigurableAttributes->setConfigurableProductLinks($relatedIds); // Linking by ID the products that are related to this configurable
-                    $extensionConfigurableAttributes->setConfigurableProductOptions($attributeModels); // Linking the options that are configurable
-                    $product->setExtensionAttributes($extensionConfigurableAttributes);
-                    $product->setCanSaveConfigurableAttributes(true);
-                    try {
-                        $this->productRepository->save($product);
-                        $this->logger->info(new Phrase('G4100 Sync | [Magento Product: ' . $rp . '] | CHANGED TO CONFIGURABLE.'));
-                        $this->setRelatedsVisibility($relatedIds); // We need to make the simple products related to this one hidden
-                    } catch (InputException $e) {
-                        $this->logger->error(new Phrase('G4100 Sync | [Magento Product: ' . $rp . "] | ERROR CHANGING TO CONFIGURABLE."));
-                    }
-                } else {
-                    $this->logger->error(new Phrase('G4100 Sync | [Magento Product: ' . $rp . "] | CAN'T CHANGE TO CONFIGURABLE (ONLY PARENT OPTION AVAILABLE)."));
-                }
-            }
+            $this->createRelatedProducts($relatedProducts, $relatedAttributes, $relatedProductsSons, $magentoId); // Here we relate all the simple products with their parents
         }
     }
 
@@ -492,16 +443,64 @@ class GetArticles extends SyncgApiService
             array_push($categoryIds, $this->createCategory($page[$i]['marca']));
         }
         $product->setCategoryIds($categoryIds);
-        $stock = 0;
-        if ($page[$i]['existencias_globales'] > 0) { // If there are no existences, that means there is no stock
-            $stock = 1;
-        }
         $product->setStockData([
                 'use_config_manage_stock' => 0,
-                'manage_stock' => 1,
-                'is_in_stock' => $stock,
+                'manage_stock' => 0,
+                'is_in_stock' => 1,
                 'qty' => $page[$i]['existencias_globales']
         ]);
+    }
+
+    public function createRelatedProducts($relatedProducts, $relatedAttributes, $relatedProductsSons, $magentoId) {
+        $objectManager = ObjectManager::getInstance(); // Instance of Object Manager. We need it for some operations that didn't work with dependency injection
+        foreach ($relatedProducts as $rp) {
+            $product = $this->productRepository->getById($rp);
+            if (array_key_exists($rp, $relatedAttributes)) {
+                $attributes = $relatedAttributes[$rp]; // Array with the attributes we want to make configurable
+                $attributeModels = [];
+                $count = 0;
+                foreach ($attributes as $attributeId) {
+                    $attributeModel = $objectManager->create('Magento\ConfigurableProduct\Model\Product\Type\Configurable\Attribute');
+                    $eavModel = $this->eavModel;
+                    $attr = $eavModel->load($attributeId);
+                    $data = [
+                        'attribute_id' => $attributeId,
+                        'product_id' => $product->getId(),
+                        'position' => strval($count),
+                        'sku' => $product->getSku(),
+                        'label' => $attr->getData('frontend_label')
+                    ];
+                    $count++;
+                    $new = $attributeModel->setData($data);
+                    array_push($attributeModels, $new);
+                    try {
+                        $attributeModel->setData($data)->save(); // We create the attribute model
+                    } catch (\Magento\Framework\Exception\AlreadyExistsException $e) {
+                        $this->logger->error('G4100 Sync | Attribute model already exists. Skipping creation....'); // If the attribute model already exists, it throws an exception,
+                    }                                                       // so we need to catch it to avoid execution from stopping
+                }
+                $product->load('media_gallery');
+                $product->setTypeId("configurable"); // We change the type of the product to configurable
+                $product->setAttributeSetId($product->getData('attribute_set_id'));
+                $this->configurable->setUsedProductAttributeIds($attributes, $product);
+                $product->setNewVariationsAttributeSetId(intval($product->getData('attribute_set_id')));
+                $relatedIds = $this->getRelatedProductsIds($rp, $relatedProductsSons, $magentoId);
+                $extensionConfigurableAttributes = $product->getExtensionAttributes();
+                $extensionConfigurableAttributes->setConfigurableProductLinks($relatedIds); // Linking by ID the products that are related to this configurable
+                $extensionConfigurableAttributes->setConfigurableProductOptions($attributeModels); // Linking the options that are configurable
+                $product->setExtensionAttributes($extensionConfigurableAttributes);
+                $product->setCanSaveConfigurableAttributes(true);
+                try {
+                    $this->productRepository->save($product);
+                    $this->logger->info(new Phrase('G4100 Sync | [Magento Product: ' . $rp . '] | CHANGED TO CONFIGURABLE.'));
+                    $this->setRelatedsVisibility($relatedIds); // We need to make the simple products related to this one hidden
+                } catch (InputException $e) {
+                    $this->logger->error(new Phrase('G4100 Sync | [Magento Product: ' . $rp . "] | ERROR CHANGING TO CONFIGURABLE."));
+                }
+            } else {
+                $this->logger->error(new Phrase('G4100 Sync | [Magento Product: ' . $rp . "] | CAN'T CHANGE TO CONFIGURABLE (ONLY PARENT OPTION AVAILABLE)."));
+            }
+        }
     }
 
     public function getCategoryIds($categoryName)
@@ -549,28 +548,40 @@ class GetArticles extends SyncgApiService
         $arrayCombination = [];
         foreach ($relatedProductsSons[$rp] as $son) {
             $collectionSon = $this->syncgStatusCollectionFactory->create()
-                ->addFieldToFilter('g_id', $son); // We get the IDs that are equal to the one we passed form comerline_syncg_status
+                ->addFieldToFilter('g_id', $son)
+                ->addFieldToFilter('type', SyncgStatus::TYPE_PRODUCT); // We get the IDs that are equal to the one we passed form comerline_syncg_status
             foreach ($collectionSon as $itemSon) {
-                $productSon = $this->productRepository->getById($itemSon->getData('mg_id')); // For each of them, we save the Magento ID to use it later
-                $options = $productSon->getData('width') . $productSon->getData('load') . $productSon->getData('hub') .
-                    $productSon->getData('diameter') . $productSon->getData('mounting') . $productSon->getData('offset');
+                $options = $this->getProductOptions($itemSon->getData('mg_id'));
                 if (!in_array($options, $arrayCombination) && $itemSon->getData('mg_id') !== $rp) {
                     $related[] = $itemSon->getData('mg_id'); // For each of them, we save the Magento ID to use it later
                     $arrayCombination[] = $options;
                     $this->logger->info(new Phrase('G4100 Sync | [G4100 Product: ' . $itemSon->getData('g_id')
                         . '] | [Magento Product: ' . $itemSon->getData('mg_id') . '] | RELATED TO CONFIGURABLE | [' . 'Magento Product: ' . $rp . '].'));
+                } else {
+                    $productSon = $this->productRepository->getById($itemSon->getData('mg_id'), true);
+                    $productSon->setStatus(0); // If the product can't be related to the configurable, we disable it
+                    $this->productRepository->save($productSon);
                 }
             }
         }
         foreach ($magentoId as $id) {
             if (array_key_exists($rp, $id)) {
-                $related[] = $id[$rp]; // We also add $magentoId, as we need it
-                $this->logger->info(new Phrase('G4100 Sync | [Magento Product: ' . $id[$rp]
-                    . '] | RELATED TO CONFIGURABLE | [' . 'Magento Product: ' . $rp . '].'));
+                $options = $this->getProductOptions($itemSon->getData('mg_id'));
+                if (!in_array($options, $arrayCombination)) {
+                    $related[] = $id[$rp]; // We also add $magentoId, as we need it
+                    $this->logger->info(new Phrase('G4100 Sync | [Magento Product: ' . $id[$rp]
+                        . '] | RELATED TO CONFIGURABLE | [' . 'Magento Product: ' . $rp . '].'));
+                }
             }
         }
 
         return $related;
+    }
+
+    public function getProductOptions($productId) {
+        $productSon = $this->productRepository->getById($productId);
+        return $productSon->getData('width') . $productSon->getData('load') . $productSon->getData('hub') .
+            $productSon->getData('diameter') . $productSon->getData('mounting') . $productSon->getData('offset');
     }
 
     public function setRelatedsVisibility($related, $current = null)
@@ -592,15 +603,15 @@ class GetArticles extends SyncgApiService
         if ($attributes) { // If this is exists, that means we have attributes
             $code = []; // Array where we will store the attributes IDs
             $width = $attributes['frente'];
-            if ($width !== "" && $width !== "0.00") {
+            if ($width !== "") {
                 $code[] = $this->attributeHelper->getAttribute('width')->getAttributeId(); // With this helper we get the ID of the desired attribute
             }
             $offset = $attributes['fondo'];
-            if ($offset !== "" && $offset !== "0.00") {
+            if ($offset !== "") {
                 $code[] = $this->attributeHelper->getAttribute('offset')->getAttributeId();
             }
             $diameter = $attributes['diametro'];
-            if ($diameter !== "" && $diameter !== "0.00") {
+            if ($diameter !== "") {
                 $code[] = $this->attributeHelper->getAttribute('diameter')->getAttributeId();
             }
             $hub = $attributes['alto'];
@@ -608,11 +619,11 @@ class GetArticles extends SyncgApiService
                 $code[] = $this->attributeHelper->getAttribute('hub')->getAttributeId();
             }
             $mounting = $attributes['envase'];
-            if ($mounting !== "" && $mounting !== "0.00") {
+            if ($mounting !== "") {
                 $code[] = $this->attributeHelper->getAttribute('mounting')->getAttributeId();
             }
             $load = $attributes['diametro2'];
-            if ($load !== "" && $load !== "0.00") {
+            if ($load !== "") {
                 $code[] = $this->attributeHelper->getAttribute('load')->getAttributeId();
             }
             $variation = $attributes['acotacion'];
@@ -627,7 +638,7 @@ class GetArticles extends SyncgApiService
     {
         if ($attributes) { // If this is exists, that means we have attributes
             $width = $attributes['frente'];
-            if ($width !== "" && $width !== "0.00") {
+            if ($width !== "") {
                 $width .= "cm";
                 $widthId = $this->attributeHelper->createOrGetId('width', $width);
                 $product->setCustomAttribute('width', $widthId);
@@ -635,7 +646,7 @@ class GetArticles extends SyncgApiService
                 $product->setCustomAttribute('width', '');      // We do this to put it on empty in case that is what we get from the API
             }                                                  // Useful when we delete an attribute, this sets it to empty
             $offset = $attributes['fondo'];
-            if ($offset !== "" && $offset !== "0.00") {
+            if ($offset !== "") {
                 $offset .= "mm";
                 $offsetId = $this->attributeHelper->createOrGetId('offset', $offset);
                 $product->setCustomAttribute('offset', $offsetId);
@@ -643,7 +654,7 @@ class GetArticles extends SyncgApiService
                 $product->setCustomAttribute('offset', '');
             }
             $diameter = $attributes['diametro'];
-            if ($diameter !== "" && $diameter !== "0.00") {
+            if ($diameter !== "") {
                 $diameter .= "''";
                 $diameterId = $this->attributeHelper->createOrGetId('diameter', $diameter);
                 $product->setCustomAttribute('diameter', $diameterId);
@@ -659,14 +670,14 @@ class GetArticles extends SyncgApiService
                 $product->setCustomAttribute('hub', '');
             }
             $mounting = $attributes['envase'];
-            if ($mounting !== "" && $mounting !== "0.00") {
+            if ($mounting !== "") {
                 $mountingId = $this->attributeHelper->createOrGetId('mounting', $mounting);
                 $product->setCustomAttribute('mounting', $mountingId);
             } else {
                 $product->setCustomAttribute('mounting', '');
             }
             $load = $attributes['diametro2'];
-            if ($load !== "" && $load !== "0.00") {
+            if ($load !== "") {
                 $load .= "kg";
                 $loadId = $this->attributeHelper->createOrGetId('load', $load);
                 $product->setCustomAttribute('load', strval($loadId));
