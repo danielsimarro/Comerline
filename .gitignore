@@ -70,3 +70,5 @@ atlassian*
 /.utils/*.csv
 /pub/order.txt
 /app/code/Comerline/Syncg/Console/Sayhello.php
+/g4100/*
+/g4100_cache/*
