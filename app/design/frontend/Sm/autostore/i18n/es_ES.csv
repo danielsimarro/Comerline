@@ -835,7 +835,7 @@
 "Multiple Select","Selección múltiple","module","Magento_Catalog"
 "Dropdown","Lista desplegable","module","Magento_Catalog"
 "%1 doesn't extend \Magento\Framework\Filter\Template","%1 no se extiende a \Magento\Framework\Filter\Template","module","Magento_Catalog"
-"As low as","Tan bajo como","module","Magento_Catalog"
+"As low as","Desde","module","Magento_Catalog"
 "test","prueba","module","Magento_Catalog"
 "Could not get extension attributes","No se pudo obtener los atributos de extensión","module","Magento_Catalog"
 "message","mensaje","module","Magento_Catalog"
@@ -12839,7 +12839,7 @@
 "Cannot delete option with id %1","No se puede eliminar opción con id %1","module","Magento_Bundle"
 "Could not save option","No se pueden guardar opción","module","Magento_Bundle"
 "Price Range","Rango de precios","module","Magento_Bundle"
-"As Low as","Tan bajo como","module","Magento_Bundle"
+"As Low as","Desde","module","Magento_Bundle"
 "Together","Juntos","module","Magento_Bundle"
 "Separately","Por separado","module","Magento_Bundle"
 "Please specify product option(s).","Por favor, especifique las opciones del artículo.","module","Magento_Bundle"
@@ -12880,7 +12880,7 @@
 "Shipped","Enviado","module","Magento_Bundle"
 "Refunded","Reembolsado","module","Magento_Bundle"
 "Canceled","Cancelado","module","Magento_Bundle"
-"As low as","Tan bajo como","module","Magento_Bundle"
+"As low as","Desde","module","Magento_Bundle"
 "Regular Price","Precio habitual","module","Magento_Bundle"
 "From","Desde","module","Magento_Bundle"
 "To","Hasta","module","Magento_Bundle"
@@ -12922,7 +12922,7 @@
 "View More","Ver Más","theme",frontend/Sm/autostore
 "Views: ","Visitas: ",theme,frontend/Sm/autostore
 "Featured Products","Productos Destacados",module,Sm_FilterProducts
-"View Cart","Ver Carrito","theme",frontend/Sm/autostore
+"View cart","Ver Carrito","theme",frontend/Sm/autostore
 "Enter your destination to get a shipping estimate.", "Introduzca su dirección para ver una estimación de los gastos de envío.","theme",frontend/Sm/autostore
 "Flat Rate","Tarifa","theme",frontend/Sm/autostore
 "Flat Rate - Fixed","Tarifa fija","theme",frontend/Sm/autostore
