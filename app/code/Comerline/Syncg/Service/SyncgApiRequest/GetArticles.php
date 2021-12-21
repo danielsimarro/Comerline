@@ -458,19 +458,19 @@ class GetArticles extends SyncgApiService
             if (array_key_exists($rp, $relatedAttributes)) {
                 $attributes = $relatedAttributes[$rp]; // Array with the attributes we want to make configurable
                 $attributeModels = [];
-                $count = 0;
+                $attributePositions = ['diameter', 'width', 'offset', 'hub', 'mounting', 'load', 'variation'];
                 foreach ($attributes as $attributeId) {
                     $attributeModel = $objectManager->create('Magento\ConfigurableProduct\Model\Product\Type\Configurable\Attribute');
                     $eavModel = $this->eavModel;
                     $attr = $eavModel->load($attributeId);
+                    $position = array_search($attr->getData('attribute_code'), $attributePositions);
                     $data = [
                         'attribute_id' => $attributeId,
                         'product_id' => $product->getId(),
-                        'position' => strval($count),
+                        'position' => strval($position),
                         'sku' => $product->getSku(),
                         'label' => $attr->getData('frontend_label')
                     ];
-                    $count++;
                     $new = $attributeModel->setData($data);
                     array_push($attributeModels, $new);
                     try {
@@ -558,9 +558,8 @@ class GetArticles extends SyncgApiService
                     $this->logger->info(new Phrase('G4100 Sync | [G4100 Product: ' . $itemSon->getData('g_id')
                         . '] | [Magento Product: ' . $itemSon->getData('mg_id') . '] | RELATED TO CONFIGURABLE | [' . 'Magento Product: ' . $rp . '].'));
                 } else {
-                    $productSon = $this->productRepository->getById($itemSon->getData('mg_id'), true);
-                    $productSon->setStatus(0); // If the product can't be related to the configurable, we disable it
-                    $this->productRepository->save($productSon);
+                    $productSon = $this->productRepository->getById($itemSon->getData('mg_id'), true, 0, true);
+                    $this->disableProduct($productSon);
                 }
             }
         }
@@ -571,11 +570,21 @@ class GetArticles extends SyncgApiService
                     $related[] = $id[$rp]; // We also add $magentoId, as we need it
                     $this->logger->info(new Phrase('G4100 Sync | [Magento Product: ' . $id[$rp]
                         . '] | RELATED TO CONFIGURABLE | [' . 'Magento Product: ' . $rp . '].'));
+                } else {
+                    $productSon = $this->productRepository->getById($id[$rp], true, 0, true);
+                    $this->disableProduct($productSon);
                 }
             }
         }
 
         return $related;
+    }
+
+    public function disableProduct($product) {
+        $product->setStatus(2); // If the product can't be related to the configurable, we disable it
+        $product->setVisibility(1); // If the product can't be related to the configurable, we set its visibility to not visible
+        $this->productRepository->save($product);
+        $product->save(); // Second save to avoid a product saving bug in Magento 2
     }
 
     public function getProductOptions($productId) {
