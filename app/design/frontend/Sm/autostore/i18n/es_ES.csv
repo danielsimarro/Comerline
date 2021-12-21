@@ -12932,4 +12932,5 @@
 "Items in Cart","Artículos en el Carrito","theme",frontend/Sm/autostore
 "Check / Money order","Dirección de facturación","theme",frontend/Sm/autostore
 "Item was removed successfully.","El artículo se ha borrado correctamente.","theme",frontend/Sm/autostore
+"Item was updated successfully.","El artículo se ha actualizado correctamente.","theme",frontend/Sm/autostore
 "Error occurred. Try to refresh page.","Ha ocurrido un error. Por favor, refresque la página.","theme",frontend/Sm/autostore
