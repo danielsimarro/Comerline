@@ -12923,6 +12923,7 @@
 "Views: ","Visitas: ",theme,frontend/Sm/autostore
 "Featured Products","Productos Destacados",module,Sm_FilterProducts
 "View cart","Ver Carrito","theme",frontend/Sm/autostore
+"View Cart","Ver Carrito","theme",frontend/Sm/autostore
 "Enter your destination to get a shipping estimate.", "Introduzca su dirección para ver una estimación de los gastos de envío.","theme",frontend/Sm/autostore
 "Flat Rate","Tarifa","theme",frontend/Sm/autostore
 "Flat Rate - Fixed","Tarifa fija","theme",frontend/Sm/autostore
