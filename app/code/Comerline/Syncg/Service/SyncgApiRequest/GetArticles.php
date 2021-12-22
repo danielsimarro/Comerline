@@ -265,7 +265,8 @@ class GetArticles extends SyncgApiService
                     if ($this->checkRequiredData($page[$i])) {
                         if ($page[$i]['descripcion'] !== 'Tasa Envío') {
                             $collectionSyncg = $this->syncgStatusCollectionFactory->create()
-                                ->addFieldToFilter('g_id', $page[$i]['cod']); // We check if the product already exists
+                                ->addFieldToFilter('g_id', $page[$i]['cod'])
+                                ->addFieldToFilter('type', [['eq' => SyncgStatus::TYPE_PRODUCT], ['eq' => SyncgStatus::TYPE_PRODUCT_SIMPLE]]);; // We check if the product already exists
                             if (array_key_exists('familias', $page[$i])) { // We check if the product has an attribute set. If it does, then checks what it is
                                 $attributeSetCollection = $this->attributeCollectionFactory->create();
                                 $attributeSets = $attributeSetCollection->getItems();
@@ -290,7 +291,17 @@ class GetArticles extends SyncgApiService
                                 $this->logger->info(new Phrase('G4100 Sync | [G4100 Product: ' . $page[$i]['cod'] . '] | [Magento Product: ' . $product->getId() . '] | CREATED.'));
                             }
                             if (array_key_exists('relacionados', $page[$i])) { // If the product has related products we get it's ID and save it on an array to work later with it
-                                $productId = $product->getId();
+                                $collectionSyncg = $this->syncgStatusCollectionFactory->create()
+                                    ->addFieldToFilter('g_id', $page[$i]['cod'])
+                                    ->addFieldToFilter('type', SyncgStatus::TYPE_PRODUCT); // We check if the product already exists
+                                if ($collectionSyncg->getSize() > 0) {
+                                    foreach ($collectionSyncg as $c) {
+                                        $product = $this->productRepository->getById($c->getData('mg_id'), true);
+                                        $productId = $product->getId();
+                                    }
+                                } else {
+                                    $productId = $product->getId();
+                                }
                                 $magentoId[] = $this->createSimpleProduct($page, $i, $attributeSetId, $productId); // We get the ID since we will create a duplicate of this product to avoid losing options
                                 $relatedProducts[] = $product->getEntityId();
                                 foreach ($page[$i]['relacionados'] as $r) {
@@ -363,7 +374,7 @@ class GetArticles extends SyncgApiService
             $this->logger->info(new Phrase('G4100 Sync | [G4100 Product: ' . $simpleProduct[$i]['cod'] . '] | [Magento Product: ' . $product->getId() . '] | CREATED.'));
         }
         $this->getImages($simpleProduct[$i], $product);
-        $this->syncgStatus = $this->syncgStatusRepository->updateEntityStatus($product->getEntityId(), $originalCod, SyncgStatus::TYPE_PRODUCT, SyncgStatus::STATUS_COMPLETED);
+        $this->syncgStatus = $this->syncgStatusRepository->updateEntityStatus($product->getEntityId(), $originalCod, SyncgStatus::TYPE_PRODUCT_SIMPLE, SyncgStatus::STATUS_COMPLETED);
         $magentoId = []; // Here we will store the Magento ID of the new product, to use it later
         $magentoId[$productId] = $product->getId();
         return $magentoId;
@@ -458,19 +469,19 @@ class GetArticles extends SyncgApiService
             if (array_key_exists($rp, $relatedAttributes)) {
                 $attributes = $relatedAttributes[$rp]; // Array with the attributes we want to make configurable
                 $attributeModels = [];
-                $count = 0;
+                $attributePositions = ['diameter', 'width', 'offset', 'hub', 'mounting', 'load', 'variation'];
                 foreach ($attributes as $attributeId) {
                     $attributeModel = $objectManager->create('Magento\ConfigurableProduct\Model\Product\Type\Configurable\Attribute');
                     $eavModel = $this->eavModel;
                     $attr = $eavModel->load($attributeId);
+                    $position = array_search($attr->getData('attribute_code'), $attributePositions);
                     $data = [
                         'attribute_id' => $attributeId,
                         'product_id' => $product->getId(),
-                        'position' => strval($count),
+                        'position' => strval($position),
                         'sku' => $product->getSku(),
                         'label' => $attr->getData('frontend_label')
                     ];
-                    $count++;
                     $new = $attributeModel->setData($data);
                     array_push($attributeModels, $new);
                     try {
@@ -546,10 +557,26 @@ class GetArticles extends SyncgApiService
     {
         $related = [];
         $arrayCombination = [];
+        foreach ($magentoId as $id) {
+            if (array_key_exists($rp, $id)) {
+                $childProductId = intval($id[$rp]);
+                $parentProductId = intval($rp);
+                $options = $this->getProductOptions($childProductId);
+                if (!in_array($options, $arrayCombination)) {
+                    $related[] = $childProductId; // We also add $magentoId, as we need it
+                    $arrayCombination[] = $options;
+                    $this->logger->info(new Phrase('G4100 Sync | [Magento Product: ' . $childProductId
+                        . '] | RELATED TO CONFIGURABLE | [' . 'Magento Product: ' . $parentProductId . '].'));
+                } else {
+                    $productSon = $this->productRepository->getById(key($id), true, 0, true);
+                    $this->disableProduct($productSon);
+                }
+            }
+        }
         foreach ($relatedProductsSons[$rp] as $son) {
             $collectionSon = $this->syncgStatusCollectionFactory->create()
                 ->addFieldToFilter('g_id', $son)
-                ->addFieldToFilter('type', SyncgStatus::TYPE_PRODUCT); // We get the IDs that are equal to the one we passed form comerline_syncg_status
+                ->addFieldToFilter('type', [['eq' => SyncgStatus::TYPE_PRODUCT], ['eq' => SyncgStatus::TYPE_PRODUCT_SIMPLE]]); // We get the IDs that are equal to the one we passed form comerline_syncg_status
             foreach ($collectionSon as $itemSon) {
                 $options = $this->getProductOptions($itemSon->getData('mg_id'));
                 if (!in_array($options, $arrayCombination) && $itemSon->getData('mg_id') !== $rp) {
@@ -558,24 +585,20 @@ class GetArticles extends SyncgApiService
                     $this->logger->info(new Phrase('G4100 Sync | [G4100 Product: ' . $itemSon->getData('g_id')
                         . '] | [Magento Product: ' . $itemSon->getData('mg_id') . '] | RELATED TO CONFIGURABLE | [' . 'Magento Product: ' . $rp . '].'));
                 } else {
-                    $productSon = $this->productRepository->getById($itemSon->getData('mg_id'), true);
-                    $productSon->setStatus(0); // If the product can't be related to the configurable, we disable it
-                    $this->productRepository->save($productSon);
-                }
-            }
-        }
-        foreach ($magentoId as $id) {
-            if (array_key_exists($rp, $id)) {
-                $options = $this->getProductOptions($itemSon->getData('mg_id'));
-                if (!in_array($options, $arrayCombination)) {
-                    $related[] = $id[$rp]; // We also add $magentoId, as we need it
-                    $this->logger->info(new Phrase('G4100 Sync | [Magento Product: ' . $id[$rp]
-                        . '] | RELATED TO CONFIGURABLE | [' . 'Magento Product: ' . $rp . '].'));
+                    $productSon = $this->productRepository->getById($itemSon->getData('mg_id'), true, 0, true);
+                    $this->disableProduct($productSon);
                 }
             }
         }
 
         return $related;
+    }
+
+    public function disableProduct($product) {
+        $product->setStatus(2); // If the product can't be related to the configurable, we disable it
+        $product->setVisibility(1); // If the product can't be related to the configurable, we set its visibility to not visible
+        $this->productRepository->save($product);
+        $product->save(); // Second save to avoid a product saving bug in Magento 2
     }
 
     public function getProductOptions($productId) {
@@ -743,7 +766,8 @@ class GetArticles extends SyncgApiService
             }
             curl_close($ch);                              // Closing curl handle
             $collectionProducts = $this->syncgStatusCollectionFactory->create()
-                ->addFieldToFilter('g_id', $article['cod']);
+                ->addFieldToFilter('g_id', $article['cod'])
+                ->addFieldToFilter('type', [['eq' => SyncgStatus::TYPE_PRODUCT], ['eq' => SyncgStatus::TYPE_PRODUCT_SIMPLE]]);;
             if ($collectionProducts->getSize() > 0) { // If the product already exists, that means we only have to update it
                 foreach ($collectionProducts as $itemProducts) {
                     $productId = $itemProducts->getData('mg_id');
