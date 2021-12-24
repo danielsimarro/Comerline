@@ -5,15 +5,15 @@ declare(strict_types=1);
 namespace Comerline\Syncg\Service;
 
 use Comerline\Syncg\Helper\Config;
-use GuzzleHttp\Cookie\FileCookieJar;
-use Magento\Framework\Serialize\Serializer\Json;
-use Magento\Framework\Webapi\Rest\Request;
 use GuzzleHttp\ClientFactory;
+use GuzzleHttp\Cookie\FileCookieJar;
 use GuzzleHttp\Exception\GuzzleException;
 use GuzzleHttp\Psr7\Response;
 use GuzzleHttp\Psr7\ResponseFactory;
-use Psr\Log\LoggerInterface;
 use Magento\Framework\Phrase;
+use Magento\Framework\Serialize\Serializer\Json;
+use Magento\Framework\Webapi\Rest\Request;
+use Psr\Log\LoggerInterface;
 
 abstract class SyncgApiService
 {
@@ -42,12 +42,13 @@ abstract class SyncgApiService
     protected $logger;
 
     public function __construct(
-        Config $configHelper,
-        Json $json,
+        Config          $configHelper,
+        Json            $json,
         ResponseFactory $responseFactory,
-        ClientFactory $clientFactory,
+        ClientFactory   $clientFactory,
         LoggerInterface $logger
-    ) {
+    )
+    {
         $this->config = $configHelper;
         $this->json = $json;
         $this->clientFactory = $clientFactory;
@@ -57,11 +58,12 @@ abstract class SyncgApiService
         $this->endpoint = '';
     }
 
-    public function execute(){
+    public function execute()
+    {
         $data = null;
         $response = $this->doRequest($this->endpoint, $this->params, $this->method);
         $status = $response->getStatusCode();
-        if ($status === 200){
+        if ($status === 200) {
             $responseJson = $response->getBody()->__toString();
             try {
                 $data = $this->json->unserialize($responseJson);
@@ -76,9 +78,10 @@ abstract class SyncgApiService
 
     private function doRequest(
         string $uriEndpoint,
-        array $params,
+        array  $params,
         string $requestMethod
-    ): Response {
+    ): Response
+    {
         $client = $this->clientFactory->create(['config' => [
             'base_uri' => $this->uri,
             'cookies' => new FileCookieJar('cookie_path', true),
@@ -98,5 +101,12 @@ abstract class SyncgApiService
         }
 
         return $response;
+    }
+
+    public function getTrackTime($timeStart): string
+    {
+        $timeEnd = microtime(true);
+        $executionTime = round(($timeEnd - $timeStart), 2);
+        return $executionTime . 's';
     }
 }

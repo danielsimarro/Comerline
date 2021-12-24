@@ -33,8 +33,8 @@ class ComerlineSyncg extends Command
     protected function execute(InputInterface $input, OutputInterface $output)
     {
         $this->state->setAreaCode(\Magento\Framework\App\Area::AREA_ADMINHTML);
-        $output->writeln("Ejecutando CRON");
+        $output->writeln("Executing Syncg");
         $this->syncgHelper->syncgAll();
-        $output->writeln("Ejecutado sin problemas");
+        $output->writeln("Finished");
     }
 }
