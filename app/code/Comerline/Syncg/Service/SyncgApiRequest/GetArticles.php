@@ -144,6 +144,12 @@ class GetArticles extends SyncgApiService
 
     private $prefixLog;
 
+    private $productG4100MagentoMap;
+
+    private $curlDownloadImage;
+
+    private $baseUrlDownloadImage;
+
     public function __construct(
         Config                     $configHelper,
         Json                       $json,
@@ -189,6 +195,8 @@ class GetArticles extends SyncgApiService
         $this->imageProcessor = $imageProcessor;
         $this->eavModel = $eavModel;
         $this->prefixLog = uniqid() . ' | G4100 Sync |';
+        $this->productG4100MagentoMap = [];
+        $this->baseUrlDownloadImage = $this->config->getGeneralConfig('installation_url') . 'api/g4100/image/';
         parent::__construct($configHelper, $json, $responseFactory, $clientFactory, $logger);
     }
 
@@ -255,7 +263,6 @@ class GetArticles extends SyncgApiService
             $this->categories = $this->getMagentoCategories();
             $countProductsG4100 = count($productsG4100);
             for ($i = 0; $i < $countProductsG4100; $i++) {
-                $timeStartProduct = microtime(true);
                 $productG4100 = $productsG4100[$i];
                 $prefixLog = $this->prefixLog . ' [' . $countProductsG4100 . '/' . ($i + 1) . '][G4100 Product: ' . $productG4100['cod'] . ']';
                 if ($this->checkRequiredData($productG4100)) {
@@ -272,16 +279,16 @@ class GetArticles extends SyncgApiService
                             $productId = $itemSyncg->getData('mg_id');
                             $product = $this->productRepository->getById($productId, true); // We load the product in edit mode
                             $this->createUpdateProduct($product, $productG4100, $attributeSetId);
-                            $product->setIsMassupdate(true);
                             $this->productRepository->save($product);
                             $this->logger->info(new Phrase($prefixLog . ' | [Magento Product: ' . $productId . '] | EDITED'));
+                            $this->addproductG4100MagentoMap($productG4100, $productId);
                         }
                     } else {
                         $product = $this->productFactory->create(); // If the product doesn't exists, we create it
                         $this->createUpdateProduct($product, $productG4100, $attributeSetId);
-                        $product->setIsMassupdate(true);
-                        $product->save();
+                        $product = $this->productRepository->save($product);
                         $this->logger->info(new Phrase($prefixLog . ' | [Magento Product: ' . $product->getId() . '] | CREATED'));
+                        $this->addproductG4100MagentoMap($productG4100, $product->getId());
                     }
                     if (array_key_exists('relacionados', $productG4100)) { // If the product has related products we get it's ID and save it on an array to work later with it
                         $collectionSyncg = $this->syncgStatusCollectionFactory->create()
@@ -303,19 +310,29 @@ class GetArticles extends SyncgApiService
                                 $relatedAttributes[$product->getEntityId()] = $this->getAttributesIds($productG4100);
                             }
                         }
-                        $this->saveImages($productG4100, $product); // Set images from config product
-                    } else {
-                        $this->saveImages($productG4100, $product); // Set images from simple product
                     }
                     $this->syncgStatusRepository->updateEntityStatus($product->getEntityId(), $productG4100['cod'], SyncgStatus::TYPE_PRODUCT, SyncgStatus::STATUS_COMPLETED);
                 } else {
                     $this->logger->error(new Phrase($prefixLog . ' | PRODUCT NOT VALID'));
                 }
-                $this->logger->info(new Phrase($prefixLog . ' | Finish Product sync ' . $this->getTrackTime($timeStartProduct)));
             }
+            $this->logger->info(new Phrase($this->prefixLog . 'Finish Products sync ' . $this->getTrackTime($timeStart)));
+            $this->saveImages();
             $this->createRelatedProducts($relatedProducts, $relatedAttributes, $relatedProductsSons, $magentoId); // Here we relate all the simple products with their parents
         }
-        $this->logger->info(new Phrase($this->prefixLog . 'Finish Products sync ' . $this->getTrackTime($timeStart)));
+        $this->logger->info(new Phrase($this->prefixLog . 'Finish All sync ' . $this->getTrackTime($timeStart)));
+    }
+
+    private function addproductG4100MagentoMap($productG4100, $magentoProductId)
+    {
+        $item = [
+            'g_id' => $productG4100['cod'],
+            'mg_id' => $magentoProductId
+        ];
+        if (array_key_exists('imagenes', $productG4100)) {
+            $item['images'] = $productG4100['imagenes'];
+        }
+        $this->productG4100MagentoMap[] = $item;
     }
 
     private function getProductsG4100(): array
@@ -391,18 +408,17 @@ class GetArticles extends SyncgApiService
             $product = false; // Otherwise, we have to create it
         }
         if ($product) {
-            $product->setIsMassupdate(true);
             $this->createUpdateProduct($product, $simpleProduct, $attributeSetId);
             $this->productResource->save($product);
             $this->logger->info(new Phrase($this->prefixLog . ' [Magento Product: ' . $product->getId() . '] | EDITED.'));
+            $this->addproductG4100MagentoMap($productG4100, $product->getId());
         } else {
             $product = $this->productFactory->create();
-            $product->setIsMassupdate(true);
             $this->createUpdateProduct($product, $simpleProduct, $attributeSetId);
-            $product->save();
+            $this->productResource->save($product);
             $this->logger->info(new Phrase($this->prefixLog . ' [G4100 Product: ' . $simpleProduct['cod'] . '] | [Magento Product: ' . $product->getId() . '] | CREATED.'));
+            $this->addproductG4100MagentoMap($productG4100, $product->getId());
         }
-        $this->saveImages($simpleProduct, $product);
         $this->syncgStatusRepository->updateEntityStatus($product->getEntityId(), $originalCod, SyncgStatus::TYPE_PRODUCT_SIMPLE, SyncgStatus::STATUS_COMPLETED);
         $magentoId = []; // Here we will store the Magento ID of the new product, to use it later
         $magentoId[$productId] = $product->getId();
@@ -533,13 +549,13 @@ class GetArticles extends SyncgApiService
                 $product->setCanSaveConfigurableAttributes(true);
                 try {
                     $this->productRepository->save($product);
-                    $this->logger->info(new Phrase($this->prefixLog . ' [Magento Product: ' . $rp . '] | CHANGED TO CONFIGURABLE'));
+                    $this->logger->info(new Phrase($this->prefixLog . ' [Magento Product: ' . $rp . '] | Changed to configurable'));
                     $this->setRelatedsVisibility($relatedIds); // We need to make the simple products related to this one hidden
                 } catch (InputException $e) {
-                    $this->logger->error(new Phrase($this->prefixLog . ' [Magento Product: ' . $rp . "] | ERROR CHANGING TO CONFIGURABLE"));
+                    $this->logger->error(new Phrase($this->prefixLog . ' [Magento Product: ' . $rp . "] | Error changing to configurable"));
                 }
             } else {
-                $this->logger->error(new Phrase($this->prefixLog . ' [Magento Product: ' . $rp . "] | CAN'T CHANGE TO CONFIGURABLE (ONLY PARENT OPTION AVAILABLE)"));
+                $this->logger->error(new Phrase($this->prefixLog . ' [Magento Product: ' . $rp . "] | Cant change to configurable (Only parent option available)"));
             }
         }
     }
@@ -615,7 +631,6 @@ class GetArticles extends SyncgApiService
     {
         $product->setStatus(2); // If the product can't be related to the configurable, we disable it
         $product->setVisibility(1); // If the product can't be related to the configurable, we set its visibility to not visible
-        $product->setIsMassupdate(true);
         $this->productRepository->save($product);
         $product->save(); // Second save to avoid a product saving bug in Magento 2
     }
@@ -637,7 +652,6 @@ class GetArticles extends SyncgApiService
             } else {
                 $product->setVisibility(1);
             }
-            $product->setIsMassupdate(true);
             $this->productRepository->save($product);
         }
     }
@@ -738,80 +752,96 @@ class GetArticles extends SyncgApiService
         }
     }
 
-    private function saveImages($productG4100, $product)
+    private function downloadImage($path, $image)
     {
-        if (array_key_exists('imagenes', $productG4100)) {
-            $baseUrl = $this->config->getGeneralConfig('installation_url') . 'api/g4100/image/';
+        if (!$this->curlDownloadImage) {
             $header = [
                 'Content-Type: application/json',
                 'Accept: application/json',
                 "Authorization: Bearer {$this->config->getTokenFromDatabase()}",
             ];
+            $this->curlDownloadImage = curl_init();
+            curl_setopt($this->curlDownloadImage, CURLOPT_RETURNTRANSFER, true);
+            curl_setopt($this->curlDownloadImage, CURLOPT_HTTPHEADER, $header);
+            curl_setopt($this->curlDownloadImage, CURLOPT_URL, $this->baseUrlDownloadImage);
+        }
 
-            $ch = curl_init();
-            curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-            curl_setopt($ch, CURLOPT_HTTPHEADER, $header);
-            curl_setopt($ch, CURLOPT_URL, $baseUrl);
+        $fp = fopen($path, 'w+'); // Open file handle
 
-            $g4100ImagesCache = [];
-            $count = 0;
-            $g4100CacheFolder = $this->dir->getPath('media') . '/g4100_cache/'; // Folder where we will cache all the images
-            // @todo revisar si es necesaria esta carpeta, es posible que se pueda pasar directamente desde la cache
-            foreach ($productG4100['imagenes'] as $image) {
-                $imageSplit = str_split($image);  // Here we split all the characters in the image to create the folders
-                $g4100ImagesCache[$count]['path'] = $g4100CacheFolder;
-                $g4100ImagesCache[$count]['image'] = $image;
-                foreach ($imageSplit as $char) {
-                    $g4100ImagesCache[$count]['path'] .= $char . '/';
-                }
-                if (!file_exists($g4100ImagesCache[$count]['path'] . $g4100ImagesCache[$count]['image'] . '.jpg')) { // If not exists, get image from API
-                    if (!file_exists($g4100ImagesCache[$count]['path'])) {
-                        mkdir($g4100ImagesCache[$count]['path'], 0777, true); // We create the folders we need
+        curl_setopt($this->curlDownloadImage, CURLOPT_URL, $this->baseUrlDownloadImage . $image);
+        curl_setopt($this->curlDownloadImage, CURLOPT_FILE, $fp);          // Output to file
+        curl_setopt($this->curlDownloadImage, CURLOPT_FOLLOWLOCATION, 1);
+        curl_setopt($this->curlDownloadImage, CURLOPT_TIMEOUT, 1000);
+        curl_setopt($this->curlDownloadImage, CURLOPT_USERAGENT, 'Mozilla/5.0');
+        curl_exec($this->curlDownloadImage);
+
+        $this->logger->info(new Phrase($this->prefixLog . ' Download Image ' . $image));
+
+        fclose($fp);
+    }
+
+    private function saveImages()
+    {
+        if ($this->productG4100MagentoMap) {
+            $this->logger->info(new Phrase($this->prefixLog . ' Init Images sync'));
+            $timeStart = microtime(true);
+            foreach ($this->productG4100MagentoMap as $productMap) {
+                $productG4100Id = $productMap['g_id'];
+                if (isset($productMap['images'])) {
+                    $g4100ImagesCache = [];
+                    $count = 0;
+                    $g4100CacheFolder = $this->dir->getPath('media') . '/g4100_cache/'; // Folder where we will cache all the images
+                    foreach ($productMap['images'] as $image) {
+                        $imageSplit = str_split($image);  // Here we split all the characters in the image to create the folders
+                        $g4100ImagesCache[$count]['path'] = $g4100CacheFolder;
+                        $g4100ImagesCache[$count]['image'] = $image;
+                        foreach ($imageSplit as $char) {
+                            $g4100ImagesCache[$count]['path'] .= $char . '/';
+                        }
+                        if (!file_exists($g4100ImagesCache[$count]['path'] . $g4100ImagesCache[$count]['image'] . '.jpg')) { // If not exists, get image from API
+                            if (!file_exists($g4100ImagesCache[$count]['path'])) {
+                                mkdir($g4100ImagesCache[$count]['path'], 0777, true); // We create the folders we need
+                            }
+                            $this->downloadImage($g4100ImagesCache[$count]['path'] . $g4100ImagesCache[$count]['image'] . '.jpg', $image);
+                        }
+                        $count++;
                     }
-                    $fp = fopen($g4100ImagesCache[$count]['path'] . $g4100ImagesCache[$count]['image'] . '.jpg', 'w+'); // Open file handle
 
-                    curl_setopt($ch, CURLOPT_URL, $baseUrl . $image);
-                    curl_setopt($ch, CURLOPT_FILE, $fp);          // Output to file
-                    curl_setopt($ch, CURLOPT_FOLLOWLOCATION, 1);
-                    curl_setopt($ch, CURLOPT_TIMEOUT, 1000);
-                    curl_setopt($ch, CURLOPT_USERAGENT, 'Mozilla/5.0');
-                    curl_exec($ch);
+                    $product = $this->productRepository->getById($productMap['mg_id'], true); // Load product
+                    $existingMediaGalleryEntries = $product->getMediaGalleryEntries();
 
-                    fclose($fp);
-                }
-                $count++;
-            }
-            curl_close($ch); // Closing curl handle
-
-            $product = $this->productRepository->getById($product->getId(), true); // Reload product Necessary?
-            $existingMediaGalleryEntries = $product->getMediaGalleryEntries();
-
-            foreach ($existingMediaGalleryEntries as $key => $entry) {
-                unset($existingMediaGalleryEntries[$key]);
-                $magentoImage = $entry->getFile();
-                $this->imageProcessor->removeImage($product, $magentoImage); // We remove the image from Magento
-                $magentoImage = 'pub/media/catalog/product' . $magentoImage;
-                if (file_exists($magentoImage)) {
-                    unlink($magentoImage); // We remove the image from the HDD to save storage
-                }
-            }
-            $product->setMediaGalleryEntries($existingMediaGalleryEntries);
-            $product->setIsMassupdate(true);
-            $this->productResource->save($product);
-            try {
-                foreach ($g4100ImagesCache as $key => $g4100ImageCache) {
-                    if ($key === 0) {
-                        $types = ['image', 'small_image', 'thumbnail'];
-                    } else {
-                        $types = ['small_image'];
+                    foreach ($existingMediaGalleryEntries as $key => $entry) {
+                        unset($existingMediaGalleryEntries[$key]);
+                        $magentoImage = $entry->getFile();
+                        $this->imageProcessor->removeImage($product, $magentoImage); // We remove the image from Magento
+                        $magentoImage = 'pub/media/catalog/product' . $magentoImage;
+                        if (file_exists($magentoImage)) {
+                            unlink($magentoImage); // We remove the image from the HDD to save storage
+                        }
                     }
-                    $product->addImageToMediaGallery($g4100ImageCache['path'] . $g4100ImageCache['image'] . '.jpg', $types, false, false);
-                    $this->logger->info(new Phrase($this->prefixLog . ' [G4100 Product: ' . $productG4100['cod'] . '] | [Magento Product: ' . $product->getId() . '] | Image ' . $key . ' | ADDED IMAGE'));
+                    $product->setMediaGalleryEntries($existingMediaGalleryEntries);
+                    $this->productResource->save($product);
+                    try {
+                        foreach ($g4100ImagesCache as $key => $g4100ImageCache) {
+                            if ($key === 0) {
+                                $types = ['image', 'small_image', 'thumbnail'];
+                            } else {
+                                $types = ['small_image'];
+                            }
+                            $product->addImageToMediaGallery($g4100ImageCache['path'] . $g4100ImageCache['image'] . '.jpg', $types, false, false);
+                            $this->logger->info(new Phrase($this->prefixLog . ' [G4100 Product: ' . $productG4100Id . '] | [Magento Product: ' . $product->getId() . '] | Image ' . $g4100ImageCache['image'] . ' | Add Image'));
+                        }
+                    } catch (Exception $e) {
+                        $this->logger->error($this->prefixLog . ' ' . $e->getMessage());
+                    }
+                    $this->productResource->save($product);
                 }
-            } catch (Exception $e) {
-                $this->logger->error($this->prefixLog . ' ' . $e->getMessage());
             }
-            $product->save();
+            if ($this->curlDownloadImage) {
+                curl_close($this->curlDownloadImage);
+                $this->curlDownloadImage = null;
+            }
+            $this->logger->info(new Phrase($this->prefixLog . 'Finish Images sync ' . $this->getTrackTime($timeStart)));
         }
     }
 }
