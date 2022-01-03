@@ -1,0 +1,28 @@
+<?php
+/**
+ * Product view template
+ * Origin template: vendor/magento/module-catalog/view/frontend/templates/product/view/form.phtml
+ * @var $block \Magento\Catalog\Block\Product\View
+ */
+?>
+<div class="w-100 product-more-info">
+
+    <?php
+    echo $this->getLayout()
+        ->createBlock('Magento\Cms\Block\Block')
+        ->setBlockId('llantas_product_advanced_options')
+        ->toHtml();
+    ?>
+
+    <div class="wrap-more-info">
+        <?php if ($block->hasOptions()) : ?>
+            <a href="#" class="llantas advanced-configuration" data-target="#product-options-wrapper">
+                <?php echo __('Configuración avanzada'); ?>
+            </a>
+        <?php endif; ?>
+
+    </div>
+</div>
+
+
+
