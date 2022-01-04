@@ -10,8 +10,8 @@
         <referenceContainer name="content">
             <container name="wrap.main.media" htmlTag="div" htmlClass="wrap-main-media mb-7" before="-" />
         </referenceContainer>
-        <referenceContainer name="product.info.main">
-            <block class="Magento\Catalog\Block\Product\View" name="product.info.product.advanced.options" template="Comerline_ImprovedProduct::product/view/advanced-options.phtml" after="product.info"/>
-        </referenceContainer>
+        <referenceBlock name="product.info.form.options">
+            <block class="Magento\Catalog\Block\Product\View" name="product.info.product.advanced.options" template="Comerline_ImprovedProduct::product/view/advanced-options.phtml" before="product.info.options.wrapper.bottom"/>
+        </referenceBlock>
     </body>
 </page>

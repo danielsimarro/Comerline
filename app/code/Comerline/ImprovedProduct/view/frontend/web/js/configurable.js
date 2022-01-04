@@ -280,8 +280,14 @@ define([
 
                 if (element.nextSetting) {
                     element.nextSetting.disabled = false;
+                    let nextId = element.nextSetting.id;
+                    let nextSelectedVal = $("#" + nextId).val();
                     this._fillSelect(element.nextSetting);
                     this._resetChildren(element.nextSetting);
+                    if (nextSelectedVal.length) {
+                        $("#" + nextId + ' :nth-child(2)').prop('selected', true);
+                        $("#" + nextId).change();
+                    }
                 } else {
                     if (!!document.documentMode) { //eslint-disable-line
                         this.inputSimpleProduct.val(element.options[element.selectedIndex].config.allowedProducts[0]);
@@ -398,7 +404,7 @@ define([
         _resetChildren: function (element) {
             if (element.childSettings) {
                 _.each(element.childSettings, function (set) {
-                    set.selectedIndex = 0;
+                    // set.selectedIndex = 0;
                     set.disabled = true;
                 });
 
