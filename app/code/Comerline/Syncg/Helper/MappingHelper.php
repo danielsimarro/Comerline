@@ -128,9 +128,9 @@ class MappingHelper
                 $position++;
             }
             $product->setCategoryIds($categoryIds);
-            $this->logger->info(new Phrase($this->prefixLog . '¡¡¡¡¡¡IGUALES!!!!!!!!!'));
+            $this->logger->info(new Phrase($this->prefixLog . 'Setted Categories'));
         } else {
-            $this->logger->info(new Phrase($this->prefixLog . 'No son iguales'));
+            $this->logger->info(new Phrase($this->prefixLog . 'Attributes do not match'));
         }
     }
 
