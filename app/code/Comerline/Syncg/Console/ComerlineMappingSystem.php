@@ -5,16 +5,20 @@ namespace Comerline\Syncg\Console;
 use Magento\Framework\App\State;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputInterface;
+use Comerline\Syncg\Helper\MappingHelper;
 use Symfony\Component\Console\Output\OutputInterface;
 
 class ComerlineMappingSystem extends Command
 {
+    protected $mappingHelper;
     private $state;
 
     public function __construct(
+        MappingHelper $mappingHelper,
         State $state
     )
     {
+        $this->mappingHelper = $mappingHelper;
         $this->state = $state;
         parent::__construct();
     }
@@ -31,7 +35,7 @@ class ComerlineMappingSystem extends Command
     {
         $this->state->setAreaCode(\Magento\Framework\App\Area::AREA_ADMINHTML);
         $output->writeln("Executing Wheel - Rim Mapping");
-        $output->writeln('Command works!');
+        $this->mappingHelper->mapCarRims();
         $output->writeln("Finished");
     }
 }
