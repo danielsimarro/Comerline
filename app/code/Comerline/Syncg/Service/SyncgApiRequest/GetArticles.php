@@ -505,7 +505,10 @@ class GetArticles extends SyncgApiService
     private function createRelatedProducts($relatedProducts, $relatedAttributes, $relatedProductsSons, $magentoId)
     {
         $objectManager = ObjectManager::getInstance(); // Instance of Object Manager. We need it for some operations that didn't work with dependency injection
-        foreach ($relatedProducts as $rp) {
+        $countRelated = count($relatedProducts);
+        for ($i = 0; $i < $countRelated; $i++) {
+            $rp = $relatedProducts[$i];
+            $prefixLog = $this->prefixLog . ' [' . $countRelated . '/' . ($i + 1) . '][Magento Product: ' . $rp . ']';
             $product = $this->productRepository->getById($rp);
             if (array_key_exists($rp, $relatedAttributes)) {
                 $attributes = $relatedAttributes[$rp]; // Array with the attributes we want to make configurable
@@ -528,7 +531,7 @@ class GetArticles extends SyncgApiService
                     try {
                         $attributeModel->setData($data)->save(); // We create the attribute model
                     } catch (\Magento\Framework\Exception\AlreadyExistsException $e) {
-                        $this->logger->error($this->prefixLog . ' Attribute model already exists. Skipping creation....'); // If the attribute model already exists, it throws an exception,
+                        $this->logger->error($prefixLog . ' | Attribute model already exists. Skipping creation....'); // If the attribute model already exists, it throws an exception,
                     }                                                       // so we need to catch it to avoid execution from stopping
                 }
                 $product->load('media_gallery');
@@ -544,13 +547,13 @@ class GetArticles extends SyncgApiService
                 $product->setCanSaveConfigurableAttributes(true);
                 try {
                     $this->productRepository->save($product);
-                    $this->logger->info(new Phrase($this->prefixLog . ' [Magento Product: ' . $rp . '] | Changed to configurable'));
+                    $this->logger->info(new Phrase($prefixLog . ' | Changed to configurable'));
                     $this->setRelatedsVisibility($relatedIds); // We need to make the simple products related to this one hidden
                 } catch (InputException $e) {
-                    $this->logger->error(new Phrase($this->prefixLog . ' [Magento Product: ' . $rp . "] | Error changing to configurable"));
+                    $this->logger->error(new Phrase($prefixLog . ' | Error changing to configurable'));
                 }
             } else {
-                $this->logger->error(new Phrase($this->prefixLog . ' [Magento Product: ' . $rp . "] | Cant change to configurable (Only parent option available)"));
+                $this->logger->error(new Phrase($prefixLog . ' | Cant change to configurable (Only parent option available)'));
             }
         }
     }
