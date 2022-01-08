@@ -35,6 +35,7 @@ use Magento\Store\Model\StoreManagerInterface;
 use PHPUnit\Exception;
 use Psr\Log\LoggerInterface;
 use Safe\DateTime;
+use Magento\Framework\Stdlib\DateTime\DateTime as DatetimeGmt;
 
 class GetArticles extends SyncgApiService
 {
@@ -148,6 +149,10 @@ class GetArticles extends SyncgApiService
     private $curlDownloadImage;
 
     private $baseUrlDownloadImage;
+    /**
+     * @var DatetimeGmt
+     */
+    private $dateTime;
 
     public function __construct(
         Config                     $configHelper,
@@ -171,7 +176,8 @@ class GetArticles extends SyncgApiService
         StoreManagerInterface      $storeManager,
         Configurable               $configurable,
         Processor                  $imageProcessor,
-        EavModel                   $eavModel
+        EavModel                   $eavModel,
+        DatetimeGmt                $dateTime
     )
     {
         $this->config = $configHelper;
@@ -193,6 +199,7 @@ class GetArticles extends SyncgApiService
         $this->logger = $logger;
         $this->imageProcessor = $imageProcessor;
         $this->eavModel = $eavModel;
+        $this->dateTime = $dateTime;
         $this->prefixLog = uniqid() . ' | G4100 Sync |';
         $this->baseUrlDownloadImage = $this->config->getGeneralConfig('installation_url') . 'api/g4100/image/';
         parent::__construct($configHelper, $json, $responseFactory, $clientFactory, $logger);
@@ -316,6 +323,8 @@ class GetArticles extends SyncgApiService
             }
             $this->logger->info(new Phrase($this->prefixLog . 'Finish Products sync ' . $this->getTrackTime($timeStart)));
             $this->createRelatedProducts($relatedProducts, $relatedAttributes, $relatedProductsSons, $magentoId); // Here we relate all the simple products with their parents
+            $this->logger->info(new Phrase($this->prefixLog . 'Finish Products relation' . $this->getTrackTime($timeStart)));
+            $this->config->setLastDateSyncProducts($this->dateTime->gmtDate());
         }
         $this->saveImages();
         $this->logger->info(new Phrase($this->prefixLog . 'Finish All sync ' . $this->getTrackTime($timeStart)));
@@ -353,7 +362,7 @@ class GetArticles extends SyncgApiService
                     $start = intval($response['listado'][0]['id']) + 1; // If orden is not ASC, the first item that the API gives us is the one with highest ID,
                     // so we get it for the next query, and we add 1 to avoid duplicating that item
                 }
-                $this->logger->info(new Phrase($this->prefixLog . ' Cached page ' . $countPages . '. Products '. count($productsG4100) . ' ' . $this->getTrackTime($timeStartLoop)));
+                $this->logger->info(new Phrase($this->prefixLog . ' Cached page ' . $countPages . '. Products ' . count($productsG4100) . ' ' . $this->getTrackTime($timeStartLoop)));
                 $loop = true;
             } elseif (!isset($response['listado'])) {
                 $this->logger->error(new Phrase($this->prefixLog . ' Error fetching products.'));

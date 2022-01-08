@@ -10,7 +10,6 @@ use Comerline\Syncg\Service\SyncgApiRequest\CheckDeletedArticles;
 use Comerline\Syncg\Service\SyncgApiRequest\Login;
 use Comerline\Syncg\Service\SyncgApiRequest\GetArticles;
 use Comerline\Syncg\Service\SyncgApiRequest\Logout;
-use Magento\Framework\Stdlib\DateTime\DateTime;
 use Psr\Log\LoggerInterface;
 
 class Syncg
@@ -49,11 +48,6 @@ class Syncg
     private $checkDeletedArticles;
 
     /**
-     * @var DateTime
-     */
-    private $dateTime;
-
-    /**
      * @var LoggerInterface
      */
     private $logger;
@@ -72,7 +66,6 @@ class Syncg
         Logout $logout,
         GetArticles $getArticles,
         CheckDeletedArticles $checkDeletedArticles,
-        DateTime $dateTime,
         LoggerInterface $logger
     ) {
         $this->syncgStatusRepository = $syncgStatusRepository;
@@ -83,7 +76,6 @@ class Syncg
         $this->logout = $logout;
         $this->getArticles = $getArticles;
         $this->checkDeletedArticles = $checkDeletedArticles;
-        $this->dateTime = $dateTime;
         $this->logger = $logger;
     }
 
@@ -95,7 +87,6 @@ class Syncg
         if ($this->checkMakeSync()){
             $this->config->setSyncInProgress(true);
             $this->fetchArticles();
-            $this->config->setLastDateSyncProducts($this->dateTime->gmtDate());
             $this->config->setSyncInProgress(false);
             $this->disconnectFromAPI();
         }
