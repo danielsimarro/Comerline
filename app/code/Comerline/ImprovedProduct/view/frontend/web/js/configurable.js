@@ -395,6 +395,8 @@ define([
             return images;
         },
 
+        /** INIT MOD **/
+
         /**
          * For a given option element, reset all of its selectable options. Clear any selected
          * index, disable the option choice, and reset the option's state if necessary.
@@ -476,6 +478,8 @@ define([
                 }
             }
         },
+
+        /** END MOD **/
 
         /**
          * Generate the label associated with a configurable option. This includes the option's
