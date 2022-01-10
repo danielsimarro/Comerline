@@ -2,6 +2,7 @@
 
 namespace Comerline\Syncg\Helper;
 
+use Magento\Catalog\Api\ProductRepositoryInterface;
 use Magento\Framework\Phrase;
 use Magento\Framework\Filesystem\DirectoryList;
 use Magento\Catalog\Model\ResourceModel\Product\CollectionFactory;
@@ -30,11 +31,6 @@ class MappingHelper
     protected $productCollectionFactory;
 
     /**
-     * @var array
-     */
-    private $categories;
-
-    /**
      * @var CategoryCollectionFactory
      */
     private $categoryCollectionFactory;
@@ -54,13 +50,20 @@ class MappingHelper
      */
     private $prefixLog;
 
+
+    /**
+     * @var ProductRepositoryInterface
+     */
+    private $productRepository;
+
     public function __construct(
-        LoggerInterface           $logger,
-        DirectoryList             $dir,
-        CollectionFactory         $productCollectionFactory,
-        CategoryCollectionFactory $categoryCollectionFactory,
-        StoreManagerInterface     $storeManager,
-        CategoryFactory           $categoryFactory
+        LoggerInterface            $logger,
+        DirectoryList              $dir,
+        CollectionFactory          $productCollectionFactory,
+        CategoryCollectionFactory  $categoryCollectionFactory,
+        StoreManagerInterface      $storeManager,
+        CategoryFactory            $categoryFactory,
+        ProductRepositoryInterface $productRepository
     )
     {
         $this->logger = $logger;
@@ -69,30 +72,46 @@ class MappingHelper
         $this->productCollectionFactory = $productCollectionFactory;
         $this->storeManager = $storeManager;
         $this->categoryFactory = $categoryFactory;
+        $this->productRepository = $productRepository;
         $this->prefixLog = uniqid() . ' | Comerline Car - Rims Mapping System |';
     }
 
     public function mapCarRims()
     {
-        $this->logger->info(new Phrase($this->prefixLog . 'Rim <-> Car Mapping Start'));
+        $this->logger->info(new Phrase($this->prefixLog . ' Rim <-> Car Mapping Start'));
         $collection = $this->productCollectionFactory->create()
             ->addAttributeToSelect('*')
             ->addAttributeToFilter('status', Status::STATUS_ENABLED);
 
-        $file = fopen($this->dir->getPath('media') . '/mapeo_llantas_modelos.csv', 'r', '"');
+        $csvData = $this->readCsv($this->dir->getPath('media') . '/mapeo_llantas_modelos.csv');
         $processedProducts = [];
+        $parentProductCategories = [];
 
         foreach ($collection as $product) {
-            $this->logger->info(new Phrase($this->prefixLog . 'Producto nuevo ID ' . $product->getData('entity_id')));
-            while ($row = fgetcsv($file, 3000, ";")) {
+            if (!in_array($product->getId(), $processedProducts)) {
+                $this->logger->info(new Phrase($this->prefixLog . ' Magento Product: ' . $product->getId() . ' | Loaded'));
                 if ($product->getTypeId() === 'configurable') {
                     $children = $product->getTypeInstance()->getUsedProducts($product);
                     foreach ($children as $child) {
-                        $this->checkAttributes($child, $row);
+                        $childAttributes = $this->checkAttributes($child, $csvData);
+                        if ($childAttributes) {
+                            $parentProductCategories = array_unique(array_merge($parentProductCategories, $childAttributes));
+                        }
+                        if (!in_array($child->getId(), $processedProducts)) {
+                            $processedProducts[] = $child->getId();
+                        }
                     }
                 } else {
-                    $this->checkAttributes($product, $row);
+                    $this->checkAttributes($product, $csvData);
                 }
+                $product = $this->productRepository->getById($product->getId(), true, 0, true);
+                $currentProductCategories = $product->getCategoryIds();
+                $parentProductCategories = array_unique(array_merge($currentProductCategories, $parentProductCategories));
+                $product->setCategoryIds($parentProductCategories);
+                $product->save();
+                $processedProducts[] = $product->getId();
+            } else {
+                $this->logger->info(new Phrase($this->prefixLog . ' Magento Product: ' . $product->getId() . ' | Skipped'));
             }
         }
     }
@@ -100,45 +119,59 @@ class MappingHelper
     private function getAttributeTexts($child)
     {
         $searchableAttributes = ['width', 'diameter', 'offset', 'hub'];
+        $attributeKeys = ['ancho', 'diametro', 'et', 'buje'];
         $attributes = [];
         foreach ($searchableAttributes as $sa) {
             $attribute = filter_var($child->getAttributeText($sa), FILTER_SANITIZE_NUMBER_FLOAT, FILTER_FLAG_ALLOW_FRACTION);
-            $attributes[] = sprintf('%g', $attribute);
+            $attributes[] = str_replace('.', ',', sprintf('%g', $attribute));
         }
-        return $attributes;
+        return array_combine($attributeKeys, $attributes);
     }
 
-    private function checkAttributes($product, $row)
+    private function checkAttributes($product, $csvData): array
     {
-        $attributes = str_replace('.', ',', $this->getAttributeTexts($product));
-        $csvAttributes = array_slice($row, 4);
+        $attributes = $this->getAttributeTexts($product);
         $categoryIds = [];
-        if ($attributes === $csvAttributes) {
-            $csvCategoriesRaw = array_slice($row, 0, 4);
-            $csvCategories[] = $csvCategoriesRaw[0];
-            $csvCategories[] = $csvCategoriesRaw[1];
-            if ($csvCategoriesRaw[3] !== "") {
-                $csvCategories[] = $csvCategoriesRaw[2] . " - " . $csvCategoriesRaw[3];
-            } else {
-                $csvCategories[] = $csvCategoriesRaw[2];
+        foreach ($csvData as $csv) {
+            if (count(array_diff_assoc($attributes, $csv)) === 0) {
+                $csvCategories = [];
+                if ($this->checkCsvRow($csv)) {
+                    $csvCategories[] = $csv['marca'];
+                    $csvCategories[] = $csv['modelo'];
+                    if ($csv['ano_hasta'] !== "") {
+                        $csvCategories[] = $csv['ano_desde'] . " - " . $csv['ano_hasta'];
+                    } else {
+                        $csvCategories[] = $csv['ano_desde'];
+                    }
+                    $position = 0;
+                    foreach ($csvCategories as $category) {
+                        $categoryIds[] = $this->createCategory($category, $csvCategories, $position);
+                        $position++;
+                    }
+                    $currentProductCategories = $product->getCategoryIds();
+                    $categoryIds = array_unique(array_merge($currentProductCategories, $categoryIds));
+                    $product->setCategoryIds($categoryIds);
+                    $product->save();
+                    $this->logger->info(new Phrase($this->prefixLog . ' Magento Product: ' . $product->getId() . ' | Mapped Categories'));
+                } else {
+                    $this->logger->info(new Phrase($this->prefixLog . ' Magento Product: ' . $product->getId() . ' | Incomplete CSV Category'));
+                }
             }
-            $position = 0;
-            foreach ($csvCategories as $category) {
-                $categoryIds[] = $this->createCategory($category, $csvCategories, $position);
-                $position++;
-            }
-            $product->setCategoryIds($categoryIds);
-            $this->logger->info(new Phrase($this->prefixLog . 'Setted Categories'));
-        } else {
-            $this->logger->info(new Phrase($this->prefixLog . 'Attributes do not match'));
         }
+        return $categoryIds;
     }
 
     private function getSpecificMagentoCategory($attribute, $value)
     {
-        $categoryCollection = $this->categoryCollectionFactory->create()
-            ->addAttributeToFilter($attribute, $value)
-            ->setPageSize(1);
+        $categoryCollection = $this->categoryCollectionFactory->create();
+        if (is_array($attribute)) {
+            for ($i = 0; $i < count($attribute); $i++) {
+                $categoryCollection->addAttributeToFilter($attribute[$i], $value[$i]);
+            }
+        } else {
+            $categoryCollection->addAttributeToFilter($attribute, $value);
+        }
+        $categoryCollection->setPageSize(1);
         if ($categoryCollection->getSize()) {
             $categoryId = $categoryCollection->getFirstItem()->getId();
         } else {
@@ -150,12 +183,12 @@ class MappingHelper
     private function createCategory($name, $array, $position)
     {
         if (array_search($name, $array) === 0) {
-            $parentId = $this->getSpecificMagentoCategory('name','Por Vehículo');
+            $parentId = $this->getSpecificMagentoCategory('name', 'Por Vehículo');
         } else {
             $parentId = $this->getSpecificMagentoCategory('name', $array[$position - 1]);
         }
 
-        $categoryId = $this->getSpecificMagentoCategory('parent_id', $parentId);
+        $categoryId = $this->getSpecificMagentoCategory(['parent_id', 'name'], [$parentId, $name]);
         if (!$categoryId) {
             $parentCategory = $this->categoryFactory->create()->load($parentId);
             $category = $this->categoryFactory->create();
@@ -169,5 +202,35 @@ class MappingHelper
         }
 
         return $categoryId;
+    }
+
+    private function readCsv($csv): array
+    {
+
+        $rows = array_map(function ($row) {
+            return str_getcsv($row, ';');
+        }, file($csv));
+        $header = array_shift($rows);
+        $data = [];
+        foreach ($rows as $row) {
+            $data[] = array_combine($header, $row);
+        }
+        return $data;
+    }
+
+    private function checkCsvRow($csv): bool
+    {
+        $valid = false;
+        $validFields = 0;
+        $requiredKeys = ['marca', 'modelo', 'ano_desde', 'ano_hasta', 'ancho', 'diametro', 'et', 'buje'];
+        foreach ($requiredKeys as $rk) {
+            if (isset($csv[$rk]) && ($csv[$rk] !== "")) {
+                $validFields++;
+            }
+        }
+        if ($validFields === 8) {
+            $valid = true;
+        }
+        return $valid;
     }
 }
