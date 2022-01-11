@@ -303,45 +303,12 @@ define([
             this._displayRegularPriceBlock(this.simpleProduct);
             this._displayTierPriceBlock(this.simpleProduct);
             this._displayNormalPriceLabel();
-            this._changeProductImage();
-        },
-
-        /**
-         * Change displayed product image according to chosen options of configurable product
-         *
-         * @private
-         */
-        _changeProductImage: function () {
-            var images,
-                initialImages = this.options.mediaGalleryInitial,
-                gallery = $(this.options.mediaGallerySelector).data('gallery');
-
-            if (_.isUndefined(gallery)) {
-                $(this.options.mediaGallerySelector).on('gallery:loaded', function () {
-                    this._changeProductImage();
-                }.bind(this));
-
-                return;
-            }
-
-            images = this.options.spConfig.images[this.simpleProduct];
-
-            if (images) {
-                images = this._sortImages(images);
-
-                if (this.options.gallerySwitchStrategy === 'prepend') {
-                    images = images.concat(initialImages);
-                }
-
-                images = $.extend(true, [], images);
-                images = this._setImageIndex(images);
-
-                gallery.updateData(images);
-                this._addFotoramaVideoEvents(false);
-            } else {
-                gallery.updateData(initialImages);
-                this._addFotoramaVideoEvents(true);
-            }
+            /** INIT MOD
+             *
+             *  Modification: deleted changeProductImage function to avoid it on configurable products
+             *
+             *  END MOD
+             * **/
         },
 
         /**
