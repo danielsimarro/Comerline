@@ -87,7 +87,7 @@ class MappingHelper
             ->addAttributeToFilter('status', Status::STATUS_ENABLED); // We will only map the enabled products to reduce workload
 
         try {
-            $csvData = $this->readCsv($this->dir->getPath('media') . '/mapeo_llantas_modelos_test.csv'); // We load the CSV file
+            $csvData = $this->readCsv($this->dir->getPath('media') . '/mapeo_llantas_modelos.csv'); // We load the CSV file
             $processedProducts = [];
             $parentProductCategories = [];
 
@@ -147,20 +147,16 @@ class MappingHelper
         $categoryIds = [];
         foreach ($csvData as $csv) {
             if (count(array_diff_assoc($attributes, $csv)) === 0) {
-                $csvCategories = [];
                 if ($this->checkCsvRow($csv)) {
-                    $csvCategories[] = $csv['marca'];
-                    $csvCategories[] = $csv['modelo'];
-                    if ($csv['ano_hasta'] !== "") { // If 'ano_hasta' is not empty, the category will be a year period instead of only a year
-                        $csvCategories[] = $csv['ano_desde'] . " - " . $csv['ano_hasta'];
-                    } else {
-                        $csvCategories[] = $csv['ano_desde'];
-                    }
+                    $csvCategories = $this->mountCsvCategoriesArray($csv);
                     $position = 0;
                     foreach ($csvCategories as $category) {
-                        $categoryIds[] = $this->createCategory($category, $csvCategories, $position);
+                        $categoryIds[] = $this->getCategoryIds($csvCategories, $position);
                         $this->logger->info(new Phrase($this->prefixLog . ' Magento Product: ' . $product->getId() . ' | Mapped Category | ' . $category . '.'));
                         $position++;
+                        if ($position === 3) {
+                            break;
+                        }
                     }
                     $currentProductCategories = $product->getCategoryIds();
                     $categoryIds = array_unique(array_merge($currentProductCategories, $categoryIds)); // To keep the categories
@@ -195,33 +191,56 @@ class MappingHelper
         return $categoryId;
     }
 
-    private function createCategory($name, $array, $position)
+    private function getCategoryIds($array, $position)
     {
-        if (array_search($name, $array) === 0) { // In the first position, the parent category will always be 'Por Vehículo'
+        $arrayKeys = ['marca', 'modelo', 'ano', 'meta_title', 'meta_description', 'meta_title_parent', 'meta_description_parent'];
+        if ($position === 0) { // In the first position, the parent category will always be 'Por Vehículo'
             $parentId = $this->getSpecificMagentoCategory('name', 'Por Vehículo');
+            $metaDescriptionKey = $arrayKeys[6]; // The meta description will be 'meta_description_parent'
+            $metaTitleKey = $arrayKeys[5]; // The meta title will be 'meta_title_parent'
         } else { // In the following positions, the parent category will be the one in the prior position
-            $parentId = $this->getSpecificMagentoCategory('name', $array[$position - 1]);
+            $parentId = $this->getSpecificMagentoCategory('name', $array[$arrayKeys[$position - 1]]);
+            $metaDescriptionKey = $arrayKeys[4]; // The meta description will be 'meta_description'
+            $metaTitleKey = $arrayKeys[3]; // The meta title will be 'meta_title'
+        }
+        $metaDescription = $array[$metaDescriptionKey];
+        $metaTitle = $array[$metaTitleKey];
+
+        $categoryId = $this->getSpecificMagentoCategory(['parent_id', 'name'], [$parentId, $array[$arrayKeys[$position]]]);
+        $name = $array[$arrayKeys[$position]];
+        if (!$categoryId) { // If the category does not exist, we create it
+            $categoryId = $this->createUpdateCategory($name, $metaTitle, $metaDescription, $parentId);
+        } else {
+            $categoryId = $this->createUpdateCategory($name, $metaTitle, $metaDescription, $parentId, $categoryId);
         }
 
-        $categoryId = $this->getSpecificMagentoCategory(['parent_id', 'name'], [$parentId, $name]);
-        if (!$categoryId) { // If the category does not exist, we create it
-            $parentCategory = $this->categoryFactory->create()->load($parentId);
+        return $categoryId;
+    }
+
+    private function createUpdateCategory($name, $metaTitle, $metaDescription, $parentId, $categoryId = null)
+    {
+        $parentCategory = $this->categoryFactory->create()->load($parentId);
+        if ($categoryId) {
+            $category = $this->categoryFactory->create()->load($categoryId);
+        } else {
             $category = $this->categoryFactory->create();
-            $category->setName($name);
-            $category->setIsActive(true);
-            $category->setParentId($parentId);
             $category->setPath($parentCategory->getPath());
-            // Brief explanation as why we need this: There are few categories that have a + in their name.
-            // What does Magento do? Removes the + on the URL Key, causing a collision with other categories. This solves that problem
-            if (strpos($name, '+')) {
-                $category->setUrlKey(str_replace('+', ' plus', $name));
-            }
-            try {
-                $category->save();
-                $categoryId = $category->getId();
-            } catch (Exception $e) {
-                $this->logger->info(new Phrase($this->prefixLog . ' Error saving category ' . $name . '.'));
-            }
+        }
+        $category->setName($name);
+        $category->setIsActive(true);
+        $category->setParentId($parentId);
+        $category->setMetaTitle($metaTitle);
+        $category->setMetaDescription($metaDescription);
+        // Brief explanation as why we need this: There are few categories that have a + in their name.
+        // What does Magento do? Removes the + on the URL Key, causing a collision with other categories. This solves that problem
+        if (strpos($name, '+')) {
+            $category->setUrlKey(str_replace('+', ' plus', $name));
+        }
+        try {
+            $category->save();
+            $categoryId = $category->getId();
+        } catch (Exception $e) {
+            $this->logger->info(new Phrase($this->prefixLog . ' Error saving category ' . $name . '.'));
         }
 
         return $categoryId;
@@ -255,5 +274,24 @@ class MappingHelper
             $valid = true;
         }
         return $valid;
+    }
+
+    private function mountCsvCategoriesArray($csv): array
+    {
+        $csvCategories = [];
+
+        $csvCategories['marca'] = $csv['marca'];
+        $csvCategories['modelo'] = $csv['modelo'];
+        if ($csv['ano_hasta'] !== "") { // If 'ano_hasta' is not empty, the category will be a year period instead of only a year
+            $csvCategories['ano'] = $csv['ano_desde'] . " - " . $csv['ano_hasta'];
+        } else {
+            $csvCategories['ano'] = $csv['ano_desde'];
+        }
+        $csvCategories['meta_title'] = $csv['meta_title'];
+        $csvCategories['meta_description'] = $csv['meta_description'];
+        $csvCategories['meta_title_parent'] = $csv['meta_title_parent'];
+        $csvCategories['meta_description_parent'] = $csv['meta_description_parent'];
+
+        return $csvCategories;
     }
 }
