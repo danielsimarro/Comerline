@@ -2,7 +2,10 @@
 
 namespace Comerline\Syncg\Helper;
 
+use Exception;
 use Magento\Catalog\Api\ProductRepositoryInterface;
+use Magento\Framework\Exception\FileSystemException;
+use Magento\Framework\Exception\NoSuchEntityException;
 use Magento\Framework\Phrase;
 use Magento\Framework\Filesystem\DirectoryList;
 use Magento\Catalog\Model\ResourceModel\Product\CollectionFactory;
@@ -78,41 +81,50 @@ class MappingHelper
 
     public function mapCarRims()
     {
-        $this->logger->info(new Phrase($this->prefixLog . ' Rim <-> Car Mapping Start'));
+        $this->logger->info(new Phrase($this->prefixLog . ' Rim <-> Car Mapping Start.'));
         $collection = $this->productCollectionFactory->create()
             ->addAttributeToSelect('*')
-            ->addAttributeToFilter('status', Status::STATUS_ENABLED);
+            ->addAttributeToFilter('status', Status::STATUS_ENABLED); // We will only map the enabled products to reduce workload
 
-        $csvData = $this->readCsv($this->dir->getPath('media') . '/mapeo_llantas_modelos.csv');
-        $processedProducts = [];
-        $parentProductCategories = [];
+        try {
+            $csvData = $this->readCsv($this->dir->getPath('media') . '/mapeo_llantas_modelos_test.csv'); // We load the CSV file
+            $processedProducts = [];
+            $parentProductCategories = [];
 
-        foreach ($collection as $product) {
-            if (!in_array($product->getId(), $processedProducts)) {
-                $this->logger->info(new Phrase($this->prefixLog . ' Magento Product: ' . $product->getId() . ' | Loaded'));
-                if ($product->getTypeId() === 'configurable') {
-                    $children = $product->getTypeInstance()->getUsedProducts($product);
-                    foreach ($children as $child) {
-                        $childAttributes = $this->checkAttributes($child, $csvData);
-                        if ($childAttributes) {
-                            $parentProductCategories = array_unique(array_merge($parentProductCategories, $childAttributes));
+            foreach ($collection as $product) {
+                if (!in_array($product->getId(), $processedProducts)) {
+                    $this->logger->info(new Phrase($this->prefixLog . ' Magento Product: ' . $product->getId() . ' | Loaded.'));
+                    if ($product->getTypeId() === 'configurable') { // If the product is configurable, we load its child products as well
+                        $children = $product->getTypeInstance()->getUsedProducts($product);
+                        $this->logger->info(new Phrase($this->prefixLog . ' Magento Product: ' . $product->getId() . ' | Loaded Child Products.'));
+                        foreach ($children as $child) {
+                            $childAttributes = $this->checkAttributes($child, $csvData);
+                            if ($childAttributes) {
+                                $parentProductCategories = array_unique(array_merge($parentProductCategories, $childAttributes));
+                            }
+                            if (!in_array($child->getId(), $processedProducts)) {
+                                $processedProducts[] = $child->getId();
+                            }
                         }
-                        if (!in_array($child->getId(), $processedProducts)) {
-                            $processedProducts[] = $child->getId();
-                        }
+                    } else {
+                        $this->checkAttributes($product, $csvData);
                     }
+                    $product = $this->productRepository->getById($product->getId(), true, 0, true); // We need to load the
+                    // product in edit mode, otherwise the categories will not be saved
+                    $currentProductCategories = $product->getCategoryIds();
+                    $parentProductCategories = array_unique(array_merge($currentProductCategories, $parentProductCategories)); // To keep the categories
+                    // existing in the product, we merge the arrays with array_unique
+                    $product->setCategoryIds($parentProductCategories);
+                    $product->save();
+                    $processedProducts[] = $product->getId(); // Once a product is processed, we save it in the array to avoid loading it again in the future
                 } else {
-                    $this->checkAttributes($product, $csvData);
+                    $this->logger->info(new Phrase($this->prefixLog . ' Magento Product: ' . $product->getId() . ' | Already processed.'));
                 }
-                $product = $this->productRepository->getById($product->getId(), true, 0, true);
-                $currentProductCategories = $product->getCategoryIds();
-                $parentProductCategories = array_unique(array_merge($currentProductCategories, $parentProductCategories));
-                $product->setCategoryIds($parentProductCategories);
-                $product->save();
-                $processedProducts[] = $product->getId();
-            } else {
-                $this->logger->info(new Phrase($this->prefixLog . ' Magento Product: ' . $product->getId() . ' | Skipped'));
             }
+        } catch (FileSystemException $e) {
+            $this->logger->error(new Phrase($this->prefixLog . ' CSV File does not exist in the media folder.'));
+        } catch (NoSuchEntityException $e) {
+            $this->logger->error(new Phrase($this->prefixLog . ' Error loading product.'));
         }
     }
 
@@ -123,7 +135,8 @@ class MappingHelper
         $attributes = [];
         foreach ($searchableAttributes as $sa) {
             $attribute = filter_var($child->getAttributeText($sa), FILTER_SANITIZE_NUMBER_FLOAT, FILTER_FLAG_ALLOW_FRACTION);
-            $attributes[] = str_replace('.', ',', sprintf('%g', $attribute));
+            $attributes[] = str_replace('.', ',', sprintf('%g', $attribute)); // We need to replace the dots with commas for
+            // the comparison, as well as we need to remove unnecessary zeros
         }
         return array_combine($attributeKeys, $attributes);
     }
@@ -138,7 +151,7 @@ class MappingHelper
                 if ($this->checkCsvRow($csv)) {
                     $csvCategories[] = $csv['marca'];
                     $csvCategories[] = $csv['modelo'];
-                    if ($csv['ano_hasta'] !== "") {
+                    if ($csv['ano_hasta'] !== "") { // If 'ano_hasta' is not empty, the category will be a year period instead of only a year
                         $csvCategories[] = $csv['ano_desde'] . " - " . $csv['ano_hasta'];
                     } else {
                         $csvCategories[] = $csv['ano_desde'];
@@ -146,15 +159,17 @@ class MappingHelper
                     $position = 0;
                     foreach ($csvCategories as $category) {
                         $categoryIds[] = $this->createCategory($category, $csvCategories, $position);
+                        $this->logger->info(new Phrase($this->prefixLog . ' Magento Product: ' . $product->getId() . ' | Mapped Category | ' . $category . '.'));
                         $position++;
                     }
                     $currentProductCategories = $product->getCategoryIds();
-                    $categoryIds = array_unique(array_merge($currentProductCategories, $categoryIds));
+                    $categoryIds = array_unique(array_merge($currentProductCategories, $categoryIds)); // To keep the categories
+                    // existing in the product, we merge the arrays with array_unique
                     $product->setCategoryIds($categoryIds);
                     $product->save();
-                    $this->logger->info(new Phrase($this->prefixLog . ' Magento Product: ' . $product->getId() . ' | Mapped Categories'));
+                    $this->logger->info(new Phrase($this->prefixLog . ' Magento Product: ' . $product->getId() . ' | Product Categories Saved.'));
                 } else {
-                    $this->logger->info(new Phrase($this->prefixLog . ' Magento Product: ' . $product->getId() . ' | Incomplete CSV Category'));
+                    $this->logger->info(new Phrase($this->prefixLog . ' Magento Product: ' . $product->getId() . ' | Incomplete CSV Category.'));
                 }
             }
         }
@@ -182,23 +197,31 @@ class MappingHelper
 
     private function createCategory($name, $array, $position)
     {
-        if (array_search($name, $array) === 0) {
+        if (array_search($name, $array) === 0) { // In the first position, the parent category will always be 'Por Vehículo'
             $parentId = $this->getSpecificMagentoCategory('name', 'Por Vehículo');
-        } else {
+        } else { // In the following positions, the parent category will be the one in the prior position
             $parentId = $this->getSpecificMagentoCategory('name', $array[$position - 1]);
         }
 
         $categoryId = $this->getSpecificMagentoCategory(['parent_id', 'name'], [$parentId, $name]);
-        if (!$categoryId) {
+        if (!$categoryId) { // If the category does not exist, we create it
             $parentCategory = $this->categoryFactory->create()->load($parentId);
             $category = $this->categoryFactory->create();
             $category->setName($name);
             $category->setIsActive(true);
             $category->setParentId($parentId);
             $category->setPath($parentCategory->getPath());
-            $category->save();
-            $this->categories[$category->getName()] = $category->getId();
-            $categoryId = $category->getId();
+            // Brief explanation as why we need this: There are few categories that have a + in their name.
+            // What does Magento do? Removes the + on the URL Key, causing a collision with other categories. This solves that problem
+            if (strpos($name, '+')) {
+                $category->setUrlKey(str_replace('+', ' plus', $name));
+            }
+            try {
+                $category->save();
+                $categoryId = $category->getId();
+            } catch (Exception $e) {
+                $this->logger->info(new Phrase($this->prefixLog . ' Error saving category ' . $name . '.'));
+            }
         }
 
         return $categoryId;
@@ -213,7 +236,7 @@ class MappingHelper
         $header = array_shift($rows);
         $data = [];
         foreach ($rows as $row) {
-            $data[] = array_combine($header, $row);
+            $data[] = array_combine($header, $row); // We save every row of the CSV into an array
         }
         return $data;
     }
@@ -228,7 +251,7 @@ class MappingHelper
                 $validFields++;
             }
         }
-        if ($validFields === 8) {
+        if ($validFields === 8) { // If the validFields count is 8, that means we can work with that row
             $valid = true;
         }
         return $valid;
