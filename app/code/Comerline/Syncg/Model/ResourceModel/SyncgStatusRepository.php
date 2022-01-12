@@ -83,6 +83,19 @@ class SyncgStatusRepository
         }
     }
 
+    public function deleteEntity($mgId, $type) {
+        $collection = $this->syncgStatusCollectionFactory->create()
+            ->addFieldToFilter('type', $type)
+            ->addFieldToFilter('mg_id', $mgId);
+        if ($collection->getSize() > 0) {
+            foreach ($collection as $item) {
+                $this->syncgStatus = $this->syncgStatusFactory->create()->load($item->getData('id'));
+                $this->syncgStatus->delete();
+                $this->saveSyncgStatus($this->syncgStatus);
+            }
+        }
+    }
+
     private function saveSyncgStatus($model): void
     {
         try {
