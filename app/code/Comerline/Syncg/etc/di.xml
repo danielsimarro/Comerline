@@ -7,4 +7,11 @@
             </argument>
         </arguments>
     </type>
+    <type name="Magento\Framework\Console\CommandList">
+        <arguments>
+            <argument name="commands" xsi:type="array">
+                <item name="comerlineRunMappingSystem" xsi:type="object">Comerline\Syncg\Console\ComerlineMappingSystem</item>
+            </argument>
+        </arguments>
+    </type>
 </config>
