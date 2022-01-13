@@ -237,7 +237,7 @@ class GetArticles extends SyncgApiService
                     "inicio" => $start,
                     "filtro" => [
                         ["campo" => "si_vender_en_web", "valor" => "1", "tipo" => 0],
-                        ["campo" => "descripcion", "valor" => "MAK LUFT ICE BLACK ", "tipo" => 0], // For test. Is only product with relations
+//                        ["campo" => "descripcion", "valor" => "MAK LUFT ICE BLACK", "tipo" => 0], // For test. Is only product with relations
                         ["campo" => "fecha_cambio", "valor" => $newDate->format('Y-m-d H:i'), "tipo" => 3]
                     ]
                 ]),
@@ -286,10 +286,7 @@ class GetArticles extends SyncgApiService
                             $this->createUpdateProduct($product, $productG4100, $attributeSetId);
                             $this->productRepository->save($product);
                             $this->logger->info(new Phrase($prefixLog . ' | [Magento Product: ' . $productId . '] | Edited'));
-                            $parentProduct = $this->configurable->getParentIdsByChild($product->getId());
-                            if ($parentProduct) {
-                                $this->addImagesPending($productG4100, $productId);
-                            }
+                            $this->addImagesPending($productG4100, $productId);
                         }
                     } else {
                         $product = $this->productFactory->create(); // If the product doesn't exists, we create it
@@ -325,8 +322,10 @@ class GetArticles extends SyncgApiService
                 }
             }
             $this->logger->info(new Phrase($this->prefixLog . 'Finish Products sync ' . $this->getTrackTime($timeStart)));
-            $this->createRelatedProducts($relatedProducts, $relatedAttributes, $relatedProductsSons, $magentoId); // Here we relate all the simple products with their parents
-            $this->logger->info(new Phrase($this->prefixLog . 'Finish Products relation' . $this->getTrackTime($timeStart)));
+            if (isset($magentoId)) {
+                $this->createRelatedProducts($relatedProducts, $relatedAttributes, $relatedProductsSons, $magentoId); // Here we relate all the simple products with their parents
+            }
+            $this->logger->info(new Phrase($this->prefixLog . 'Finish Products relation ' . $this->getTrackTime($timeStart)));
             $this->config->setLastDateSyncProducts($this->dateTime->gmtDate());
         }
         $this->saveImages();
@@ -345,9 +344,6 @@ class GetArticles extends SyncgApiService
     private function deleteImagesFromChild($magentoProductIds)
     {
         foreach ($magentoProductIds as $magentoProductId) {
-            $child = $this->productRepository->getById($magentoProductId, true);
-            $child->setMediaGalleryEntries('');
-            $this->productResource->save($child);
             $this->syncgStatusRepository->deleteEntity($magentoProductId, SyncgStatus::TYPE_IMAGE);
         }
     }
