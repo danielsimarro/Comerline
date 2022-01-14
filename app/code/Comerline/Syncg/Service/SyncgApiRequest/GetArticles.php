@@ -781,18 +781,28 @@ class GetArticles extends SyncgApiService
             curl_setopt($this->curlDownloadImage, CURLOPT_URL, $this->baseUrlDownloadImage);
         }
 
-        $fp = fopen($path, 'w+'); // Open file handle
-
         curl_setopt($this->curlDownloadImage, CURLOPT_URL, $this->baseUrlDownloadImage . $image);
-        curl_setopt($this->curlDownloadImage, CURLOPT_FILE, $fp);          // Output to file
         curl_setopt($this->curlDownloadImage, CURLOPT_FOLLOWLOCATION, 1);
         curl_setopt($this->curlDownloadImage, CURLOPT_TIMEOUT, 1000);
         curl_setopt($this->curlDownloadImage, CURLOPT_USERAGENT, 'Mozilla/5.0');
+        curl_exec($this->curlDownloadImage);
+        $info = curl_getinfo($this->curlDownloadImage);
+        if (str_contains($info['content_type'], 'image')) {
+            list($type) = explode(";", $info['content_type']);
+            $extension = explode('/', $type);
+            $path .= '.' . end($extension);
+        }
+        $fp = fopen($path, 'w+'); // Open file handle
+        curl_setopt($this->curlDownloadImage, CURLOPT_FILE, $fp);          // Output to file
         curl_exec($this->curlDownloadImage);
 
         $this->logger->info(new Phrase($this->prefixLog . ' Download Image ' . $image));
 
         fclose($fp);
+        curl_close($this->curlDownloadImage);
+        $this->curlDownloadImage = null;
+        $image = explode('/', $path);
+        return end($image);
     }
 
     private function getPendingImages(): Collection
@@ -819,15 +829,16 @@ class GetArticles extends SyncgApiService
                 foreach ($imageSplit as $char) {
                     $pathImage .= $char . '/';
                 }
-                $g4100ImagesCache[$magentoProductId][] = [
-                    'path' => $pathImage,
-                    'image' => $image
-                ];
-                if (!file_exists($pathImage . $image . '.jpg')) { // If not exists, get image from API
+                $exists = glob ($pathImage . $image . '.*');
+                if (!$exists) { // If not exists, get image from API
                     if (!file_exists($pathImage)) {
                         mkdir($pathImage, 0777, true); // We create the folders we need
                     }
-                    $this->downloadImage($pathImage . $image . '.jpg', $image);
+                    $image = $this->downloadImage($pathImage . $image, $image);
+                    $g4100ImagesCache[$magentoProductId][] = [
+                        'path' => $pathImage,
+                        'image' => $image
+                    ];
                 }
             }
 
@@ -856,7 +867,7 @@ class GetArticles extends SyncgApiService
                         } else {
                             $types = ['small_image'];
                         }
-                        $product->addImageToMediaGallery($g4100ImageCache['path'] . $g4100ImageCache['image'] . '.jpg', $types, false, false);
+                        $product->addImageToMediaGallery($g4100ImageCache['path'] . $g4100ImageCache['image'], $types, false, false);
                         $this->syncgStatusRepository->updateEntityStatus($product->getId(), $g4100ImageCache['image'], SyncgStatus::TYPE_IMAGE, SyncgStatus::STATUS_COMPLETED);
                         $this->logger->info(new Phrase($prefixLog . ' [Magento Product: ' . $product->getId() . '] | Image ' . $g4100ImageCache['image'] . ' | Add Image'));
                     }
