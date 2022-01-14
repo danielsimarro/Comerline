@@ -322,8 +322,10 @@ class GetArticles extends SyncgApiService
                 }
             }
             $this->logger->info(new Phrase($this->prefixLog . 'Finish Products sync ' . $this->getTrackTime($timeStart)));
-            $this->createRelatedProducts($relatedProducts, $relatedAttributes, $relatedProductsSons, $magentoId); // Here we relate all the simple products with their parents
-            $this->logger->info(new Phrase($this->prefixLog . 'Finish Products relation' . $this->getTrackTime($timeStart)));
+            if (isset($magentoId)) {
+                $this->createRelatedProducts($relatedProducts, $relatedAttributes, $relatedProductsSons, $magentoId); // Here we relate all the simple products with their parents
+            }
+            $this->logger->info(new Phrase($this->prefixLog . 'Finish Products relation ' . $this->getTrackTime($timeStart)));
             $this->config->setLastDateSyncProducts($this->dateTime->gmtDate());
         }
         $this->saveImages();
@@ -336,6 +338,13 @@ class GetArticles extends SyncgApiService
             foreach ($productG4100['imagenes'] as $image) {
                 $this->syncgStatusRepository->updateEntityStatus($magentoProductId, $image, SyncgStatus::TYPE_IMAGE, SyncgStatus::STATUS_PENDING);
             }
+        }
+    }
+
+    private function deleteImagesFromChild($magentoProductIds)
+    {
+        foreach ($magentoProductIds as $magentoProductId) {
+            $this->syncgStatusRepository->deleteEntity($magentoProductId, SyncgStatus::TYPE_IMAGE);
         }
     }
 
@@ -415,13 +424,11 @@ class GetArticles extends SyncgApiService
             $this->createUpdateProduct($product, $simpleProduct, $attributeSetId);
             $this->productResource->save($product);
             $this->logger->info(new Phrase($this->prefixLog . ' [Magento Product: ' . $product->getId() . '] | Edited'));
-            $this->addImagesPending($productG4100, $product->getId());
         } else {
             $product = $this->productFactory->create();
             $this->createUpdateProduct($product, $simpleProduct, $attributeSetId);
             $this->productResource->save($product);
             $this->logger->info(new Phrase($this->prefixLog . ' [G4100 Product: ' . $simpleProduct['cod'] . '] | [Magento Product: ' . $product->getId() . '] | Created'));
-            $this->addImagesPending($productG4100, $product->getId());
         }
         $this->syncgStatusRepository->updateEntityStatus($product->getEntityId(), $originalCod, SyncgStatus::TYPE_PRODUCT_SIMPLE, SyncgStatus::STATUS_COMPLETED);
         $magentoId = []; // Here we will store the Magento ID of the new product, to use it later
@@ -561,6 +568,7 @@ class GetArticles extends SyncgApiService
                 } catch (InputException $e) {
                     $this->logger->error(new Phrase($prefixLog . ' | Error changing to configurable'));
                 }
+                $this->deleteImagesFromChild($relatedIds);
             } else {
                 $this->logger->error(new Phrase($prefixLog . ' | Cant change to configurable (Only parent option available)'));
             }
