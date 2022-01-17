@@ -769,39 +769,43 @@ class GetArticles extends SyncgApiService
 
     private function downloadImage($path, $image)
     {
-        if (!$this->curlDownloadImage) {
-            $header = [
-                'Content-Type: application/json',
-                'Accept: application/json',
-                "Authorization: Bearer {$this->config->getTokenFromDatabase()}",
-            ];
-            $this->curlDownloadImage = curl_init();
-            curl_setopt($this->curlDownloadImage, CURLOPT_RETURNTRANSFER, true);
-            curl_setopt($this->curlDownloadImage, CURLOPT_HTTPHEADER, $header);
-            curl_setopt($this->curlDownloadImage, CURLOPT_URL, $this->baseUrlDownloadImage);
-        }
+        $header = [
+            'Content-Type: application/json',
+            'Accept: application/json',
+            "Authorization: Bearer {$this->config->getTokenFromDatabase()}",
+        ];
+        $this->curlDownloadImage = curl_init();
+        curl_setopt($this->curlDownloadImage, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($this->curlDownloadImage, CURLOPT_HTTPHEADER, $header);
+        curl_setopt($this->curlDownloadImage, CURLOPT_URL, $this->baseUrlDownloadImage);
 
         curl_setopt($this->curlDownloadImage, CURLOPT_URL, $this->baseUrlDownloadImage . $image);
         curl_setopt($this->curlDownloadImage, CURLOPT_FOLLOWLOCATION, 1);
         curl_setopt($this->curlDownloadImage, CURLOPT_TIMEOUT, 1000);
         curl_setopt($this->curlDownloadImage, CURLOPT_USERAGENT, 'Mozilla/5.0');
         curl_exec($this->curlDownloadImage);
-        $info = curl_getinfo($this->curlDownloadImage);
-        if (str_contains($info['content_type'], 'image')) {
-            list($type) = explode(";", $info['content_type']);
-            $extension = explode('/', $type);
-            $path .= '.' . end($extension);
-        }
         $fp = fopen($path, 'w+'); // Open file handle
         curl_setopt($this->curlDownloadImage, CURLOPT_FILE, $fp);          // Output to file
         curl_exec($this->curlDownloadImage);
+        // As we checked, we always recieve from the G4100 API a png file, independently of what we upload to it
+        // However, as this could change in the future, we have prepared this chunk of code
+        // Here, we check the binary data of the image, and, with that, we determine what extension we have to give to it
+        $type = getimagesize($path);
+        $extension = $path;
+        if (str_contains($type['mime'], 'png')) {
+            $extension.= '.png';
+            rename($path, $extension);
+        } elseif (str_contains($type['mime'], 'jpeg')) {
+            $extension.= '.jpg';
+            rename($path, $extension);
+        }
 
         $this->logger->info(new Phrase($this->prefixLog . ' Download Image ' . $image));
 
         fclose($fp);
         curl_close($this->curlDownloadImage);
         $this->curlDownloadImage = null;
-        $image = explode('/', $path);
+        $image = explode('/', $extension);
         return end($image);
     }
 
@@ -835,11 +839,14 @@ class GetArticles extends SyncgApiService
                         mkdir($pathImage, 0777, true); // We create the folders we need
                     }
                     $image = $this->downloadImage($pathImage . $image, $image);
-                    $g4100ImagesCache[$magentoProductId][] = [
-                        'path' => $pathImage,
-                        'image' => $image
-                    ];
+                } else {
+                    $explode = explode('/', $exists[0]);
+                    $image = end($explode);
                 }
+                $g4100ImagesCache[$magentoProductId][] = [
+                    'path' => $pathImage,
+                    'image' => $image
+                ];
             }
 
             $countImages = 0;
