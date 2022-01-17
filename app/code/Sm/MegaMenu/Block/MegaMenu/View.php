@@ -175,7 +175,7 @@ class View extends Template
 			$this->_allItemsFirstColumnId = ($itemsFirstColumn)?$itemsids_firstcol:'';
 		}
 	}
-	
+
 	 /**
      * Resource initialization
      */
@@ -231,7 +231,7 @@ class View extends Template
 		}
 		return true;
 	}
-	
+
 	protected function _toHtml()
     {
 		if(!$this->_defaults['isenabled'] || !$this->_defaults['group_id']) return;
@@ -838,12 +838,12 @@ class View extends Template
 					$modelCategoryChild = $this->_objectManager->create('Magento\Catalog\Model\Category');
 					$categoryChild = $modelCategoryChild->load($ia);
 					$link = $categoryChild->getUrl();
-					$title = '<span class="'.$prefix.'title_lv-'.$item['depth'].'">'.$categoryChild->getName().'</span>';
+					$title = '<span class="'.$prefix.'title_lv-'. $categoryChild->getData('level') .'">'.$categoryChild->getName().'</span>';
 					$namecat = '<a class="'.$aClassName.'" href="'.$link.'" '.$this->getTargetAttr($item['target']).'>'.__($title).'</a>';
 
 					$output .= '<div class="'.implode(' ', $addClass).' '.$activedClassName.'">';
 					if ($item['show_sub_category'] == self::STATUS_ENABLED)
-					{	
+					{
 						$output .= $namecat;
 						if ($categoryChild->getChildren()) {
 							$id_all_cat_child = $categoryChild->getChildrenCategories();
@@ -887,7 +887,7 @@ class View extends Template
 					$modelCategory = $this->_objectManager->create('Magento\Catalog\Model\Category');
 					$category_child = $modelCategory->load($iac);
 					$link = $category_child->getUrl();
-					$title = '<span class="' . $prefix . 'title_lv-' . $item['depth'] . '">' . __($category_child->getName()) . '</span>';
+					$title = '<span class="' . $prefix . 'title_lv-' . $category_child->getData('level') . '">' . __($category_child->getName()) . '</span>';
 					$namecat = '<a class="' . $aClassName . '" href="' . $link . '" ' . $this->getTargetAttr($item['target']) . ' >' . __($title) . '</a>';
 
 					$output .= '<div class="' . implode(' ', $addClass) .' '.$activedClassName. '">';
