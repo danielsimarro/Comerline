@@ -838,10 +838,10 @@ class View extends Template
 					$modelCategoryChild = $this->_objectManager->create('Magento\Catalog\Model\Category');
 					$categoryChild = $modelCategoryChild->load($ia);
 					$link = $categoryChild->getUrl();
-					$title = '<span class="'.$prefix.'title_lv-'. $categoryChild->getData('level') .'">'.$categoryChild->getName().'</span>';
+					$title = __($categoryChild->getName());
 					$namecat = '<a class="'.$aClassName.'" href="'.$link.'" '.$this->getTargetAttr($item['target']).'>'.__($title).'</a>';
 
-					$output .= '<div class="'.implode(' ', $addClass).' '.$activedClassName.'">';
+					$output .= '<div class="'.$prefix.'title'. ' ' .implode(' ', $addClass).' '.$activedClassName. ' ' .$prefix.'title_lv-'. $categoryChild->getData('level') .'">';
 					if ($item['show_sub_category'] == self::STATUS_ENABLED)
 					{
 						$output .= $namecat;
@@ -887,10 +887,10 @@ class View extends Template
 					$modelCategory = $this->_objectManager->create('Magento\Catalog\Model\Category');
 					$category_child = $modelCategory->load($iac);
 					$link = $category_child->getUrl();
-					$title = '<span class="' . $prefix . 'title_lv-' . $category_child->getData('level') . '">' . __($category_child->getName()) . '</span>';
-					$namecat = '<a class="' . $aClassName . '" href="' . $link . '" ' . $this->getTargetAttr($item['target']) . ' >' . __($title) . '</a>';
+					$title = __($category_child->getName());
+					$namecat = '<a class="' .$prefix.'title'. ' '  . $aClassName . '" href="' . $link . '" ' . $this->getTargetAttr($item['target']) . ' >' . __($title) . '</a>';
 
-					$output .= '<div class="' . implode(' ', $addClass) .' '.$activedClassName. '">';
+					$output .= '<div class="' . implode(' ', $addClass) .' '.$activedClassName. ' ' . $prefix . 'title_lv-' . $category_child->getData('level') . '">';
 					$output .= $namecat;
 					if ($category_child->getChildren())
 					{

@@ -169,5 +169,19 @@ $id       = ($this->getFrontController()->getRequest()->getParam('id')) ? $this-
         $(".home-item-parent > a").attr("href", "<?php echo $this->getUrl('') ?>");
 
 
+        $('.sm_megamenu_title_lv-2').on('click', function(e){
+            var parent = $(this)
+                .closest('.sm_megamenu_title'); // goes up in the tree until .sm_megamenu_title
+
+            if (parent.children().length > 1) {
+                e.preventDefault();
+                parent.children('.sm_megamenu_title_lv-4').each(function() {
+                    $(this).addClass('showLevel');
+                });
+            }
+
+        });
+
     });
+
 </script>

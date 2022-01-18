@@ -1,0 +1,19 @@
+.sm_megamenu_title_lv-4, .sm_megamenu_title_lv-5 {
+    display: none !important;
+}
+
+.sm_megamenu_title_lv-4 {
+    padding: 3px 6px !important;
+}
+
+.sm_megamenu_title_lv-5 {
+    padding: 3px 12px !important;
+}
+
+.showLevel {
+    display: block !important;
+}
+
+.deal-block .deal-title::before, .deal-block .deal-title::after {
+    border-bottom: 9px solid #0056aa !important;
+}
