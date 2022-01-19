@@ -351,6 +351,9 @@ button.disabled_action:hover
 {
 	background-color: #fff;
 	/*border:1px solid;*/
+.arrow div a:last-child::after {
+    display: none !important;
+}
 	border-color: #aaa #c8c8c8 #c8c8c8 #aaa;
 	float: left;
 	width: 100%;

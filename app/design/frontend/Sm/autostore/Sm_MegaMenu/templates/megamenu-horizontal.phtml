@@ -168,35 +168,18 @@ $id       = ($this->getFrontController()->getRequest()->getParam('id')) ? $this-
 
         $(".home-item-parent > a").attr("href", "<?php echo $this->getUrl('') ?>");
 
-
         $('.sm_megamenu_title_lv-4').parents('.sm_megamenu_title_lv-2').addClass('arrow');
         $('.sm_megamenu_title_lv-5').parents('.sm_megamenu_title_lv-4').addClass('arrow');
 
-        const displayChildren = (children) => {
-            children.each(function() {
-                $(this).toggleClass('showLevel')
-                $(this).on('click', function (e) {
-                    e.stopPropagation();
-                })
-            })
-        }
-
-        const showSubs = (_this) => {
-            _this.on('click', function (e) {
-                const children = $(this).children('div')
-                if (children.length > 0) {
+        $(function() {
+            $('.sm_megamenu_title a').click(function (e) {
+                let child = $(this).parent().find('div:first').show();
+                if (child.length > 0) {
+                    child.siblings().show();
                     e.preventDefault();
-                    displayChildren(children)
                 }
-            })
-        }
-
-        $('.sm_megamenu_title_lv-2').each(function () {
-            showSubs($(this))
-        })
-        $('.sm_megamenu_title_lv-4').each(function () {
-            showSubs($(this))
-        })
+            });
+        });
     });
 
 </script>

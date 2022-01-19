@@ -1,5 +1,5 @@
 .sm_megamenu_title_lv-4, .sm_megamenu_title_lv-5 {
-    display: none !important;
+    display: none;
 }
 
 .sm_megamenu_title_lv-4 {
@@ -10,14 +10,10 @@
     padding: 3px 12px !important;
 }
 
-.showLevel {
-    display: block !important;
-}
-
-.arrow div a::after{
+.arrow div a::after, .arrow a::after {
     margin-left: 5px;
     content: '\f107';
-    display: inline-block;
+    display: inline-block !important;
     font-family: FontAwesome;
     font-style: normal;
     font-weight: normal;
