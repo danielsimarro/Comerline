@@ -615,7 +615,7 @@ class View extends Template
 
 			if($item['show_title'] OR $this->hasIcon($item)){
 				$addClass['title'] = $prefix.'title';
-				$html.= $item['depth'] > 1 ? '<div class="'.implode(' ',$addClass).'  '.$_active .'">' : '';
+				$html.= $item['depth'] > 1 ? '<div class="' .$prefix.'title_lv-' . $item['depth'] . ' ' .implode(' ',$addClass).'  '.$_active .'">' : '';
 				$html .= $item['depth'] > 1 ? $headTitle : '';
 
 				if($item['type'] == self::PRODUCT)
@@ -841,7 +841,7 @@ class View extends Template
 					$title = __($categoryChild->getName());
 					$namecat = '<a class="'.$aClassName.'" href="'.$link.'" '.$this->getTargetAttr($item['target']).'>'.__($title).'</a>';
 
-					$output .= '<div class="'.$prefix.'title'. ' ' .implode(' ', $addClass).' '.$activedClassName. ' ' .$prefix.'title_lv-'. $categoryChild->getData('level') .'">';
+					$output .= '<div class="'.implode(' ', $addClass).' '.$activedClassName. ' ' .$prefix.'title_lv-'. $categoryChild->getData('level') .'">';
 					if ($item['show_sub_category'] == self::STATUS_ENABLED)
 					{
 						$output .= $namecat;
@@ -888,7 +888,7 @@ class View extends Template
 					$category_child = $modelCategory->load($iac);
 					$link = $category_child->getUrl();
 					$title = __($category_child->getName());
-					$namecat = '<a class="' .$prefix.'title'. ' '  . $aClassName . '" href="' . $link . '" ' . $this->getTargetAttr($item['target']) . ' >' . __($title) . '</a>';
+					$namecat = '<a class="' . $aClassName . '" href="' . $link . '" ' . $this->getTargetAttr($item['target']) . ' >' . __($title) . '</a>';
 
 					$output .= '<div class="' . implode(' ', $addClass) .' '.$activedClassName. ' ' . $prefix . 'title_lv-' . $category_child->getData('level') . '">';
 					$output .= $namecat;
