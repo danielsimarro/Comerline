@@ -302,6 +302,7 @@ return [
         'Amazon_Login' => 1,
         'Amazon_Payment' => 1,
         'Aplazame_Payment' => 1,
+        'Comerline_ImprovedMegaMenu' => 1,
         'Comerline_ImprovedProduct' => 1,
         'Comerline_Syncg' => 1,
         'Dotdigitalgroup_Email' => 1,

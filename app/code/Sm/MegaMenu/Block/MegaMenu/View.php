@@ -175,7 +175,7 @@ class View extends Template
 			$this->_allItemsFirstColumnId = ($itemsFirstColumn)?$itemsids_firstcol:'';
 		}
 	}
-	
+
 	 /**
      * Resource initialization
      */
@@ -231,7 +231,7 @@ class View extends Template
 		}
 		return true;
 	}
-	
+
 	protected function _toHtml()
     {
 		if(!$this->_defaults['isenabled'] || !$this->_defaults['group_id']) return;
@@ -615,7 +615,9 @@ class View extends Template
 
 			if($item['show_title'] OR $this->hasIcon($item)){
 				$addClass['title'] = $prefix.'title';
-				$html.= $item['depth'] > 1 ? '<div class="'.implode(' ',$addClass).'  '.$_active .'">' : '';
+                /** INIT MOD: ADD CLASS TO DIV **/
+				$html.= $item['depth'] > 1 ? '<div class="' .$prefix.'title_lv-' . $item['depth'] . ' ' .implode(' ',$addClass).'  '.$_active .'">' : '';
+                /** END MOD **/
 				$html .= $item['depth'] > 1 ? $headTitle : '';
 
 				if($item['type'] == self::PRODUCT)
@@ -838,12 +840,14 @@ class View extends Template
 					$modelCategoryChild = $this->_objectManager->create('Magento\Catalog\Model\Category');
 					$categoryChild = $modelCategoryChild->load($ia);
 					$link = $categoryChild->getUrl();
-					$title = '<span class="'.$prefix.'title_lv-'.$item['depth'].'">'.$categoryChild->getName().'</span>';
+					$title = __($categoryChild->getName());
 					$namecat = '<a class="'.$aClassName.'" href="'.$link.'" '.$this->getTargetAttr($item['target']).'>'.__($title).'</a>';
 
-					$output .= '<div class="'.implode(' ', $addClass).' '.$activedClassName.'">';
+                    /** INIT MOD: ADD CLASS TO DIV **/
+					$output .= '<div class="'.implode(' ', $addClass).' '.$activedClassName. ' ' .$prefix.'title_lv-'. $categoryChild->getData('level') .'">';
+                    /** END MOD **/
 					if ($item['show_sub_category'] == self::STATUS_ENABLED)
-					{	
+					{
 						$output .= $namecat;
 						if ($categoryChild->getChildren()) {
 							$id_all_cat_child = $categoryChild->getChildrenCategories();
@@ -887,10 +891,11 @@ class View extends Template
 					$modelCategory = $this->_objectManager->create('Magento\Catalog\Model\Category');
 					$category_child = $modelCategory->load($iac);
 					$link = $category_child->getUrl();
-					$title = '<span class="' . $prefix . 'title_lv-' . $item['depth'] . '">' . __($category_child->getName()) . '</span>';
+					$title = __($category_child->getName());
 					$namecat = '<a class="' . $aClassName . '" href="' . $link . '" ' . $this->getTargetAttr($item['target']) . ' >' . __($title) . '</a>';
-
-					$output .= '<div class="' . implode(' ', $addClass) .' '.$activedClassName. '">';
+                    /** INIT MOD: ADD CLASS TO DIV **/
+					$output .= '<div class="' . implode(' ', $addClass) .' '.$activedClassName. ' ' . $prefix . 'title_lv-' . $category_child->getData('level') . '">';
+                    /** END MOD **/
 					$output .= $namecat;
 					if ($category_child->getChildren())
 					{

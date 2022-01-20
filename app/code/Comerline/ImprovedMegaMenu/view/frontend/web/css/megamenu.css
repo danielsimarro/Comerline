@@ -1,0 +1,61 @@
+.sm_megamenu_title_lv-4, .sm_megamenu_title_lv-5 {
+    display: none;
+}
+
+.sm_megamenu_title_lv-4 {
+    padding: 3px 6px !important;
+}
+
+.sm_megamenu_title_lv-5 {
+    padding: 3px 12px !important;
+}
+
+.arrow::after {
+    margin-left: 5px;
+    content: '\f107';
+    display: inline-block !important;
+    font-family: FontAwesome;
+    font-style: normal;
+    font-weight: normal;
+    font-variant: normal;
+    font-synthesis: weight style;
+    font-stretch: normal;
+    font-size-adjust: none;
+    font-language-override: normal;
+    font-kerning: auto;
+    font-feature-settings: normal;
+    line-height: 1;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-align: center;
+    font-size: 14px;
+}
+
+.arrow-clicked::after {
+    margin-left: 5px;
+    content: '\f105';
+    display: inline-block !important;
+    font-family: FontAwesome;
+    font-style: normal;
+    font-weight: normal;
+    font-variant: normal;
+    font-synthesis: weight style;
+    font-stretch: normal;
+    font-size-adjust: none;
+    font-language-override: normal;
+    font-kerning: auto;
+    font-feature-settings: normal;
+    line-height: 1;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-align: center;
+    font-size: 14px;
+}
+
+.arrow div a:last-child::after {
+    display: none !important;
+}
+
+.deal-block .deal-title::before, .deal-block .deal-title::after {
+    border-bottom: 9px solid #0056aa !important;
+}
