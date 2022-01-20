@@ -20555,42 +20555,6 @@
             "time": "2020-05-25T17:44:05+00:00"
         },
         {
-            "name": "espressobytes/debug-hints",
-            "version": "v1.1.3",
-            "source": {
-                "type": "git",
-                "url": "https://github.com/espressobytes/debug-hints.git",
-                "reference": "91f2e7cec72db73e33de3946998cd4c7bbd4df12"
-            },
-            "dist": {
-                "type": "zip",
-                "url": "https://api.github.com/repos/espressobytes/debug-hints/zipball/91f2e7cec72db73e33de3946998cd4c7bbd4df12",
-                "reference": "91f2e7cec72db73e33de3946998cd4c7bbd4df12",
-                "shasum": ""
-            },
-            "type": "magento2-module",
-            "autoload": {
-                "files": [
-                    "registration.php"
-                ],
-                "psr-4": {
-                    "Espressobytes\\DebugHints\\": ""
-                }
-            },
-            "notification-url": "https://packagist.org/downloads/",
-            "license": [
-                "proprietary"
-            ],
-            "authors": [
-                {
-                    "name": "Tobias Bungers",
-                    "email": "tobias.bungers@gmail.com"
-                }
-            ],
-            "description": "Debug Hints for Magento 2",
-            "time": "2020-05-19T14:14:48+00:00"
-        },
-        {
             "name": "friendsofphp/php-cs-fixer",
             "version": "v2.16.4",
             "source": {

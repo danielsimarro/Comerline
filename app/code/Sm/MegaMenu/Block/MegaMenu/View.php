@@ -615,7 +615,9 @@ class View extends Template
 
 			if($item['show_title'] OR $this->hasIcon($item)){
 				$addClass['title'] = $prefix.'title';
+                /** INIT MOD: ADD CLASS TO DIV **/
 				$html.= $item['depth'] > 1 ? '<div class="' .$prefix.'title_lv-' . $item['depth'] . ' ' .implode(' ',$addClass).'  '.$_active .'">' : '';
+                /** END MOD **/
 				$html .= $item['depth'] > 1 ? $headTitle : '';
 
 				if($item['type'] == self::PRODUCT)
@@ -841,7 +843,9 @@ class View extends Template
 					$title = __($categoryChild->getName());
 					$namecat = '<a class="'.$aClassName.'" href="'.$link.'" '.$this->getTargetAttr($item['target']).'>'.__($title).'</a>';
 
+                    /** INIT MOD: ADD CLASS TO DIV **/
 					$output .= '<div class="'.implode(' ', $addClass).' '.$activedClassName. ' ' .$prefix.'title_lv-'. $categoryChild->getData('level') .'">';
+                    /** END MOD **/
 					if ($item['show_sub_category'] == self::STATUS_ENABLED)
 					{
 						$output .= $namecat;
@@ -889,8 +893,9 @@ class View extends Template
 					$link = $category_child->getUrl();
 					$title = __($category_child->getName());
 					$namecat = '<a class="' . $aClassName . '" href="' . $link . '" ' . $this->getTargetAttr($item['target']) . ' >' . __($title) . '</a>';
-
+                    /** INIT MOD: ADD CLASS TO DIV **/
 					$output .= '<div class="' . implode(' ', $addClass) .' '.$activedClassName. ' ' . $prefix . 'title_lv-' . $category_child->getData('level') . '">';
+                    /** END MOD **/
 					$output .= $namecat;
 					if ($category_child->getChildren())
 					{
