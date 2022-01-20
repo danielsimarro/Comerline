@@ -125,9 +125,14 @@ class MappingHelper
                 $currentProductCategories = $product->getCategoryIds();
                 $setProductCategories = array_unique(array_merge($currentProductCategories, $productCategories)); // To keep the categories
                 // existing in the product, we merge the arrays with array_unique
-                $product->setCategoryIds($setProductCategories);
-                $product->save();
-                $this->logger->info(new Phrase($this->prefixLog . ' Magento Product: ' . $product->getId() . ' | Product Categories Saved.'));
+                $differentCategories = !array_diff($currentProductCategories, $productCategories);
+                if (!$differentCategories) {
+                    $product->setCategoryIds($setProductCategories);
+                    $product->save();
+                    $this->logger->info(new Phrase($this->prefixLog . ' Magento Product: ' . $product->getId() . ' | Product Categories Saved.'));
+                } else {
+                    $this->logger->info(new Phrase($this->prefixLog . ' Magento Product: ' . $product->getId() . ' | Product Already Has This Categories.'));
+                }
             }
         } catch (FileSystemException $e) {
             $this->logger->error(new Phrase($this->prefixLog . ' CSV File does not exist in the media folder.'));
