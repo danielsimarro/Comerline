@@ -10,9 +10,30 @@
     padding: 3px 12px !important;
 }
 
-.arrow div a::after, .arrow a::after {
+.arrow::after {
     margin-left: 5px;
     content: '\f107';
+    display: inline-block !important;
+    font-family: FontAwesome;
+    font-style: normal;
+    font-weight: normal;
+    font-variant: normal;
+    font-synthesis: weight style;
+    font-stretch: normal;
+    font-size-adjust: none;
+    font-language-override: normal;
+    font-kerning: auto;
+    font-feature-settings: normal;
+    line-height: 1;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-align: center;
+    font-size: 14px;
+}
+
+.arrow-clicked::after {
+    margin-left: 5px;
+    content: '\f105';
     display: inline-block !important;
     font-family: FontAwesome;
     font-style: normal;
