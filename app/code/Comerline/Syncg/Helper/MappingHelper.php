@@ -123,15 +123,19 @@ class MappingHelper
                 $product = $this->productRepository->getById($productId, true, 0, true); // We need to load the
                 // product in edit mode, otherwise the categories will not be saved
                 $currentProductCategories = $product->getCategoryIds();
-                $setProductCategories = array_unique(array_merge($currentProductCategories, $productCategories)); // To keep the categories
-                // existing in the product, we merge the arrays with array_unique
-                $differentCategories = !array_diff($currentProductCategories, $productCategories);
-                if (!$differentCategories) {
-                    $product->setCategoryIds($setProductCategories);
-                    $product->save();
-                    $this->logger->info(new Phrase($this->prefixLog . ' Magento Product: ' . $product->getId() . ' | Product Categories Saved.'));
+                if (!$productCategories) {
+                    $this->logger->info(new Phrase($this->prefixLog . ' Magento Product: ' . $product->getId() . ' | No New Categories To Add To Product.'));
                 } else {
-                    $this->logger->info(new Phrase($this->prefixLog . ' Magento Product: ' . $product->getId() . ' | Product Already Has This Categories.'));
+                    $setProductCategories = array_unique(array_merge($currentProductCategories, $productCategories)); // To keep the categories
+                    // existing in the product, we merge the arrays with array_unique
+                    $differentCategories = !array_diff($currentProductCategories, $productCategories);
+                    if (!$differentCategories) {
+                        $product->setCategoryIds($setProductCategories);
+                        $product->save();
+                        $this->logger->info(new Phrase($this->prefixLog . ' Magento Product: ' . $product->getId() . ' | Product Categories Saved.'));
+                    } else {
+                        $this->logger->info(new Phrase($this->prefixLog . ' Magento Product: ' . $product->getId() . ' | Product Already Has This Categories.'));
+                    }
                 }
             }
         } catch (FileSystemException $e) {
