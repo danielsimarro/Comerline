@@ -16,6 +16,7 @@
         "elasticsearch/elasticsearch": "~7.1",
         "magento/composer-root-update-plugin": "~1.0",
         "magento/product-community-edition": "2.4.1",
+        "magepal/magento2-googletagmanager": "^2.7",
         "mageplaza/module-core": "^1.4",
         "mageplaza/module-smtp": "^4.2"
     },
