@@ -11,6 +11,7 @@ use Magento\Framework\Phrase;
 use Magento\Framework\Filesystem\DirectoryList;
 use Magento\Catalog\Model\ResourceModel\Product\CollectionFactory;
 use Magento\Catalog\Model\ResourceModel\Category\CollectionFactory as CategoryCollectionFactory;
+use Magento\Framework\Stdlib\DateTime\DateTime;
 use Psr\Log\LoggerInterface;
 use Magento\Catalog\Model\Product\Attribute\Source\Status;
 use Magento\Store\Model\StoreManagerInterface;
@@ -70,6 +71,21 @@ class MappingHelper
      */
     private $configurable;
 
+    /**
+     * @var Config
+     */
+    private $config;
+
+    /**
+     * @var DateTime
+     */
+    private $dateTime;
+
+    /**
+     * @var array
+     */
+    private $processedProducts;
+
     public function __construct(
         LoggerInterface            $logger,
         DirectoryList              $dir,
@@ -78,7 +94,9 @@ class MappingHelper
         StoreManagerInterface      $storeManager,
         CategoryFactory            $categoryFactory,
         ProductRepositoryInterface $productRepository,
-        Configurable               $configurable
+        Configurable               $configurable,
+        Config                     $configHelper,
+        DateTime                   $dateTime
     )
     {
         $this->logger = $logger;
@@ -89,50 +107,73 @@ class MappingHelper
         $this->categoryFactory = $categoryFactory;
         $this->productRepository = $productRepository;
         $this->configurable = $configurable;
+        $this->config = $configHelper;
+        $this->dateTime = $dateTime;
         $this->prefixLog = uniqid() . ' | Comerline Car - Rims Mapping System |';
     }
 
     public function mapCarRims()
     {
         $this->logger->info(new Phrase($this->prefixLog . ' Rim <-> Car Mapping Start.'));
-        $collection = $this->productCollectionFactory->create()
-            ->addAttributeToSelect('*')
-            ->addAttributeToFilter('status', Status::STATUS_ENABLED); // We will only map the enabled products to reduce workload
+        $timeStart = microtime(true);
+        $csvFile = $this->dir->getPath('media') . '/mapeo_llantas_modelos_test.csv';
+        $lastCategoriesMapping = $this->config->getParamsWithoutSystem('syncg/general/last_date_mapping_categories')->getValue(); // We get the last mapping date
+        $lastChangeCsv = date('Y-m-d H:i:s', @filemtime($csvFile)); //We get the last CSV change date
 
-        try {
-            $this->csvData = $this->readCsv($this->dir->getPath('media') . '/mapeo_llantas_modelos.csv'); // We load the CSV file
-            $processedProducts = [];
+        if ($lastChangeCsv > $lastCategoriesMapping) {
+            $collection = $this->productCollectionFactory->create()
+                ->addAttributeToSelect('*')
+                ->addAttributeToFilter('status', Status::STATUS_ENABLED); // We will only map the enabled products to reduce workload
+            $this->csvData = $this->readCsv($csvFile); // We load the CSV file
+            $this->mapProductCategories($collection); // We traverse through the collection and in an array we map the categories to the products
+            $this->assignCategoriesToProducts($this->processedProducts); // We traverse through the array and save the products with their new categories
+            $this->logger->info(new Phrase($this->prefixLog . ' Rim <-> Car Mapping End.'));
+            $this->config->setLastDateMappingCategories($this->dateTime->gmtDate());
+        } else {
+            $this->logger->info(new Phrase($this->prefixLog . ' Rim <-> Car Mapping Not Necessary.'));
+        }
+        $this->logger->info(new Phrase($this->prefixLog . 'Finished Rim <-> Car Mapping ' . $this->getTrackTime($timeStart)));
+    }
 
-            foreach ($collection as $product) {
-                $this->logger->info(new Phrase($this->prefixLog . ' Magento Product: ' . $product->getId() . ' | Loaded.'));
-                $productId = $product->getId(); // We get the product ID
-                $processedProducts[$productId] = []; // We create an array position for it
-                $productCategories = $this->checkAttributes($product); // We get the new categories of this product
-                $processedProducts[$productId] = $productCategories; // We assign them to its array position
+    private function mapProductCategories($collection)
+    {
+        foreach ($collection as $product) {
+            $this->logger->info(new Phrase($this->prefixLog . ' Magento Product: ' . $product->getId() . ' | Loaded.'));
+            $productId = $product->getId(); // We get the product ID
+            $this->processedProducts[$productId] = []; // We create an array position for it
+            $productCategories = $this->checkAttributes($product); // We get the new categories of this product
+            $this->processedProducts[$productId] = $productCategories; // We assign them to its array position
 
-                $parentIds = $this->configurable->getParentIdsByChild($product->getId()); // We check if the product has a parent
+            $parentIds = $this->configurable->getParentIdsByChild($product->getId()); // We check if the product has a parent
 
-                if ($parentIds) { // If it does....
-                    foreach ($parentIds as $parentId) {
-                        $processedProducts[$parentId] = array_unique(array_merge($processedProducts[$parentId], $productCategories)); // We add the child categories to the parent product
-                    }
+            if ($parentIds) { // If it does....
+                foreach ($parentIds as $parentId) {
+                    $this->processedProducts[$parentId] = array_unique(array_merge($this->processedProducts[$parentId], $productCategories)); // We add the child categories to the parent product
                 }
             }
+        }
+    }
 
-            foreach ($processedProducts as $productId => $productCategories) {
+    private function assignCategoriesToProducts($processedProducts)
+    {
+        foreach ($processedProducts as $productId => $productCategories) {
+            if (!$productCategories) {
+                $this->logger->info(new Phrase($this->prefixLog . ' Magento Product: ' . $productId . ' | No New Categories To Add To Product.'));
+            } else {
                 $product = $this->productRepository->getById($productId, true, 0, true); // We need to load the
                 // product in edit mode, otherwise the categories will not be saved
                 $currentProductCategories = $product->getCategoryIds();
                 $setProductCategories = array_unique(array_merge($currentProductCategories, $productCategories)); // To keep the categories
                 // existing in the product, we merge the arrays with array_unique
-                $product->setCategoryIds($setProductCategories);
-                $product->save();
-                $this->logger->info(new Phrase($this->prefixLog . ' Magento Product: ' . $product->getId() . ' | Product Categories Saved.'));
+                $differentCategories = !array_diff($productCategories, $currentProductCategories);
+                if (!$differentCategories) {
+                    $product->setCategoryIds($setProductCategories);
+                    $product->save();
+                    $this->logger->info(new Phrase($this->prefixLog . ' Magento Product: ' . $product->getId() . ' | Product Categories Saved.'));
+                } else {
+                    $this->logger->info(new Phrase($this->prefixLog . ' Magento Product: ' . $product->getId() . ' | Product Already Has This Categories.'));
+                }
             }
-        } catch (FileSystemException $e) {
-            $this->logger->error(new Phrase($this->prefixLog . ' CSV File does not exist in the media folder.'));
-        } catch (NoSuchEntityException $e) {
-            $this->logger->error(new Phrase($this->prefixLog . ' Error loading product.'));
         }
     }
 
@@ -254,10 +295,18 @@ class MappingHelper
 
     private function readCsv($csv): array
     {
-
+        try {
+            $file = @file($csv);
+            if (!$file) {
+                throw new Exception('File does not exists.');
+            }
+        } catch (Exception $e) {
+            $this->logger->error(new Phrase($this->prefixLog . ' CSV File does not exist in the media folder.'));
+            die();
+        }
         $rows = array_map(function ($row) {
             return str_getcsv($row, ';');
-        }, file($csv));
+        }, $file);
         $header = array_shift($rows);
         $data = [];
         foreach ($rows as $row) {
@@ -299,5 +348,12 @@ class MappingHelper
         $csvCategories['meta_description_parent'] = $csv['meta_description_parent'];
 
         return $csvCategories;
+    }
+
+    public function getTrackTime($timeStart): string
+    {
+        $timeEnd = microtime(true);
+        $executionTime = round(($timeEnd - $timeStart), 2);
+        return $executionTime . 's';
     }
 }

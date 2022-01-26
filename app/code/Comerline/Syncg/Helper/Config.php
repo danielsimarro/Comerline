@@ -76,6 +76,11 @@ class Config extends AbstractHelper
         $this->configWriter->save(self::PATH .'general/last_date_sync_products', $date, 'default');
     }
 
+    public function setLastDateMappingCategories($date)
+    {
+        $this->configWriter->save(self::PATH .'general/last_date_mapping_categories', $date, 'default');
+    }
+
     public function getLastSyncPlusFiveMinutes() : int
     {
         $lastSyncPlusFiveMinutesTms = 0;
