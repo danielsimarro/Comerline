@@ -4,4 +4,8 @@
         <css src="Comerline_ImprovedProduct::css/advanced-options.css" media="all"/>
         <link src="Comerline_ImprovedProduct::js/minimumQty.js"/>
     </head>
+    <body>
+        <referenceBlock name="catalog.compare.sidebar" remove="true"/>
+        <referenceBlock name="wishlist_sidebar" remove="true" />
+    </body>
 </page>
