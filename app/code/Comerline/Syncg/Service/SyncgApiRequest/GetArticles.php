@@ -764,6 +764,13 @@ class GetArticles extends SyncgApiService
             } else {
                 $product->setCustomAttribute('variation', '');
             }
+            $brand = $attributes['marca'];
+            if ($brand !== "") {
+                $brandId = $this->attributeHelper->createOrGetId('brand', $brand);
+                $product->setCustomAttribute('brand', $brandId);
+            } else {
+                $product->setCustomAttribute('brand', '');
+            }
         }
     }
 
