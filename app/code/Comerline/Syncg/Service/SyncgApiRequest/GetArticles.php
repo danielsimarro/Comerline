@@ -154,6 +154,10 @@ class GetArticles extends SyncgApiService
      */
     private $dateTime;
 
+    private $description;
+
+    private $shortDescription;
+
     public function __construct(
         Config                     $configHelper,
         Json                       $json,
@@ -231,7 +235,7 @@ class GetArticles extends SyncgApiService
             'body' => json_encode([
                 'endpoint' => 'articulos/catalogo',
                 'fields' => json_encode(["nombre", "ref_fabricante", "fecha_cambio", "borrado", "ref_proveedor", "descripcion",
-                    "desc_detallada", "envase", "frente", "fondo", "alto", "peso", "diametro", "diametro2", "pvp1", "pvp2", "precio_coste_estimado", "modelo",
+                    "desc_detallada", "desc_interna", "envase", "frente", "fondo", "alto", "peso", "diametro", "diametro2", "pvp1", "pvp2", "precio_coste_estimado", "modelo",
                     "si_vender_en_web", "existencias_globales", "grupo", "acotacion", "marca"]),
                 'filters' => json_encode([
                     "inicio" => $start,
@@ -269,6 +273,8 @@ class GetArticles extends SyncgApiService
             $countProductsG4100 = count($productsG4100);
             for ($i = 0; $i < $countProductsG4100; $i++) {
                 $productG4100 = $productsG4100[$i];
+                $this->description = $productG4100['desc_detallada'];
+                $this->shortDescription = $productG4100['desc_interna'];
                 $prefixLog = $this->prefixLog . ' [' . $countProductsG4100 . '/' . ($i + 1) . '][G4100 Product: ' . $productG4100['cod'] . ']';
                 if ($this->checkRequiredData($productG4100)) {
                     $collectionSyncg = $this->syncgStatusCollectionFactory->create()
@@ -454,6 +460,8 @@ class GetArticles extends SyncgApiService
             }
         }
         $product->setName($productG4100['descripcion']);
+        $product->setDescription($this->description);
+        $product->setShortDescription($this->shortDescription);
         $product->setStoreId(0);
         $product->setAttributeSetId($attributeSetId);
         $url = strtolower(str_replace(" ", "-", $productG4100['descripcion']));

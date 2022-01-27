@@ -26,3 +26,9 @@
 #advanced-options:hover {
     background-color: #0056aa;
 }
+
+.improvedProductsDescription {
+    max-height:350px;
+    overflow: scroll;
+    text-align: center;
+}

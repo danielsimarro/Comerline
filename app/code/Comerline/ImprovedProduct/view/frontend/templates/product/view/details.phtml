@@ -1,0 +1,42 @@
+<?php
+
+$product = $block->getProduct();
+$attributeOptions = ['diameter', 'width', 'offset', 'hub', 'mounting', 'load'];
+?>
+<div class="improvedProductsDescription">
+    <br>
+    <h2><?php echo $product->getName(); ?> </h2>
+    <br/>
+    <h4><?php echo $product->getShortDescription(); ?></h4>
+    <br/>
+    <h4>Opciones:</h4>
+    <br/>
+    <h4>
+        <ul>
+            <?php
+            if ($product->getTypeId() == "simple") {
+                $variations = '';
+                foreach ($attributeOptions as $option) {
+                    $variations .= $product->getAttributeText($option) . ', ';
+                }
+                ?>
+                <li><strong><?php echo substr($variations, 0, -2); ?></strong></li>
+                <?php
+            } else {
+                $children = $product->getTypeInstance()->getUsedProducts($product);
+                foreach ($children as $child) {
+                    $variations = '';
+                    foreach ($attributeOptions as $option) {
+                        $variations .= $child->getAttributeText($option) . ', ';
+                    }
+                    ?>
+                    <li><strong><?php echo substr($variations, 0, -2); ?></strong></li>
+                    <?php
+                }
+            }
+            ?>
+        </ul>
+    </h4>
+    <br/>
+    <h4> Acabado: <?php $product->getAttributeText('variation') ?> </h4>
+</div>
