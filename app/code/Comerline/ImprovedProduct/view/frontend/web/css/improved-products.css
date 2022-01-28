@@ -27,8 +27,26 @@
     background-color: #0056aa;
 }
 
-.improvedProductsDescription {
-    max-height:350px;
+.improved-products-description {
+    max-height:463px;
     overflow: scroll;
     text-align: center;
+}
+
+.product-description {
+    text-align: left;
+}
+
+.table-styling > tbody > tr > th {
+    text-align: center;
+}
+
+.table-styling, th, td {
+    border: 1px solid black;
+}
+
+.table-styling {
+    width: 40%;
+    margin-left: auto;
+    margin-right: auto;
 }
