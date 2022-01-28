@@ -22,7 +22,6 @@ $attributeOptions = ['diameter', 'width', 'offset', 'hub', 'mounting', 'load'];
         </tr>
         <?php
         if ($product->getTypeId() == "simple") {
-            $variations = '';
             ?>
             <tr>
                 <?php
@@ -38,7 +37,6 @@ $attributeOptions = ['diameter', 'width', 'offset', 'hub', 'mounting', 'load'];
         } else {
             $children = $product->getTypeInstance()->getUsedProducts($product);
             foreach ($children as $child) {
-                $variations = '';
                 ?>
                 <tr>
                     <?php
@@ -58,5 +56,5 @@ $attributeOptions = ['diameter', 'width', 'offset', 'hub', 'mounting', 'load'];
         ?>
     </table>
     <br/>
-    <h4> Acabado: <?php echo $finish ?> </h4>
+    <h4> Acabado: <?php echo $finish ?></h4>
 </div>
