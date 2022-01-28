@@ -1,0 +1,60 @@
+<?php
+
+$product = $block->getProduct();
+$attributeOptions = ['diameter', 'width', 'offset', 'hub', 'mounting', 'load'];
+?>
+<div class="improved-products-description">
+    <br>
+    <h2><?php echo $product->getName(); ?> </h2>
+    <br/>
+    <h4 class="product-description"><?php echo $product->getDescription(); ?></h4>
+    <br/>
+    <h4>Opciones:</h4>
+    <br/>
+    <table class="table-styling">
+        <tr>
+            <th>Diametro</th>
+            <th>Ancho</th>
+            <th>ET</th>
+            <th>Buje</th>
+            <th>Montaje</th>
+            <th>Índice de Carga</th>
+        </tr>
+        <?php
+        if ($product->getTypeId() == "simple") {
+            ?>
+            <tr>
+                <?php
+                foreach ($attributeOptions as $option) {
+                    ?>
+                    <th><?php echo $product->getAttributeText($option); ?></th>
+                    <?php
+                }
+                $finish = $product->getAttributeText('variation');
+                ?>
+            </tr>
+            <?php
+        } else {
+            $children = $product->getTypeInstance()->getUsedProducts($product);
+            foreach ($children as $child) {
+                ?>
+                <tr>
+                    <?php
+                    foreach ($attributeOptions as $option) {
+                        ?>
+                        <th><?php echo $child->getAttributeText($option); ?></th>
+                        <?php
+                    }
+                    ?>
+                    <?php
+                    $finish = $child->getAttributeText('variation');
+                    ?>
+                </tr>
+                <?php
+            }
+        }
+        ?>
+    </table>
+    <br/>
+    <h4> Acabado: <?php echo $finish ?></h4>
+</div>
