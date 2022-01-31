@@ -32,7 +32,6 @@ class Frame extends \Magento\Framework\App\Action\Action
         $html = '<option selected="selected" value="">Seleccione una opción</option>';
 
         $categoryId = $this->getRequest()->getParam('frame');
-        xdebug_break();
         if ($categoryId != '') {
             $category = $this->configCar->getCategoryById($categoryId);
             $childrenCategories = $category->getChildrenCategories();
