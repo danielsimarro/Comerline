@@ -1,0 +1,108 @@
+<div id="modal-content">
+    <?php
+    $parentCategory = $block->getMainCategory();
+    ?>
+    <div class="field llantas_marca required">
+        <label class="label" for="llantas_marca"><span><?php echo __('Seleccione su marca') ?></span></label>
+        <div class="control">
+            <?php
+            foreach ($parentCategory as $parent) {
+                if ($parent->hasChildren()) {
+                    $parentObj = $block->getCategoryById($parent->getId());
+                    ?>
+                    <select name="llantas_marca" id="llantas_marca" title="<?php echo __('Seleccione su marca') ?>" class="input-text"
+                            data-validate="{required:true}">
+                        <option value=""><?php echo __('Seleccione una marca') ?></option>
+                        <?php
+                        $childCategories = $parentObj->getChildrenCategories();
+                        foreach ($childCategories as $child):
+                            $childObj = $block->getCategoryById($child->getId());
+                            ?>
+                            <option value="<?php echo $child->getId() ?>"><?php echo $childObj->getName() ?></option>
+                        <?php
+                        endforeach;
+                        ?>
+                    </select>
+                    <?php
+                }
+            }
+            ?>
+        </div>
+    </div>
+    <div class="field llantas_modelo required">
+        <label class="label" for="llantas_modelo"><span><?php echo __('Seleccione un modelo') ?></span></label>
+        <div class="control">
+            <select name="llantas_modelo" id="llantas_modelo" title="<?php echo __('Seleccione un modelo') ?>" class="input-text"
+                    data-validate="{required:true}">
+                <option value=""><?php echo __('Seleccione un modelo') ?></option>
+            </select>
+        </div>
+    </div>
+    <div class="field llantas_ano required">
+        <label class="label" for="llantas_ano"><span><?php echo __('Seleccione un año') ?></span></label>
+        <div class="control">
+            <select name="llantas_modelo" id="llantas_ano" title="<?php echo __('Seleccione un año') ?>" class="input-text"
+                    data-validate="{required:true}">
+                <option value=""><?php echo __('Seleccione un año') ?></option>
+            </select>
+        </div>
+    </div>
+</div>
+<button type="button" id="configcar-modal-button" class="btn btn-primary">Configurador de Coche</button>
+<script>
+    require(
+        [
+            'jquery',
+            'Magento_Ui/js/modal/modal'
+        ],
+        function($,modal) {
+            var options = {
+                type: 'popup',
+                responsive: true,
+                innerScroll: true,
+                title: 'Configurador de coche',
+                buttons: [{
+                    text: $.mage.__('Continue'),
+                    class: 'accept',
+                    click: function () {
+                        $.cookie('userCar', $('#llantas_marca option:selected').val());
+                        alert($.cookie('userCar'));
+                        this.closeModal();
+                    }
+                }]
+            };
+            var popup = modal(options, $('#modal-content'));
+            $("#configcar-modal-button").click(function(){
+                $('#modal-content').modal('openModal');
+            });
+        },
+    );
+    jQuery(document).on('change', '#llantas_marca', function () {
+        var param = 'frame=' + jQuery('#llantas_marca').val();
+        jQuery.ajax({
+            showLoader: true,
+            url: '<?php echo $block->getframeAction(); ?>',
+            data: param,
+            type: "GET",
+            dataType: 'json'
+        }).done(function (data) {
+            jQuery('#llantas_modelo').empty();
+            jQuery('#llantas_modelo').append(data.value);
+        });
+    });
+
+    jQuery(document).on('change', '#llantas_modelo', function () {
+        var param = 'frame=' + jQuery('#llantas_modelo').val();
+        jQuery.ajax({
+            showLoader: true,
+            url: '<?php echo $block->getframeAction(); ?>',
+            data: param,
+            type: "GET",
+            dataType: 'json'
+        }).done(function (data) {
+            jQuery('#llantas_ano').empty();
+            jQuery('#llantas_ano').append(data.value);
+        });
+    });
+
+</script>

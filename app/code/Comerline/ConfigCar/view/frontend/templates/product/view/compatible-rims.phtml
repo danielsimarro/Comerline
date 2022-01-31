@@ -1,0 +1,49 @@
+<?php
+$objectManager = \Magento\Framework\App\ObjectManager::getInstance();
+$cookieManager = $objectManager->get('Magento\Framework\Stdlib\CookieManagerInterface');
+$cookie = $cookieManager->getCookie('userCar');
+$category = null;
+if ($cookie) :
+    $category = $block->getCategoryById($cookie);
+endif;
+xdebug_break();
+if ($category):
+    $productCollection = $block->getProductCollection($cookie);
+    $categoryProduct = $productCollection->getFirstItem();
+    $currentProduct = $block->getCurrentProduct();
+    $valid = 0;
+    ?>
+
+    <div id="compatible-rims" style="display: none;">
+        <?php
+        if ($categoryProduct === $currentProduct):
+            ?>
+            <p> Esta llanta es compatible con tu vehículo </p>
+        <?php
+        else:
+        ?>
+            <p> Esta llanta no es compatible con tu vehículo </p>
+        <?php
+        endif;
+        ?>
+    </div>
+
+<?php
+endif;
+?>
+
+<script>
+    require(
+        [
+            'jquery',
+            'mage/cookies'
+        ],
+        function ($) {
+            if ($.mage.cookies.get('userCar')) {
+                $('#compatible-rims').show();
+            } else {
+                $('#compatible-rims').hide();
+            }
+        },
+    );
+</script>
