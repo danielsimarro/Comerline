@@ -1,30 +1,77 @@
 <?php
 $objectManager = \Magento\Framework\App\ObjectManager::getInstance();
 $cookieManager = $objectManager->get('Magento\Framework\Stdlib\CookieManagerInterface');
-$cookie = $cookieManager->getCookie('userCar');
+$cookie = $cookieManager->getCookie('llantas_user_car');
 $category = null;
+$comparableAttributes = ['diameter', 'width', 'offset', 'hub'];
 if ($cookie) :
     $category = $block->getCategoryById($cookie);
 endif;
-xdebug_break();
 if ($category):
-    $productCollection = $block->getProductCollection($cookie);
+    $productCollection = $block->getProductCollectionByCategories(array($cookie));
     $categoryProduct = $productCollection->getFirstItem();
     $currentProduct = $block->getCurrentProduct();
     $valid = 0;
+    $validVariations = [];
     ?>
 
-    <div id="compatible-rims" style="display: none;">
+    <div id="compatible-rims">
         <?php
-        if ($categoryProduct === $currentProduct):
-            ?>
-            <p> Esta llanta es compatible con tu vehículo </p>
-        <?php
-        else:
-        ?>
-            <p> Esta llanta no es compatible con tu vehículo </p>
-        <?php
-        endif;
+        if ($currentProduct->getTypeId() == "simple") {
+            if ($block->compareProductAttributes($currentProduct, $categoryProduct, $comparableAttributes) === 4) {
+                ?>
+                <p> Esta llanta es compatible con tu vehículo </p>
+                <?php
+            } else {
+                ?>
+                <p> Esta llanta no es compatible con tu vehículo </p>
+                <?php
+            }
+        } else {
+            $children = $currentProduct->getTypeInstance()->getUsedProducts($currentProduct);
+            foreach ($children as $child) {
+                if ($block->compareProductAttributes($child, $categoryProduct, $comparableAttributes) === 4) {
+                    $validVariations[$child->getId()] = '';
+                    foreach ($comparableAttributes as $attribute) {
+                        $validVariations[$child->getId()] .= $child->getAttributeText($attribute) . ",";
+                    }
+                    $valid++;
+                }
+            }
+            if ($valid > 0) {
+                ?>
+                <p id="green"> Esta llanta tiene <?php echo $valid ?> variaciones compatibles con tu vehículo </p>
+                <table id="compatible-table">
+                    <tr>
+                        <th>Diametro</th>
+                        <th>Ancho</th>
+                        <th>ET</th>
+                        <th>Buje</th>
+                    </tr>
+                    <?php
+                    foreach ($validVariations as $variation) {
+                        ?>
+                        <tr>
+                            <?php
+                            $variationAttributes = explode(',', substr($variation, 0, -1));
+                            foreach ($variationAttributes as $attribute) {
+                                ?>
+                                <th id="attribute-option"> <?php echo $attribute ?> </th>
+                                <?php
+                            }
+                            ?>
+                        </tr>
+                        <?php
+                    }
+                    ?>
+                </table>
+                <?php
+            } else {
+                ?>
+                <p id="red"> Esta llanta no tiene variaciones compatibles con tu vehículo </p>
+                <?php
+            }
+        }
         ?>
     </div>
 
@@ -39,7 +86,7 @@ endif;
             'mage/cookies'
         ],
         function ($) {
-            if ($.mage.cookies.get('userCar')) {
+            if ($.mage.cookies.get('llantas_user_car')) {
                 $('#compatible-rims').show();
             } else {
                 $('#compatible-rims').hide();

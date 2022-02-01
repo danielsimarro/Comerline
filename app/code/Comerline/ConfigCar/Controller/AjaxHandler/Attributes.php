@@ -1,10 +1,10 @@
 <?php
 
-namespace Comerline\ConfigCar\Controller;
+namespace Comerline\ConfigCar\Controller\AjaxHandler;
 
 use Comerline\ConfigCar\Block\ConfigCar;
 
-class Frame extends \Magento\Framework\App\Action\Action
+class Attributes extends \Magento\Framework\App\Action\Action
 {
     protected $resultJsonFactory;
 
@@ -29,15 +29,28 @@ class Frame extends \Magento\Framework\App\Action\Action
     {
         $result = $this->resultJsonFactory->create();
 
-        $html = '<option selected="selected" value="">Seleccione una opción</option>';
+        $comparableAttributes = ['diameter', 'width', 'offset', 'hub'];
+
+        $html = '<br/>
+        <h4>Opciones:</h4>
+        <br/>
+        <table id="compatible-table">
+            <tr>
+                <th>Diametro</th>
+                <th>Ancho</th>
+                <th>ET</th>
+                <th>Buje</th>
+            </tr>
+            <tr>';
 
         $categoryId = $this->getRequest()->getParam('frame');
         if ($categoryId != '') {
-            $category = $this->configCar->getCategoryById($categoryId);
-            $childrenCategories = $category->getChildrenCategories();
-            foreach ($childrenCategories as $children) {
-                $html .= '<option  value="'. $children->getId() .'">' . $children->getName() . '</option>';
+            $productCollection = $this->configCar->getProductCollectionByCategories(array($categoryId));
+            $categoryProduct = $productCollection->getFirstItem();
+            foreach ($comparableAttributes as $attribute) {
+                $html .= '<th id="attribute-option">' . $categoryProduct->getAttributeText($attribute) . '</th>';
             }
+            $html .= '</tr></table>';
         }
 
         return $result->setData(['success' => true, 'value' => $html]);
