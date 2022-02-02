@@ -42,7 +42,7 @@
     padding: 40px;
 }
 
-#compatible-rims{
+#compatible-rims, #compatible-options{
     text-align: center;
     padding: 10px;
     overflow: auto;

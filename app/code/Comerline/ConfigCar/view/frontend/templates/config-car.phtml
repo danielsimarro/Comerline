@@ -51,7 +51,7 @@
             </select>
         </div>
     </div>
-    <div id="compatible-options" style="text-align: center;">
+    <div id="compatible-options">
         <br/>
         <h4>Opciones:</h4>
         <br/>
@@ -78,18 +78,7 @@
             $(document).ready(function () {
                 $('#configcar-modal-button').html($.cookie('llantas_user_text')); // Replace button text on page load for the one we have in the cookie
                 if ($.cookie('llantas_user_car')) {
-                    let param = 'frame=' + $.cookie('llantas_user_car');
-                    $.ajax({
-                        showLoader: true,
-                        url: '<?php echo $block->getCategoriesAttributes(); ?>',
-                        data: param,
-                        type: "GET",
-                        dataType: 'json'
-                    }).done(function (data) {
-                        $('#compatible-options').empty();
-                        $('#compatible-options').append(data.value);
-                        $('#car-name').html($.cookie('llantas_user_text'));
-                    });
+                    changeModal($.cookie('llantas_user_car'), '<?php echo $block->getCategoriesAttributes(); ?>', '#compatible-options', null, '#car-name');
                 }
             });
             let options = {
@@ -141,50 +130,37 @@
             $("#llantas_ano").on('change', function () {
                 $('.accept').prop('disabled', !$(this).val());
             }).trigger('change');
+
             $(document).on('change', '#llantas_marca', function () {
-                let param = 'frame=' + $('#llantas_marca').val();
-                $.ajax({
-                    showLoader: true,
-                    url: '<?php echo $block->getframeAction(); ?>',
-                    data: param,
-                    type: "GET",
-                    dataType: 'json'
-                }).done(function (data) {
-                    $('#llantas_modelo').empty();
-                    $('#llantas_ano').empty();
-                    $('#llantas_ano').append('<option selected="selected" value="">Seleccione una opción</option>');
-                    $('#llantas_modelo').append(data.value);
-                });
+                changeModal($('#llantas_marca').val(), '<?php echo $block->getframeAction(); ?>', '#llantas_modelo', '#llantas_ano');
             });
-
             $(document).on('change', '#llantas_modelo', function () {
-                let param = 'frame=' + $('#llantas_modelo').val();
-                $.ajax({
-                    showLoader: true,
-                    url: '<?php echo $block->getframeAction(); ?>',
-                    data: param,
-                    type: "GET",
-                    dataType: 'json'
-                }).done(function (data) {
-                    $('#llantas_ano').empty();
-                    $('#llantas_ano').append(data.value);
-                });
+                changeModal($('#llantas_modelo').val(), '<?php echo $block->getframeAction(); ?>', '#llantas_ano');
+            });
+            $(document).on('change', '#llantas_ano', function () {
+                changeModal($('#llantas_ano').val(), '<?php echo $block->getCategoriesAttributes(); ?>', '#compatible-options');
             });
 
-            $(document).on('change', '#llantas_ano', function () {
-                let param = 'frame=' + $('#llantas_ano').val();
+            function changeModal(idOption, block, idOutput, idExtra = null, idButton = null) {
+                let param = 'frame=' + idOption;
                 $.ajax({
                     showLoader: true,
-                    url: '<?php echo $block->getCategoriesAttributes(); ?>',
+                    url: block,
                     data: param,
                     type: "GET",
                     dataType: 'json'
                 }).done(function (data) {
-                    $('#compatible-options').empty();
-                    $('#compatible-options').append(data.value);
+                    $(idOutput).empty();
+                    $(idOutput).append(data.value);
+                    if (idExtra) {
+                        $(idExtra).empty();
+                        $(idExtra).append('<option selected="selected" value="">Seleccione una opción</option>');
+                    }
+                    if (idButton) {
+                        $(idButton).html($.cookie('llantas_user_text'));
+                    }
                 });
-            });
+            }
         }
     );
-
 </script>
