@@ -14,7 +14,8 @@ define([
     'priceBox',
     'jquery-ui-modules/widget',
     'jquery/jquery.parsequery',
-    'fotoramaVideoEvents'
+    'fotoramaVideoEvents',
+    'mage/cookies'
 ], function ($, _, mageTemplate, $t, priceUtils) {
     'use strict';
 
@@ -656,7 +657,37 @@ define([
             var galleryObject = element.data('gallery');
 
             this.options.mediaGalleryInitial = galleryObject.returnCurrentImages();
+
+            /** INIT MOD
+             *  Development of the ConfigCar functionality, where, if the user has chosen a car model,
+             *  we will automatically select a compatible tire when loading the product
+             * **/
+            let diameter = $.mage.cookies.get('llantas_user_car_diameter');
+            let width = $.mage.cookies.get('llantas_user_car_width');
+            let offset = $.mage.cookies.get('llantas_user_car_offset');
+            let hub = $.mage.cookies.get('llantas_user_car_hub');
+
+
+            if ($('#compatible-rims p').hasClass('compatible')) {
+                this._changeAttributeValue('#attribute147', diameter);
+                this._changeAttributeValue('#attribute159', width);
+                this._changeAttributeValue('#attribute158', offset);
+                this._changeAttributeValue('#attribute156', hub);
+            }
         },
+
+        _changeAttributeValue: function (attributeId, attributeValue) {
+            let attributeMap = $(attributeId +  ' > option');
+            attributeMap.map(function() {
+                if ($(this).val() === attributeValue) {
+                    $(attributeId).val(attributeValue).change();
+                }
+            });
+        },
+
+        /**
+         * END MOD
+         */
 
         /**
          * Show or hide tier price block

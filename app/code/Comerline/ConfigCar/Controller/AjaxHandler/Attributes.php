@@ -31,7 +31,8 @@ class Attributes extends \Magento\Framework\App\Action\Action
 
         $comparableAttributes = ['diameter', 'width', 'offset', 'hub'];
 
-        $html = '<br/>
+        $html = '<h4 id="car-name"></h4>
+        <br/>
         <h4>Opciones:</h4>
         <br/>
         <table id="compatible-table">
@@ -48,7 +49,9 @@ class Attributes extends \Magento\Framework\App\Action\Action
             $productCollection = $this->configCar->getProductCollectionByCategories(array($categoryId));
             $categoryProduct = $productCollection->getFirstItem();
             foreach ($comparableAttributes as $attribute) {
-                $html .= '<th id="attribute-option">' . $categoryProduct->getAttributeText($attribute) . '</th>';
+                $attributeCode = $categoryProduct->getData($attribute);
+                $attributeLabel = $categoryProduct->getAttributeText($attribute);
+                $html .= '<th id="attribute-option" attribute-text="' . $attribute . '" attribute-id="' . $attributeCode . '">' . $attributeLabel . '</th>';
             }
             $html .= '</tr></table>';
         }
