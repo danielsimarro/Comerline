@@ -37,7 +37,7 @@
             <select name="llantas_modelo" id="llantas_modelo" title="<?php echo __('Seleccione un modelo') ?>"
                     class="input-text"
                     data-validate="{required:true}">
-                <option value=""><?php echo __('Seleccione una opción') ?></option>
+                <?php echo $this->getLayout()->createBlock("Comerline\ConfigCar\Block\ConfigCar")->setTemplate("Comerline_ConfigCar::product/view/comparable-options.phtml")->toHtml() ?>
             </select>
         </div>
     </div>
@@ -47,7 +47,7 @@
             <select name="llantas_ano" id="llantas_ano" title="<?php echo __('Seleccione un año') ?>"
                     class="input-text"
                     data-validate="{required:true}">
-                <option value=""><?php echo __('Seleccione una opción') ?></option>
+                <?php echo $this->getLayout()->createBlock("Comerline\ConfigCar\Block\ConfigCar")->setTemplate("Comerline_ConfigCar::product/view/comparable-options.phtml")->toHtml() ?>
             </select>
         </div>
     </div>

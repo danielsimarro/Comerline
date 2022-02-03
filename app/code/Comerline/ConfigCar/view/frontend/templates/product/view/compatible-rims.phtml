@@ -40,31 +40,11 @@ if ($category):
             }
             if ($valid > 0) {
                 ?>
-                <p id="green" class="compatible"> <?php echo __('Esta llanta tiene ' . $valid . ' variaciones compatibles con tu vehículo') ?> </p>
-                <table id="compatible-table">
-                    <tr>
-                        <th>Diametro</th>
-                        <th>Ancho</th>
-                        <th>ET</th>
-                        <th>Buje</th>
-                    </tr>
-                    <?php
-                    foreach ($validVariations as $variation) {
-                        ?>
-                        <tr>
-                            <?php
-                            $variationAttributes = explode(',', substr($variation, 0, -1));
-                            foreach ($variationAttributes as $attribute) {
-                                ?>
-                                <th id="attribute-option"> <?php echo $attribute ?> </th>
-                                <?php
-                            }
-                            ?>
-                        </tr>
-                        <?php
-                    }
-                    ?>
-                </table>
+                <p id="green"
+                   class="compatible"> <?php echo __('Esta llanta tiene ' . $valid . ' variaciones compatibles con tu vehículo') ?> </p>
+                <div id="compatibles">
+                    <?php echo $this->getLayout()->createBlock("Comerline\ConfigCar\Block\ConfigCar")->setTemplate("Comerline_ConfigCar::product/view/comparable-attributes.phtml")->toHtml(); ?>
+                </div>
                 <?php
             } else {
                 ?>
@@ -80,7 +60,7 @@ endif;
 ?>
 
 <script>
-    require(['jquery', 'showModal'], function($, showModal) {
+    require(['jquery', 'showModal'], function ($, showModal) {
         showModal();
     });
 </script>
