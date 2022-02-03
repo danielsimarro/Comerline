@@ -1,0 +1,15 @@
+<?php
+$blockData = $block->getData();
+$categoryId = $blockData['data']['categoryId'];
+?>
+    <option value=""><?php echo __('Seleccione una opción') ?></option>
+<?php
+$category = $block->getCategoryById($categoryId);
+$childrenCategories = $category->getChildrenCategories();
+foreach ($childrenCategories as $children) {
+    ?>
+    }
+    <option value="<?php echo $children->getId(); ?>"><?php echo $children->getName(); ?></option>
+    <?php
+}
+?>

@@ -20,11 +20,11 @@ if ($category):
         if ($currentProduct->getTypeId() == "simple") {
             if ($block->compareProductAttributes($currentProduct, $categoryProduct, $comparableAttributes) === 4) {
                 ?>
-                <p> Esta llanta es compatible con tu vehículo </p>
+                <p id="green"> <?php echo __('Esta llanta es compatible con tu vehículo') ?> </p>
                 <?php
             } else {
                 ?>
-                <p> Esta llanta no es compatible con tu vehículo </p>
+                <p id="red"> <?php echo __('Esta llanta no es compatible con tu vehículo') ?> </p>
                 <?php
             }
         } else {
@@ -40,7 +40,7 @@ if ($category):
             }
             if ($valid > 0) {
                 ?>
-                <p id="green" class="compatible"> Esta llanta tiene <?php echo $valid ?> variaciones compatibles con tu vehículo </p>
+                <p id="green" class="compatible"> <?php echo __('Esta llanta tiene ' . $valid . ' variaciones compatibles con tu vehículo') ?> </p>
                 <table id="compatible-table">
                     <tr>
                         <th>Diametro</th>
@@ -68,7 +68,7 @@ if ($category):
                 <?php
             } else {
                 ?>
-                <p id="red"> Esta llanta no tiene variaciones compatibles con tu vehículo </p>
+                <p id="red"> <?php echo __('Esta llanta no tiene variaciones compatibles con tu vehículo') ?> </p>
                 <?php
             }
         }
@@ -80,17 +80,7 @@ endif;
 ?>
 
 <script>
-    require(
-        [
-            'jquery',
-            'mage/cookies'
-        ],
-        function ($) {
-            if ($.mage.cookies.get('llantas_user_car')) {
-                $('#compatible-rims').show();
-            } else {
-                $('#compatible-rims').hide();
-            }
-        },
-    );
+    require(['jquery', 'showModal'], function($, showModal) {
+        showModal();
+    });
 </script>

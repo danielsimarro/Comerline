@@ -2,60 +2,48 @@
 
 namespace Comerline\ConfigCar\Controller\AjaxHandler;
 
-use Comerline\ConfigCar\Block\ConfigCar;
+use Magento\Framework\View\Result\PageFactory;
+use Magento\Framework\App\Action\Action;
+use Magento\Framework\App\Action\Context;
+use Magento\Framework\Controller\Result\JsonFactory;
+use Magento\Directory\Model\RegionFactory;
 
-class Attributes extends \Magento\Framework\App\Action\Action
+class Attributes extends Action
 {
     protected $resultJsonFactory;
 
+    protected $resultPageFactory;
+
     protected $regionColFactory;
 
-    private $configCar;
-
     public function __construct(
-        \Magento\Framework\App\Action\Context            $context,
-        \Magento\Framework\Controller\Result\JsonFactory $resultJsonFactory,
-        \Magento\Directory\Model\RegionFactory           $regionColFactory,
-        ConfigCar                                        $configCar
+        Context       $context,
+        JsonFactory   $resultJsonFactory,
+        RegionFactory $regionColFactory,
+        PageFactory   $resultPageFactory
     )
     {
-        $this->configCar = $configCar;
         $this->regionColFactory = $regionColFactory;
+        $this->resultPageFactory = $resultPageFactory;
         $this->resultJsonFactory = $resultJsonFactory;
         parent::__construct($context);
     }
 
-    public function execute()
+    public
+    function execute()
     {
         $result = $this->resultJsonFactory->create();
-
-        $comparableAttributes = ['diameter', 'width', 'offset', 'hub'];
-
-        $html = '<h4 id="car-name"></h4>
-        <br/>
-        <h4>Opciones:</h4>
-        <br/>
-        <table id="compatible-table">
-            <tr>
-                <th>Diametro</th>
-                <th>Ancho</th>
-                <th>ET</th>
-                <th>Buje</th>
-            </tr>
-            <tr>';
-
+        $resultPage = $this->resultPageFactory->create();
         $categoryId = $this->getRequest()->getParam('frame');
-        if ($categoryId != '') {
-            $productCollection = $this->configCar->getProductCollectionByCategories(array($categoryId));
-            $categoryProduct = $productCollection->getFirstItem();
-            foreach ($comparableAttributes as $attribute) {
-                $attributeCode = $categoryProduct->getData($attribute);
-                $attributeLabel = $categoryProduct->getAttributeText($attribute);
-                $html .= '<th id="attribute-option" attribute-text="' . $attribute . '" attribute-id="' . $attributeCode . '">' . $attributeLabel . '</th>';
-            }
-            $html .= '</tr></table>';
-        }
 
-        return $result->setData(['success' => true, 'value' => $html]);
+        $data = ['categoryId' => $categoryId];
+
+        $block = $resultPage->getLayout()
+            ->createBlock('Comerline\ConfigCar\Block\ConfigCar')
+            ->setTemplate('Comerline_ConfigCar::product/view/comparable-attributes.phtml')
+            ->setData('data', $data)
+            ->toHtml();
+
+        return $result->setData(['output' => $block]);
     }
 }

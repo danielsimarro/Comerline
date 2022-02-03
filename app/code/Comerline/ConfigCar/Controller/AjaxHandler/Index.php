@@ -3,6 +3,9 @@
 namespace Comerline\ConfigCar\Controller\AjaxHandler;
 
 use Comerline\ConfigCar\Block\ConfigCar;
+use Magento\Framework\App\Action\Context;
+use Magento\Framework\Controller\Result\JsonFactory;
+use Magento\Directory\Model\RegionFactory;
 
 class Index extends \Magento\Framework\App\Action\Action
 {
@@ -13,10 +16,10 @@ class Index extends \Magento\Framework\App\Action\Action
     private $configCar;
 
     public function __construct(
-        \Magento\Framework\App\Action\Context            $context,
-        \Magento\Framework\Controller\Result\JsonFactory $resultJsonFactory,
-        \Magento\Directory\Model\RegionFactory           $regionColFactory,
-        ConfigCar                                        $configCar
+        Context       $context,
+        JsonFactory   $resultJsonFactory,
+        RegionFactory $regionColFactory,
+        ConfigCar     $configCar
     )
     {
         $this->configCar = $configCar;
@@ -36,10 +39,10 @@ class Index extends \Magento\Framework\App\Action\Action
             $category = $this->configCar->getCategoryById($categoryId);
             $childrenCategories = $category->getChildrenCategories();
             foreach ($childrenCategories as $children) {
-                $html .= '<option  value="'. $children->getId() .'">' . $children->getName() . '</option>';
+                $html .= '<option  value="' . $children->getId() . '">' . $children->getName() . '</option>';
             }
         }
 
-        return $result->setData(['success' => true, 'value' => $html]);
+        return $result->setData(['output' => $html]);
     }
 }
