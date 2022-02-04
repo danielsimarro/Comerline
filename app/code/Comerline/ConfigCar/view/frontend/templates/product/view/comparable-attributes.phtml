@@ -1,0 +1,47 @@
+<?php
+$comparableAttributes = ['diameter', 'width', 'offset', 'hub'];
+$objectManager = \Magento\Framework\App\ObjectManager::getInstance();
+$cookieManager = $objectManager->get('Magento\Framework\Stdlib\CookieManagerInterface');
+$carText = $cookieManager->getCookie('llantas_user_text');
+$carWidth = $cookieManager->getCookie('llantas_user_width');
+$carCategory = $cookieManager->getCookie('llantas_user_car');
+$blockData = $block->getData();
+if (array_key_exists('data', $blockData)) {
+    $categoryId = $blockData['data']['categoryId'];
+} else {
+    $categoryId = $carCategory;
+}
+
+if ($carWidth || array_key_exists('data', $blockData)) :
+    if ($categoryId === $carCategory):
+        ?>
+        <h4 id="car-name"><?php echo $carText ?></h4>
+    <?php
+    endif;
+    ?>
+    </br>
+    <table id="compatible-table">
+        <tr>
+            <th><?php echo __('Diametro') ?></th>
+            <th><?php echo __('Ancho') ?></th>
+            <th><?php echo __('ET') ?></th>
+            <th><?php echo __('Buje') ?></th>
+        </tr>
+        <tr>
+            <?php
+            $productCollection = $block->getProductCollectionByCategories($categoryId);
+            $categoryProduct = $productCollection->getFirstItem();
+            foreach ($comparableAttributes as $attribute) {
+                if ($categoryProduct):
+                    $attributeCode = $categoryProduct->getData($attribute);
+                    $attributeLabel = $categoryProduct->getAttributeText($attribute);
+                    ?>
+                    <th id="attribute-option" attribute-text="<?php echo $attribute ?>"
+                        attribute-id="<?php echo $attributeCode ?>"><?php echo $attributeLabel ?></th>
+                <?php
+                endif;
+            }
+            ?>
+        </tr>
+    </table>
+<?php endif; ?>

@@ -1,0 +1,38 @@
+#advanced-options {
+    width: 100%;
+    font-style: normal;
+    font-weight: normal;
+    font-variant: normal;
+    font-synthesis: weight style;
+    font-stretch: normal;
+    font-size-adjust: none;
+    font-language-override: normal;
+    font-kerning: auto;
+    font-feature-settings: normal;
+    font-size: 14px;
+    display: inline-block;
+    border: medium none !important;
+    background-color: rgb(40, 40, 40);
+    line-height: 40px;
+    text-align: center;
+    color: rgb(255, 255, 255) !important;
+    height: 40px;
+    padding: 0px;
+    margin-right: 5px;
+    border-radius: 3px;
+    transition: all 0.2s ease 0s;
+}
+
+#advanced-options:hover {
+    background-color: #0056aa;
+}
+
+.improved-products-description {
+    max-height:463px;
+    overflow: auto;
+    text-align: center;
+}
+
+.product-description {
+    text-align: left;
+}

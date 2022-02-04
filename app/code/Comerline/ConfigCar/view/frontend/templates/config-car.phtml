@@ -1,0 +1,70 @@
+<div id="modal-content">
+    <?php
+    $parentCategory = $block->getMainCategory();
+    ?>
+    <p id="feedback"></p>
+    <div class="field llantas_marca required">
+        <label class="label" for="llantas_marca"><span><?php echo __('Seleccione su marca') ?></span></label>
+        <div class="control">
+            <?php
+            foreach ($parentCategory as $parent) {
+                if ($parent->hasChildren()) {
+                    $parentObj = $block->getCategoryById($parent->getId());
+                    ?>
+                    <select name="llantas_marca" id="llantas_marca" title="<?php echo __('Seleccione su marca') ?>"
+                            class="input-text"
+                            data-validate="{required:true}">
+                        <option value=""><?php echo __('Seleccione una opción') ?></option>
+                        <?php
+                        $childCategories = $parentObj->getChildrenCategories();
+                        foreach ($childCategories as $child):
+                            $childObj = $block->getCategoryById($child->getId());
+                            ?>
+                            <option value="<?php echo $child->getId() ?>"><?php echo $childObj->getName() ?></option>
+                        <?php
+                        endforeach;
+                        ?>
+                    </select>
+                    <?php
+                }
+            }
+            ?>
+        </div>
+    </div>
+    <div class="field llantas_modelo required">
+        <label class="label" for="llantas_modelo"><span><?php echo __('Seleccione un modelo') ?></span></label>
+        <div class="control">
+            <select name="llantas_modelo" id="llantas_modelo" title="<?php echo __('Seleccione un modelo') ?>"
+                    class="input-text"
+                    data-validate="{required:true}">
+                <?php echo $this->getLayout()->createBlock("Comerline\ConfigCar\Block\ConfigCar")->setTemplate("Comerline_ConfigCar::product/view/comparable-options.phtml")->toHtml() ?>
+            </select>
+        </div>
+    </div>
+    <div class="field llantas_ano required">
+        <label class="label" for="llantas_ano"><span><?php echo __('Seleccione un año') ?></span></label>
+        <div class="control">
+            <select name="llantas_ano" id="llantas_ano" title="<?php echo __('Seleccione un año') ?>"
+                    class="input-text"
+                    data-validate="{required:true}">
+                <?php echo $this->getLayout()->createBlock("Comerline\ConfigCar\Block\ConfigCar")->setTemplate("Comerline_ConfigCar::product/view/comparable-options.phtml")->toHtml() ?>
+            </select>
+        </div>
+    </div>
+    <div id="compatible-options">
+        <?php echo $this->getLayout()->createBlock("Comerline\ConfigCar\Block\ConfigCar")->setTemplate("Comerline_ConfigCar::product/view/comparable-attributes.phtml")->toHtml() ?>
+    </div>
+</div>
+<button type="button" id="configcar-modal-button" class="btn btn-primary">Configurador de Coche</button>
+
+<script type="text/x-magento-init">
+{
+    "*": {
+            "Comerline_ConfigCar/js/config-car": {
+                "categoriesAttribute": "<?php echo $block->getCategoriesAttributes(); ?>",
+                "frameAction": "<?php echo $block->getframeAction(); ?>"
+            }
+        }
+}
+
+</script>
