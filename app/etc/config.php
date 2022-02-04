@@ -312,6 +312,8 @@ return [
         'Klarna_Kp' => 1,
         'Klarna_Onsitemessaging' => 1,
         'Klarna_KpGraphQl' => 1,
+        'MagePal_Core' => 1,
+        'MagePal_GoogleTagManager' => 1,
         'Magefan_Community' => 1,
         'Magefan_Blog' => 1,
         'Magefan_WysiwygAdvanced' => 1,
