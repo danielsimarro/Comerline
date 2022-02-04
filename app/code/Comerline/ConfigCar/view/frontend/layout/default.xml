@@ -1,0 +1,10 @@
+<page xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="urn:magento:module:View/Layout:etc/page_configuration.xsd">
+    <head>
+        <css src="Comerline_ConfigCar::css/configCar.css" media="all"/>
+    </head>
+    <body>
+        <referenceContainer name="main">
+            <block class="Comerline\ConfigCar\Block\ConfigCar" template="config-car.phtml" />
+        </referenceContainer>
+    </body>
+</page>

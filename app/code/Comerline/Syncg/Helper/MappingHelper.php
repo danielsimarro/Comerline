@@ -116,7 +116,7 @@ class MappingHelper
     {
         $this->logger->info(new Phrase($this->prefixLog . ' Rim <-> Car Mapping Start.'));
         $timeStart = microtime(true);
-        $csvFile = $this->dir->getPath('media') . '/mapeo_llantas_modelos_test.csv';
+        $csvFile = $this->dir->getPath('media') . '/mapeo_llantas_modelos.csv';
         $lastCategoriesMapping = $this->config->getParamsWithoutSystem('syncg/general/last_date_mapping_categories')->getValue(); // We get the last mapping date
         $lastChangeCsv = date('Y-m-d H:i:s', @filemtime($csvFile)); //We get the last CSV change date
 

@@ -11,7 +11,7 @@ $attributeOptions = ['diameter', 'width', 'offset', 'hub', 'mounting', 'load'];
     <br/>
     <h4>Opciones:</h4>
     <br/>
-    <table class="table-styling">
+    <table class="compatible-table">
         <tr>
             <th>Diametro</th>
             <th>Ancho</th>
@@ -27,7 +27,7 @@ $attributeOptions = ['diameter', 'width', 'offset', 'hub', 'mounting', 'load'];
                 <?php
                 foreach ($attributeOptions as $option) {
                     ?>
-                    <th><?php echo $product->getAttributeText($option); ?></th>
+                    <th id="attribute-option"><?php echo $product->getAttributeText($option); ?></th>
                     <?php
                 }
                 $finish = $product->getAttributeText('variation');
@@ -42,7 +42,7 @@ $attributeOptions = ['diameter', 'width', 'offset', 'hub', 'mounting', 'load'];
                     <?php
                     foreach ($attributeOptions as $option) {
                         ?>
-                        <th><?php echo $child->getAttributeText($option); ?></th>
+                        <th id="attribute-option"><?php echo $child->getAttributeText($option); ?></th>
                         <?php
                     }
                     ?>
