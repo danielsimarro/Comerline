@@ -3,7 +3,7 @@ $comparableAttributes = ['diameter', 'width', 'offset', 'hub'];
 $objectManager = \Magento\Framework\App\ObjectManager::getInstance();
 $cookieManager = $objectManager->get('Magento\Framework\Stdlib\CookieManagerInterface');
 $carText = $cookieManager->getCookie('llantas_user_text');
-$carWidth = $cookieManager->getCookie('llantas_user_width');
+$carWidth = $cookieManager->getCookie('llantas_user_car_width');
 $carCategory = $cookieManager->getCookie('llantas_user_car');
 $blockData = $block->getData();
 if (array_key_exists('data', $blockData)) {
