@@ -11,7 +11,7 @@ use Magento\Framework\App\Action\Context;
 use Magento\Framework\Controller\Result\JsonFactory;
 use Magento\Directory\Model\RegionFactory;
 
-class Attributes extends Action
+class Compatibles extends Action
 {
     protected $resultJsonFactory;
 
@@ -78,7 +78,7 @@ class Attributes extends Action
 
         $block = $resultPage->getLayout()
             ->createBlock('Comerline\ConfigCar\Block\ConfigCar')
-            ->setTemplate('Comerline_ConfigCar::product/view/comparable-attributes.phtml')
+            ->setTemplate('Comerline_ConfigCar::product/view/comparable-attributes-valid.phtml')
             ->setData('data', $data)
             ->toHtml();
 

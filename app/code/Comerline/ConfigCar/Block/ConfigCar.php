@@ -11,6 +11,7 @@ class ConfigCar extends \Magento\Framework\View\Element\Template
     protected $_categoryRepository;
     protected $_registry;
     protected $_productCollectionFactory;
+    protected $_productAttributeRepository;
 
     public function __construct(
         \Magento\Framework\View\Element\Template\Context               $context,
@@ -19,6 +20,7 @@ class ConfigCar extends \Magento\Framework\View\Element\Template
         \Magento\Catalog\Model\CategoryRepository                      $categoryRepository,
         \Magento\Framework\Registry                                    $registry,
         \Magento\Catalog\Model\ResourceModel\Product\CollectionFactory $productCollectionFactory,
+        \Magento\Catalog\Api\ProductAttributeRepositoryInterface $productAttributeRepository,
         array                                                          $data = []
     )
     {
@@ -26,6 +28,7 @@ class ConfigCar extends \Magento\Framework\View\Element\Template
         $this->_categoryHelper = $categoryHelper;
         $this->_categoryRepository = $categoryRepository;
         $this->_registry = $registry;
+        $this->_productAttributeRepository = $productAttributeRepository;
         $this->_productCollectionFactory = $productCollectionFactory;
         parent::__construct($context, $data);
         $this->_isScopePrivate = true;
@@ -33,14 +36,17 @@ class ConfigCar extends \Magento\Framework\View\Element\Template
 
     public function getframeAction()
     {
-        $url = $this->getUrl('configcar/ajaxhandler', ['_secure' => true]);
-        return $url;
+        return $this->getUrl('configcar/ajaxhandler', ['_secure' => true]);
     }
 
     public function getCategoriesAttributes()
     {
-        $url = $this->getUrl('configcar/ajaxhandler/attributes', ['_secure' => true]);
-        return $url;
+        return $this->getUrl('configcar/ajaxhandler/attributes', ['_secure' => true]);
+    }
+
+    public function getCompatibles()
+    {
+        return $this->getUrl('configcar/ajaxhandler/compatibles', ['_secure' => true]);
     }
 
     public function getMainCategory()
@@ -86,5 +92,16 @@ class ConfigCar extends \Magento\Framework\View\Element\Template
         }
 
         return $validAttribute;
+    }
+
+    public function getAttributeId($attributeText, $optionText)
+    {
+        $attribute = $this->_productAttributeRepository->get($attributeText);
+        return $attribute->getSource()->getOptionId($optionText);
+    }
+
+    public function checkValidVariation($variation, $child) {
+        $variation->getData();
+        $child->getData();
     }
 }

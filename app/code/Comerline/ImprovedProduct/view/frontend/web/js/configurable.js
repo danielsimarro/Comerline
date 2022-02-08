@@ -662,10 +662,10 @@ define([
              *  Development of the ConfigCar functionality, where, if the user has chosen a car model,
              *  we will automatically select a compatible tire when loading the product
              * **/
-            let diameter = $.mage.cookies.get('llantas_user_car_diameter');
-            let width = $.mage.cookies.get('llantas_user_car_width');
-            let offset = $.mage.cookies.get('llantas_user_car_offset');
-            let hub = $.mage.cookies.get('llantas_user_car_hub');
+            let diameter = $("th[attribute-text = 'diameter']").attr('attribute-id');
+            let width = $("th[attribute-text = 'width']").attr('attribute-id');
+            let offset = $("th[attribute-text = 'offset']").attr('attribute-id');
+            let hub = $("th[attribute-text = 'hub']").attr('attribute-id');
 
 
             if ($('#compatible-rims p').hasClass('compatible')) {

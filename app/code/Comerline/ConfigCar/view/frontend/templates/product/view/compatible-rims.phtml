@@ -41,9 +41,9 @@ if ($category):
             if ($valid > 0) {
                 ?>
                 <p id="green"
-                   class="compatible"> <?php echo __('Esta llanta tiene ' . $valid . ' variaciones compatibles con tu vehículo') ?> </p>
+                   class="compatible"> <?php echo __('Esta llanta tiene variaciones compatibles con tu vehículo') ?> </p>
                 <div id="compatibles">
-                    <?php echo $this->getLayout()->createBlock("Comerline\ConfigCar\Block\ConfigCar")->setTemplate("Comerline_ConfigCar::product/view/comparable-attributes.phtml")->toHtml(); ?>
+                    <?php echo $this->getLayout()->createBlock("Comerline\ConfigCar\Block\ConfigCar")->setTemplate("Comerline_ConfigCar::product/view/comparable-attributes-valid.phtml")->setKey($currentProduct->getId())->toHtml(); ?>
                 </div>
                 <?php
             } else {
