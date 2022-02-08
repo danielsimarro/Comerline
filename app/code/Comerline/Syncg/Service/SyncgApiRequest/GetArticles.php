@@ -236,7 +236,7 @@ class GetArticles extends SyncgApiService
                 'endpoint' => 'articulos/catalogo',
                 'fields' => json_encode(["nombre", "ref_fabricante", "fecha_cambio", "borrado", "ref_proveedor", "descripcion",
                     "desc_detallada", "desc_interna", "envase", "frente", "fondo", "alto", "peso", "diametro", "diametro2", "pvp1", "pvp2", "precio_coste_estimado", "modelo",
-                    "si_vender_en_web", "existencias_globales", "grupo", "acotacion", "marca"]),
+                    "si_vender_en_web", "existencias_globales", "grupo", "acotacion", "marca", "SEO_description", "SEO_title"]),
                 'filters' => json_encode([
                     "inicio" => $start,
                     "filtro" => [
@@ -462,6 +462,8 @@ class GetArticles extends SyncgApiService
         $product->setName($productG4100['descripcion']);
         $product->setDescription($this->description);
         $product->setShortDescription($this->shortDescription);
+        $product->setMetaTitle($productG4100['SEO_title']);
+        $product->setMetaDescription($productG4100['SEO_description']);
         $product->setStoreId(0);
         $product->setAttributeSetId($attributeSetId);
         $url = strtolower(str_replace(" ", "-", $productG4100['descripcion']));
