@@ -2,6 +2,16 @@
 
 namespace Comerline\ConfigCar\Block;
 
+use Comerline\ConfigCar\Helper\ConfigCarHelper;
+use Magento\Framework\Filesystem\DirectoryList;
+use Magento\Framework\View\Element\Template\Context;
+use Magento\Catalog\Model\CategoryFactory;
+use Magento\Catalog\Helper\Category;
+use Magento\Catalog\Model\CategoryRepository;
+use Magento\Framework\Registry;
+use Magento\Catalog\Model\ResourceModel\Product\CollectionFactory;
+use Magento\Catalog\Api\ProductAttributeRepositoryInterface;
+
 class ConfigCar extends \Magento\Framework\View\Element\Template
 {
     protected $_isScopePrivate;
@@ -12,16 +22,21 @@ class ConfigCar extends \Magento\Framework\View\Element\Template
     protected $_registry;
     protected $_productCollectionFactory;
     protected $_productAttributeRepository;
+    protected $dir;
+    protected $configCarHelper;
+    private $comprobationOrder;
 
     public function __construct(
-        \Magento\Framework\View\Element\Template\Context               $context,
-        \Magento\Catalog\Model\CategoryFactory                         $categoryFactory,
-        \Magento\Catalog\Helper\Category                               $categoryHelper,
-        \Magento\Catalog\Model\CategoryRepository                      $categoryRepository,
-        \Magento\Framework\Registry                                    $registry,
-        \Magento\Catalog\Model\ResourceModel\Product\CollectionFactory $productCollectionFactory,
-        \Magento\Catalog\Api\ProductAttributeRepositoryInterface $productAttributeRepository,
-        array                                                          $data = []
+        Context                             $context,
+        CategoryFactory                     $categoryFactory,
+        Category                            $categoryHelper,
+        CategoryRepository                  $categoryRepository,
+        Registry                            $registry,
+        CollectionFactory                   $productCollectionFactory,
+        ProductAttributeRepositoryInterface $productAttributeRepository,
+        DirectoryList                       $dir,
+        ConfigCarHelper                     $configCarHelper,
+        array                               $data = []
     )
     {
         $this->_categoryFactory = $categoryFactory;
@@ -30,21 +45,24 @@ class ConfigCar extends \Magento\Framework\View\Element\Template
         $this->_registry = $registry;
         $this->_productAttributeRepository = $productAttributeRepository;
         $this->_productCollectionFactory = $productCollectionFactory;
+        $this->dir = $dir;
+        $this->configCarHelper = $configCarHelper;
+        $this->comprobationOrder = ['diameter', 'width', 'offset', 'hub'];
         parent::__construct($context, $data);
         $this->_isScopePrivate = true;
     }
 
-    public function getframeAction()
+    public function getframeAction(): string
     {
         return $this->getUrl('configcar/ajaxhandler', ['_secure' => true]);
     }
 
-    public function getCategoriesAttributes()
+    public function getCategoriesAttributes(): string
     {
         return $this->getUrl('configcar/ajaxhandler/attributes', ['_secure' => true]);
     }
 
-    public function getCompatibles()
+    public function getCompatibles(): string
     {
         return $this->getUrl('configcar/ajaxhandler/compatibles', ['_secure' => true]);
     }
@@ -58,10 +76,9 @@ class ConfigCar extends \Magento\Framework\View\Element\Template
         return $this->_category;
     }
 
-    public function getCategoryById($categoryId)
+    public function getCategoryById($categoryId): \Magento\Catalog\Model\Category
     {
-        $category = $this->_categoryFactory->create()->load($categoryId);
-        return $category;
+        return $this->_categoryFactory->create()->load($categoryId);
     }
 
     public function getProductCollection($categoryId)
@@ -75,7 +92,7 @@ class ConfigCar extends \Magento\Framework\View\Element\Template
     }
 
 
-    public function getProductCollectionByCategories($ids)
+    public function getProductCollectionByCategories($ids): \Magento\Catalog\Model\ResourceModel\Product\Collection
     {
         $collection = $this->_productCollectionFactory->create();
         $collection->addAttributeToSelect('*');
@@ -84,14 +101,27 @@ class ConfigCar extends \Magento\Framework\View\Element\Template
         return $collection;
     }
 
-    public function compareProductAttributes($product1, $product2, $comparableAttributes): int
+    public function compareProductAttributes($product, $categoryText): array
     {
-        $validAttribute = 0;
-        foreach ($comparableAttributes as $attribute) {
-            if ($product1->getData($attribute) === $product2->getData($attribute)) $validAttribute++;
+        $categoryTextExplode = explode(" ", strval($categoryText));
+        $csvData = $this->configCarHelper->getFilteredCsvData($categoryTextExplode);
+        $diameter = $this->getAttributeText($this->comprobationOrder[0], $product->getData($this->comprobationOrder[0]));
+        $width = $this->getAttributeText($this->comprobationOrder[1], $product->getData($this->comprobationOrder[1]));
+        $offset = $this->getAttributeText($this->comprobationOrder[2], $product->getData($this->comprobationOrder[2]));
+        $hub = $this->getAttributeText($this->comprobationOrder[3], $product->getData($this->comprobationOrder[3]));
+
+        $validAttributes = [];
+        foreach ($csvData as $csv) {
+            $diameterCSV = $this->configCarHelper->mountOptionText($csv['diametro']) . "''";
+            $widthCSV = $this->configCarHelper->mountOptionText($csv['ancho']) . "cm";
+            $offsetCSV = $this->configCarHelper->mountOptionText($csv['et']) . "mm";
+            $hubCSV = $this->configCarHelper->mountOptionText($csv['buje']) . "mm";
+            if (($diameter === $diameterCSV) && ($width === $widthCSV) && ($offset === $offsetCSV) && ($hub === $hubCSV)) {
+                $validAttributes[] = $diameterCSV . "," . $widthCSV . "," . $offsetCSV . "," . $hubCSV . ",";
+            }
         }
 
-        return $validAttribute;
+        return array_unique($validAttributes);
     }
 
     public function getAttributeId($attributeText, $optionText)
@@ -100,8 +130,9 @@ class ConfigCar extends \Magento\Framework\View\Element\Template
         return $attribute->getSource()->getOptionId($optionText);
     }
 
-    public function checkValidVariation($variation, $child) {
-        $variation->getData();
-        $child->getData();
+    public function getAttributeText($attributeText, $optionId)
+    {
+        $attribute = $this->_productAttributeRepository->get($attributeText);
+        return $attribute->getSource()->getOptionText($optionId);
     }
 }

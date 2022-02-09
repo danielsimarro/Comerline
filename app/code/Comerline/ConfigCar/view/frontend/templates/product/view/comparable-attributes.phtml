@@ -6,45 +6,46 @@ $carText = $cookieManager->getCookie('llantas_user_text');
 $carCategory = $cookieManager->getCookie('llantas_user_car');
 $blockData = $block->getData();
 if (array_key_exists('data', $blockData)) {
-    $categoryId = $blockData['data']['categoryId'];
-    $variations = $blockData['data']['variations'];
+    if (array_key_exists('categoryId', $blockData['data'])) {
+        $categoryId = $blockData['data']['categoryId'];
+    }
+    $variations = $blockData['data']['validVariations'];
 } else {
     $categoryId = $carCategory;
     $variations = '';
 }
 
-if (array_key_exists('data', $blockData)) :
-    if ($categoryId === $carCategory):
-        ?>
-        <h4 id="car-name"><?php echo $carText ?></h4>
-    <?php
-    endif;
+if (isset($categoryId) && $categoryId === $carCategory):
     ?>
-    </br>
-    <table id="compatible-table">
-        <tr>
-            <th><?php echo __('Diametro') ?></th>
-            <th><?php echo __('Ancho') ?></th>
-            <th><?php echo __('ET') ?></th>
-            <th><?php echo __('Buje') ?></th>
-        </tr>
-            <?php
-            if ($variations):
-                foreach ($variations as $variation) {
+    <h4 id="car-name"><?php echo $carText ?></h4>
+<?php
+endif;
+?>
+</br>
+<table id="compatible-table">
+    <tr>
+        <th><?php echo __('Diametro') ?></th>
+        <th><?php echo __('Ancho') ?></th>
+        <th><?php echo __('ET') ?></th>
+        <th><?php echo __('Buje') ?></th>
+    </tr>
+    <?php
+    if ($variations):
+        foreach ($variations as $variation) {
+            ?>
+            <tr>
+                <?php
+                $variationAttributes = explode(',', substr($variation, 0, strlen($variation) - 1));
+                for ($i = 0; $i < count($variationAttributes); $i++) {
                     ?>
-                <tr>
-                    <th id="attribute-option" attribute-text="diameter"
-                        attribute-id="<?php echo $block->getAttributeId('diameter', ($variation['diametro'] . "''")) ?>"><?php echo $variation['diametro'] . "''" ?></th>
-                    <th id="attribute-option" attribute-text="width"
-                        attribute-id="<?php echo $block->getAttributeId('width', ($variation['ancho'] . "cm")) ?>"><?php echo $variation['ancho'] . "cm" ?></th>
-                    <th id="attribute-option" attribute-text="offset"
-                        attribute-id="<?php echo $block->getAttributeId('offset', ($variation['et'] . "mm")) ?>"><?php echo $variation['et'] . "mm" ?></th>
-                    <th id="attribute-option" attribute-text="hub"
-                        attribute-id="<?php echo $block->getAttributeId('hub', ($variation['buje'] . "mm")) ?>"><?php echo $variation['buje'] . "mm" ?></th>
-                </tr>
+                    <th id="attribute-option" attribute-text="<?php echo $comparableAttributes[$i] ?>"
+                        attribute-id="<?php echo $block->getAttributeId($comparableAttributes[$i], $variationAttributes[$i]) ?>"><?php echo $variationAttributes[$i] ?></th>
                     <?php
                 }
-            endif;
-            ?>
-    </table>
-<?php endif; ?>
+                ?>
+            </tr>
+            <?php
+        }
+    endif;
+    ?>
+</table>

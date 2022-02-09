@@ -2,9 +2,9 @@
 
 namespace Comerline\ConfigCar\Controller\AjaxHandler;
 
+use Comerline\ConfigCar\Helper\ConfigCarHelper;
 use Magento\Catalog\Model\CategoryFactory;
 use Magento\Framework\Filesystem\DirectoryList;
-use Magento\Framework\Phrase;
 use Magento\Framework\View\Result\PageFactory;
 use Magento\Framework\App\Action\Action;
 use Magento\Framework\App\Action\Context;
@@ -14,16 +14,12 @@ use Magento\Directory\Model\RegionFactory;
 class Attributes extends Action
 {
     protected $resultJsonFactory;
-
     protected $resultPageFactory;
-
     protected $regionColFactory;
-
     protected $categoryFactory;
-
+    protected $configCarHelper;
     protected $dir;
 
-    private $csvData;
 
     public function __construct(
         Context         $context,
@@ -31,7 +27,8 @@ class Attributes extends Action
         RegionFactory   $regionColFactory,
         PageFactory     $resultPageFactory,
         DirectoryList   $dir,
-        CategoryFactory $categoryFactory
+        CategoryFactory $categoryFactory,
+        ConfigCarHelper $configCarHelper
     )
     {
         $this->dir = $dir;
@@ -39,6 +36,7 @@ class Attributes extends Action
         $this->resultPageFactory = $resultPageFactory;
         $this->resultJsonFactory = $resultJsonFactory;
         $this->categoryFactory = $categoryFactory;
+        $this->configCarHelper = $configCarHelper;
         parent::__construct($context);
     }
 
@@ -58,23 +56,19 @@ class Attributes extends Action
         $modelCategory = $this->categoryFactory->create()->load($modelCategoryId);
         $modelCategoryName = $modelCategory->getName();
 
-        $csvFile = $this->dir->getPath('media') . '/mapeo_llantas_modelos.csv';
-        $this->csvData = $this->readCsv($csvFile);
+        $carText = $brandCategoryName . " " . $modelCategoryName . " " . $yearCategoryName;
+
+        $csvData = $this->configCarHelper->getFilteredCsvData(explode(" ", $carText));
         $variations = [];
-        foreach ($this->csvData as $csv) {
-            $variation = [];
-            if ($csv['marca'] === $brandCategoryName && $csv['modelo'] === $modelCategoryName) {
-                if (($yearCategoryName === $csv['ano_desde'] . ' - ' . $csv['ano_hasta']) || ($yearCategoryName === $csv['ano_desde'])) {
-                    $variation['diametro'] = $this->mountOptionText($csv['diametro']);
-                    $variation['ancho'] = $this->mountOptionText($csv['ancho']);
-                    $variation['et'] = $this->mountOptionText($csv['et']);
-                    $variation['buje'] = $this->mountOptionText($csv['buje']);
-                    $variations[] = $variation;
-                }
-            }
+        foreach ($csvData as $csv) {
+            $diameter = $this->configCarHelper->mountOptionText($csv['diametro']) . "''";
+            $width = $this->configCarHelper->mountOptionText($csv['ancho']) . "cm";
+            $offset = $this->configCarHelper->mountOptionText($csv['et']) . "mm";
+            $hub = $this->configCarHelper->mountOptionText($csv['buje']) . "mm";
+            $variations[] = $diameter . "," . $width . "," . $offset . "," . $hub . ",";
         }
 
-        $data = ['categoryId' => $categoryId, 'variations' => $variations];
+        $data = ['categoryId' => $categoryId, 'validVariations' => $variations];
 
         $block = $resultPage->getLayout()
             ->createBlock('Comerline\ConfigCar\Block\ConfigCar')
@@ -83,37 +77,5 @@ class Attributes extends Action
             ->toHtml();
 
         return $result->setData(['output' => $block]);
-    }
-
-    private function readCsv($csv): array
-    {
-        try {
-            $file = @file($csv);
-            if (!$file) {
-                throw new Exception('File does not exists.');
-            }
-        } catch (Exception $e) {
-            $this->logger->error(new Phrase($this->prefixLog . ' CSV File does not exist in the media folder.'));
-            die();
-        }
-        $rows = array_map(function ($row) {
-            return str_getcsv($row, ';');
-        }, $file);
-        $header = array_shift($rows);
-        $data = [];
-        foreach ($rows as $row) {
-            $data[] = array_combine($header, $row); // We save every row of the CSV into an array
-        }
-        return $data;
-    }
-
-    private function mountOptionText($option) {
-        if (strpos($option, ',')) {
-            $explodedOption = explode(',', $option);
-            $optionText = $explodedOption[0] . '.' . $explodedOption[1] . '0';
-        } else {
-            $optionText = $option . '.00';
-        }
-        return $optionText;
     }
 }

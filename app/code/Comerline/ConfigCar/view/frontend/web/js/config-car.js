@@ -5,7 +5,6 @@ define(['jquery', 'Magento_Ui/js/modal/modal', 'domReady', 'mage/cookies'], func
             $('#configcar-modal-button').html($.cookie('llantas_user_text')); // Replace button text on page load for the one we have in the cookie
             if ($.cookie('llantas_user_car')) {
                 changeModal($.cookie('llantas_user_car'), config.categoriesAttribute, '#compatible-options', null, '#car-name');
-                changeModal($.cookie('llantas_user_car'), config.compatibles, '#compatibles');
             }
         });
         let options = {
