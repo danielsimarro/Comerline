@@ -3,45 +3,49 @@ $comparableAttributes = ['diameter', 'width', 'offset', 'hub'];
 $objectManager = \Magento\Framework\App\ObjectManager::getInstance();
 $cookieManager = $objectManager->get('Magento\Framework\Stdlib\CookieManagerInterface');
 $carText = $cookieManager->getCookie('llantas_user_text');
-$carWidth = $cookieManager->getCookie('llantas_user_width');
 $carCategory = $cookieManager->getCookie('llantas_user_car');
 $blockData = $block->getData();
 if (array_key_exists('data', $blockData)) {
-    $categoryId = $blockData['data']['categoryId'];
+    if (array_key_exists('categoryId', $blockData['data'])) {
+        $categoryId = $blockData['data']['categoryId'];
+    }
+    $variations = $blockData['data']['validVariations'];
 } else {
     $categoryId = $carCategory;
+    $variations = '';
 }
 
-if ($carWidth || array_key_exists('data', $blockData)) :
-    if ($categoryId === $carCategory):
-        ?>
-        <h4 id="car-name"><?php echo $carText ?></h4>
+if (isset($categoryId) && $categoryId === $carCategory):
+    ?>
+    <h4 id="car-name"><?php echo $carText ?></h4>
+<?php
+endif;
+?>
+</br>
+<table id="compatible-table">
+    <tr>
+        <th><?php echo __('Diametro') ?></th>
+        <th><?php echo __('Ancho') ?></th>
+        <th><?php echo __('ET') ?></th>
+        <th><?php echo __('Buje') ?></th>
+    </tr>
     <?php
+    if ($variations):
+        foreach ($variations as $variation) {
+            ?>
+            <tr>
+                <?php
+                $variationAttributes = explode(',', substr($variation, 0, strlen($variation) - 1));
+                for ($i = 0; $i < count($variationAttributes); $i++) {
+                    ?>
+                    <th id="attribute-option" attribute-text="<?php echo $comparableAttributes[$i] ?>"
+                        attribute-id="<?php echo $block->getAttributeId($comparableAttributes[$i], $variationAttributes[$i]) ?>"><?php echo $variationAttributes[$i] ?></th>
+                    <?php
+                }
+                ?>
+            </tr>
+            <?php
+        }
     endif;
     ?>
-    </br>
-    <table id="compatible-table">
-        <tr>
-            <th><?php echo __('Diametro') ?></th>
-            <th><?php echo __('Ancho') ?></th>
-            <th><?php echo __('ET') ?></th>
-            <th><?php echo __('Buje') ?></th>
-        </tr>
-        <tr>
-            <?php
-            $productCollection = $block->getProductCollectionByCategories($categoryId);
-            $categoryProduct = $productCollection->getFirstItem();
-            foreach ($comparableAttributes as $attribute) {
-                if ($categoryProduct):
-                    $attributeCode = $categoryProduct->getData($attribute);
-                    $attributeLabel = $categoryProduct->getAttributeText($attribute);
-                    ?>
-                    <th id="attribute-option" attribute-text="<?php echo $attribute ?>"
-                        attribute-id="<?php echo $attributeCode ?>"><?php echo $attributeLabel ?></th>
-                <?php
-                endif;
-            }
-            ?>
-        </tr>
-    </table>
-<?php endif; ?>
+</table>
