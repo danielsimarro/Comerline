@@ -46,29 +46,30 @@ class Attributes extends Action
         $resultPage = $this->resultPageFactory->create();
         $categoryId = $this->getRequest()->getParam('frame');
 
-        $yearCategory = $this->categoryFactory->create()->load($categoryId);
-        $yearCategoryName = $yearCategory->getName();
-        $path = explode('/', $yearCategory->getPath());
-        $brandCategoryId = $path[3];
-        $brandCategory = $this->categoryFactory->create()->load($brandCategoryId);
-        $brandCategoryName = $brandCategory->getName();
-        $modelCategoryId = $path[4];
-        $modelCategory = $this->categoryFactory->create()->load($modelCategoryId);
-        $modelCategoryName = $modelCategory->getName();
+        if ($categoryId) {
+            $yearCategory = $this->categoryFactory->create()->load($categoryId);
+            $yearCategoryName = $yearCategory->getName();
+            $path = explode('/', $yearCategory->getPath());
+            $brandCategoryId = $path[3];
+            $brandCategory = $this->categoryFactory->create()->load($brandCategoryId);
+            $brandCategoryName = $brandCategory->getName();
+            $modelCategoryId = $path[4];
+            $modelCategory = $this->categoryFactory->create()->load($modelCategoryId);
+            $modelCategoryName = $modelCategory->getName();
 
-        $carText = $brandCategoryName . " " . $modelCategoryName . " " . $yearCategoryName;
+            $carText = $brandCategoryName . " " . $modelCategoryName . " " . $yearCategoryName;
+            $csvData = $this->configCarHelper->getFilteredCsvData(explode(" ", $carText));
+            $variations = [];
+            foreach ($csvData as $csv) {
+                $diameter = $this->configCarHelper->mountOptionText($csv['diametro']) . "''";
+                $width = $this->configCarHelper->mountOptionText($csv['ancho']) . "cm";
+                $offset = $this->configCarHelper->mountOptionText($csv['et']) . "mm";
+                $hub = $this->configCarHelper->mountOptionText($csv['buje']) . "mm";
+                $variations[] = $diameter . "," . $width . "," . $offset . "," . $hub . ",";
+            }
 
-        $csvData = $this->configCarHelper->getFilteredCsvData(explode(" ", $carText));
-        $variations = [];
-        foreach ($csvData as $csv) {
-            $diameter = $this->configCarHelper->mountOptionText($csv['diametro']) . "''";
-            $width = $this->configCarHelper->mountOptionText($csv['ancho']) . "cm";
-            $offset = $this->configCarHelper->mountOptionText($csv['et']) . "mm";
-            $hub = $this->configCarHelper->mountOptionText($csv['buje']) . "mm";
-            $variations[] = $diameter . "," . $width . "," . $offset . "," . $hub . ",";
+            $data = ['categoryId' => $categoryId, 'validVariations' => $variations];
         }
-
-        $data = ['categoryId' => $categoryId, 'validVariations' => $variations];
 
         $block = $resultPage->getLayout()
             ->createBlock('Comerline\ConfigCar\Block\ConfigCar')

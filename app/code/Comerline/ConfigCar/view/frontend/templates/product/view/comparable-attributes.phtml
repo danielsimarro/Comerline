@@ -4,6 +4,8 @@ $objectManager = \Magento\Framework\App\ObjectManager::getInstance();
 $cookieManager = $objectManager->get('Magento\Framework\Stdlib\CookieManagerInterface');
 $carText = $cookieManager->getCookie('llantas_user_text');
 $carCategory = $cookieManager->getCookie('llantas_user_car');
+$variationsCookie = $cookieManager->getCookie('llantas_variations');
+$variations = null;
 $blockData = $block->getData();
 if (array_key_exists('data', $blockData)) {
     if (array_key_exists('categoryId', $blockData['data'])) {
@@ -11,8 +13,10 @@ if (array_key_exists('data', $blockData)) {
     }
     $variations = $blockData['data']['validVariations'];
 } else {
+    if ($variationsCookie) {
+        $variations = json_decode($variationsCookie);
+    }
     $categoryId = $carCategory;
-    $variations = '';
 }
 
 if (isset($categoryId) && $categoryId === $carCategory):
