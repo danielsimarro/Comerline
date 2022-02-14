@@ -62,16 +62,13 @@ class ConfigCarHelper
         return $this->csvData;
     }
 
-    public function getFilteredCsvData($filters)
+    public function getFilteredCsvData($brand, $model, $year)
     {
-        if (isset($filters[4])) {
-            $filters[2] .= " - " . $filters[4];
-        }
         if (!$this->filteredCsvData) {
             $csvData = $this->getCsvData();
             foreach ($csvData as $csv) {
-                if ($csv['marca'] === $filters[0] && $csv['modelo'] === $filters[1] && ($filters[2] === $csv['ano_desde'] . ' - ' . $csv['ano_hasta'])
-                    || ($filters[2] === $csv['ano_desde'])) {
+                if ($csv['marca'] === $brand && $csv['modelo'] === $model && ($year === $csv['ano_desde'] . ' - ' . $csv['ano_hasta'])
+                    || ($year === $csv['ano_desde'])) {
                     $this->filteredCsvData[] = $csv;
                 }
             }

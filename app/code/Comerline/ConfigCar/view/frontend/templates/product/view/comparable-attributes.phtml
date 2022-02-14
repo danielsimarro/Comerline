@@ -5,13 +5,14 @@ $cookieManager = $objectManager->get('Magento\Framework\Stdlib\CookieManagerInte
 $carText = $cookieManager->getCookie('llantas_user_text');
 $carCategory = $cookieManager->getCookie('llantas_user_car');
 $variationsCookie = $cookieManager->getCookie('llantas_variations');
+$carBrand = $cookieManager->getCookie('llantas_user_brand');
 $variations = null;
 $blockData = $block->getData();
 if (array_key_exists('data', $blockData)) {
     if (array_key_exists('categoryId', $blockData['data'])) {
         $categoryId = $blockData['data']['categoryId'];
     }
-    $variations = $blockData['data']['validVariations'];
+    $variations = json_decode($blockData['data']['validVariations']);
 } else {
     if ($variationsCookie) {
         $variations = json_decode($variationsCookie);
@@ -26,6 +27,7 @@ if (isset($categoryId) && $categoryId === $carCategory):
 endif;
 ?>
 </br>
+<?php if ($carBrand): ?>
 <table id="compatible-table">
     <tr>
         <th><?php echo __('Diametro') ?></th>
@@ -53,3 +55,6 @@ endif;
     endif;
     ?>
 </table>
+<?php
+endif;
+?>

@@ -11,8 +11,9 @@ use Magento\Catalog\Model\CategoryRepository;
 use Magento\Framework\Registry;
 use Magento\Catalog\Model\ResourceModel\Product\CollectionFactory;
 use Magento\Catalog\Api\ProductAttributeRepositoryInterface;
+use Magento\Framework\View\Element\Template;
 
-class ConfigCar extends \Magento\Framework\View\Element\Template
+class ConfigCar extends Template
 {
     protected $_isScopePrivate;
     protected $_categoryFactory;
@@ -101,10 +102,9 @@ class ConfigCar extends \Magento\Framework\View\Element\Template
         return $collection;
     }
 
-    public function compareProductAttributes($product, $categoryText): array
+    public function compareProductAttributes($product, $carBrand, $carModel, $carYear): array
     {
-        $categoryTextExplode = explode(" ", strval($categoryText));
-        $csvData = $this->configCarHelper->getFilteredCsvData($categoryTextExplode);
+        $csvData = $this->configCarHelper->getFilteredCsvData($carBrand, $carModel, $carYear);
         $diameter = $this->getAttributeText($this->comprobationOrder[0], $product->getData($this->comprobationOrder[0]));
         $width = $this->getAttributeText($this->comprobationOrder[1], $product->getData($this->comprobationOrder[1]));
         $offset = $this->getAttributeText($this->comprobationOrder[2], $product->getData($this->comprobationOrder[2]));
@@ -135,4 +135,10 @@ class ConfigCar extends \Magento\Framework\View\Element\Template
         $attribute = $this->_productAttributeRepository->get($attributeText);
         return $attribute->getSource()->getOptionText($optionId);
     }
+
+    public function getCacheLifetime()
+    {
+        return null;
+    }
+
 }
