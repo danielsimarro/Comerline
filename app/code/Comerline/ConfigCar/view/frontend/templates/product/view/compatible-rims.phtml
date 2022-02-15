@@ -2,7 +2,9 @@
 $objectManager = \Magento\Framework\App\ObjectManager::getInstance();
 $cookieManager = $objectManager->get('Magento\Framework\Stdlib\CookieManagerInterface');
 $cookie = $cookieManager->getCookie('llantas_user_car');
-$categoryText = $cookieManager->getCookie('llantas_user_text');
+$carBrand = $cookieManager->getCookie('llantas_user_brand');
+$carModel = $cookieManager->getCookie('llantas_user_model');
+$carYear = $cookieManager->getCookie('llantas_user_year');
 $category = null;
 $comparableAttributes = ['diameter', 'width', 'offset', 'hub'];
 if ($cookie) :
@@ -19,7 +21,7 @@ if ($category):
     <div id="compatible-rims">
         <?php
         if ($currentProduct->getTypeId() == "simple") {
-            $validVariations = array_merge($validVariations, $block->compareProductAttributes($currentProduct, $categoryText));
+            $validVariations = array_merge($validVariations, $block->compareProductAttributes($currentProduct, $carBrand, $carModel, $carYear));
             if ($validVariations) {
                 ?>
                 <p id="green"> <?php echo __('Esta llanta es compatible con tu vehículo') ?> </p>
@@ -32,7 +34,7 @@ if ($category):
         } else {
             $children = $currentProduct->getTypeInstance()->getUsedProducts($currentProduct);
             foreach ($children as $child) {
-                $validVariations = array_merge($validVariations, $block->compareProductAttributes($child, $categoryText));
+                $validVariations = array_merge($validVariations, $block->compareProductAttributes($child, $carBrand, $carModel, $carYear));
             }
             $validVariations = array_unique($validVariations);
             if ($validVariations) {
@@ -41,7 +43,7 @@ if ($category):
                    class="compatible"> <?php echo __('Esta llanta tiene variaciones compatibles con tu vehículo') ?> </p>
                 <div id="compatibles">
                     <?php
-                        $data = ['validVariations' => $validVariations];
+                        $data = ['validVariations' => json_encode($validVariations)];
                     echo $this->getLayout()->createBlock("Comerline\ConfigCar\Block\ConfigCar")->setTemplate("Comerline_ConfigCar::product/view/comparable-attributes.phtml")->setData('data', $data)->toHtml();
                     ?>
                 </div>
