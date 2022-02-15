@@ -3,41 +3,38 @@ $comparableAttributes = ['diameter', 'width', 'offset', 'hub'];
 $objectManager = \Magento\Framework\App\ObjectManager::getInstance();
 $cookieManager = $objectManager->get('Magento\Framework\Stdlib\CookieManagerInterface');
 $carText = $cookieManager->getCookie('llantas_user_text');
-$carCategory = $cookieManager->getCookie('llantas_user_car');
-$variationsCookie = $cookieManager->getCookie('llantas_variations');
+$categoryId = $cookieManager->getCookie('llantas_user_car');
 $carBrand = $cookieManager->getCookie('llantas_user_brand');
+$carModel = $cookieManager->getCookie('llantas_user_model');
+$carYear = $cookieManager->getCookie('llantas_user_year');
 $variations = null;
 $blockData = $block->getData();
 if (array_key_exists('data', $blockData)) {
     if (array_key_exists('categoryId', $blockData['data'])) {
         $categoryId = $blockData['data']['categoryId'];
     }
-    $variations = json_decode($blockData['data']['validVariations']);
-} else {
-    if ($variationsCookie) {
-        $variations = json_decode($variationsCookie);
+    if (array_key_exists('validText', $blockData['data'])) {
+        $carText = $blockData['data']['validText'];
     }
-    $categoryId = $carCategory;
+    $variations = $blockData['data']['validVariations'];
 }
-
-if (isset($categoryId) && $categoryId === $carCategory):
+if ($carText === $carBrand . ' ' . $carModel . ' ' . $carYear):
     ?>
     <h4 id="car-name"><?php echo $carText ?></h4>
 <?php
 endif;
 ?>
 </br>
-<?php if ($carBrand): ?>
-<table id="compatible-table">
-    <tr>
-        <th><?php echo __('Diametro') ?></th>
-        <th><?php echo __('Ancho') ?></th>
-        <th><?php echo __('ET') ?></th>
-        <th><?php echo __('Buje') ?></th>
-    </tr>
-    <?php
-    if ($variations):
-        foreach ($variations as $variation) {
+<?php if ($variations): ?>
+    <table id="compatible-table">
+        <tr>
+            <th><?php echo __('Diametro') ?></th>
+            <th><?php echo __('Ancho') ?></th>
+            <th><?php echo __('ET') ?></th>
+            <th><?php echo __('Buje') ?></th>
+        </tr>
+        <?php
+        foreach (json_decode($variations) as $variation) {
             ?>
             <tr>
                 <?php
@@ -52,9 +49,8 @@ endif;
             </tr>
             <?php
         }
-    endif;
-    ?>
-</table>
+        ?>
+    </table>
 <?php
 endif;
 ?>

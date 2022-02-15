@@ -43,7 +43,7 @@ if ($category):
                    class="compatible"> <?php echo __('Esta llanta tiene variaciones compatibles con tu vehículo') ?> </p>
                 <div id="compatibles">
                     <?php
-                        $data = ['validVariations' => $validVariations];
+                        $data = ['validVariations' => json_encode($validVariations)];
                     echo $this->getLayout()->createBlock("Comerline\ConfigCar\Block\ConfigCar")->setTemplate("Comerline_ConfigCar::product/view/comparable-attributes.phtml")->setData('data', $data)->toHtml();
                     ?>
                 </div>
