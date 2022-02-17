@@ -4472,6 +4472,8 @@
 "Confirm New Password","Confirmar contraseña nueva","module","Magento_CustomerCustomAttributes"
 "Personal Information","Información Personal","module","Magento_CustomerCustomAttributes"
 "Sign Up for Newsletter","Suscribirse al boletín","module","Magento_CustomerCustomAttributes"
+"Allow remote shopping assistance","Permitir asistencia de compra remota","module","Magento_CustomerCustomAttributes"
+"This allows merchants to "see what you see" and take actions on your behalf in order to provide better assistance.","Esto permite a los comerciantes "ver lo que usted ve" y tomar medidas en su nombre para brindarle una mejor asistencia.","module","Magento_CustomerCustomAttributes"
 "Address Information","Información de dirección","module","Magento_CustomerCustomAttributes"
 "Sign-in Information","Información de inicio de sesión","module","Magento_CustomerCustomAttributes"
 "Password","Contraseña","module","Magento_CustomerCustomAttributes"
