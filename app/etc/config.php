@@ -313,6 +313,11 @@ return [
         'Klarna_Kp' => 1,
         'Klarna_Onsitemessaging' => 1,
         'Klarna_KpGraphQl' => 1,
+<<<<<<< HEAD
+=======
+        'MGS_Core' => 1,
+        'MGS_GDPR' => 1,
+>>>>>>> 026e706990a554bb9562ce34d78a413817b39409
         'MagePal_Core' => 1,
         'MagePal_GoogleTagManager' => 1,
         'Magefan_Community' => 1,
