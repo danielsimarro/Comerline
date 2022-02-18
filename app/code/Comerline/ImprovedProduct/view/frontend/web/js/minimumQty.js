@@ -1,8 +1,8 @@
 require(["jquery"],
-    function($){
-        let breadcrumbs = $('.breadcrumbs').children().find('li');
-        breadcrumbs.each(function (i) {
-            if (($(this).text().includes('Llantas')) || ($(this).text().includes('Neumáticos'))) {
+    function ($) {
+        $(window).on('load', function () {
+            let categories = $('#categories').data('categories');
+            if (categories && (categories.indexOf("Llantas") >= 0 || categories.indexOf("Neumáticos") >= 0)) {
                 $('#qty').val('4');
             }
         });
