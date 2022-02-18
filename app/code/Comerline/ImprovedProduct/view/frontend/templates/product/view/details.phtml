@@ -2,8 +2,15 @@
 
 $product = $block->getProduct();
 $attributeOptions = ['diameter', 'width', 'offset', 'hub', 'mounting', 'load'];
+$objectManager = \Magento\Framework\App\ObjectManager::getInstance();
+$categoriesIds = $product->getCategoryIds();
+$dataCategories = '';
+foreach ($categoriesIds as $categoryId)  {
+    $category = $objectManager->create('Magento\Catalog\Model\Category')->load($categoryId);
+    $dataCategories .= $category->getName() . ",";
+}
 ?>
-<div class="improved-products-description">
+<div class="improved-products-description" id="categories" data-categories="<?php echo substr($dataCategories, 0, -1) ?>">
     <br>
     <h2><?php echo $product->getName(); ?> </h2>
     <br/>
