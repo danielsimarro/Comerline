@@ -2,8 +2,10 @@
 
 namespace Comerline\ConfigCar\Controller\AjaxHandler;
 
+use Comerline\ConfigCar\Block\ConfigCar;
 use Comerline\ConfigCar\Helper\ConfigCarHelper;
 use Magento\Catalog\Model\CategoryFactory;
+use Magento\Catalog\Model\ProductFactory;
 use Magento\Framework\Filesystem\DirectoryList;
 use Magento\Framework\View\Result\PageFactory;
 use Magento\Framework\App\Action\Action;
@@ -12,7 +14,7 @@ use Magento\Framework\Controller\Result\JsonFactory;
 use Magento\Directory\Model\RegionFactory;
 use Magento\Framework\Stdlib\CookieManagerInterface;
 
-class Attributes extends Action
+class Rims extends Action
 {
     protected $resultJsonFactory;
     protected $resultPageFactory;
@@ -21,6 +23,8 @@ class Attributes extends Action
     protected $configCarHelper;
     protected $cookieManager;
     protected $dir;
+    protected $productFactory;
+    protected $configCarBlock;
 
 
     public function __construct(
@@ -31,7 +35,9 @@ class Attributes extends Action
         DirectoryList          $dir,
         CategoryFactory        $categoryFactory,
         ConfigCarHelper        $configCarHelper,
-        CookieManagerInterface $cookieManager
+        CookieManagerInterface $cookieManager,
+        ProductFactory         $productFactory,
+        ConfigCar              $configCarBlock
     )
     {
         $this->dir = $dir;
@@ -41,6 +47,8 @@ class Attributes extends Action
         $this->categoryFactory = $categoryFactory;
         $this->configCarHelper = $configCarHelper;
         $this->cookieManager = $cookieManager;
+        $this->productFactory = $productFactory;
+        $this->configCarBlock = $configCarBlock;
         parent::__construct($context);
     }
 
@@ -48,39 +56,26 @@ class Attributes extends Action
     {
         $result = $this->resultJsonFactory->create();
         $resultPage = $this->resultPageFactory->create();
-        $categoryId = $this->getRequest()->getParam('frame');
-        $variationsLocal = $this->getRequest()->getParam('variations');
-        $variations = [];
-        if ($variationsLocal) {
-            $variations = $variationsLocal;
-        } else if ($categoryId) {
-            $yearCategory = $this->categoryFactory->create()->load($categoryId);
-            $yearCategoryName = $yearCategory->getName();
-            $path = explode('/', $yearCategory->getPath());
-            $brandCategoryId = $path[3];
-            $brandCategory = $this->categoryFactory->create()->load($brandCategoryId);
-            $brandCategoryName = $brandCategory->getName();
-            $modelCategoryId = $path[4];
-            $modelCategory = $this->categoryFactory->create()->load($modelCategoryId);
-            $modelCategoryName = $modelCategory->getName();
+        $productId = $this->getRequest()->getParam('productId');
+        $variations = $this->getRequest()->getParam('variations');
 
-            $csvData = $this->configCarHelper->getFilteredCsvData($brandCategoryName, $modelCategoryName, $yearCategoryName);
-            foreach ($csvData as $csv) {
-                $diameter = $this->configCarHelper->mountOptionText($csv['diametro']) . "''";
-                $width = $this->configCarHelper->mountOptionText($csv['ancho']) . "cm";
-                $offset = $this->configCarHelper->mountOptionText($csv['et']) . "mm";
-                $hub = $this->configCarHelper->mountOptionText($csv['buje']) . "mm";
-                $variations[] = $diameter . "," . $width . "," . $offset . "," . $hub . ",";
+        $product = $this->productFactory->create()->load($productId);
+        $validVariations = [];
+        if ($product->getTypeId() === "simple") {
+            $validVariations = $this->configCarBlock->compareProductAttributes($product, $variations);
+        } else {
+            $children = $product->getTypeInstance()->getUsedProducts($product);
+            foreach ($children as $child) {
+                $validVariations = array_merge($validVariations, $this->configCarBlock->compareProductAttributes($child, $variations));
             }
-            $variations = json_encode($variations);
+            $validVariations = array_unique($validVariations);
         }
-        $text = $this->cookieManager->getCookie('llantas_user_text');
 
-        $data = ['categoryId' => $categoryId, 'validVariations' => $variations, 'validText' => $text];
+        $data = ['validVariations' => $validVariations];
 
         $block = $resultPage->getLayout()
             ->createBlock('Comerline\ConfigCar\Block\ConfigCar')
-            ->setTemplate('Comerline_ConfigCar::product/view/comparable-attributes.phtml')
+            ->setTemplate('Comerline_ConfigCar::product/view/compatible-rims.phtml')
             ->setData('data', $data)
             ->toHtml();
 

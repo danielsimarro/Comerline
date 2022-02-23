@@ -4,7 +4,7 @@
     </head>
     <body>
         <referenceContainer name="main">
-            <block class="Comerline\ConfigCar\Block\ConfigCar" template="config-car.phtml" cacheable="false"/>
+            <block class="Comerline\ConfigCar\Block\ConfigCar" template="config-car.phtml"/>
         </referenceContainer>
     </body>
 </page>

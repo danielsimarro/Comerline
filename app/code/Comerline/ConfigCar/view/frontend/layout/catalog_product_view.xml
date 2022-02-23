@@ -11,7 +11,7 @@
             <container name="wrap.main.media" htmlTag="div" htmlClass="wrap-main-media mb-7" before="-" />
         </referenceContainer>
         <referenceBlock name="product.info.extrahint">
-            <block class="Comerline\ConfigCar\Block\ConfigCar" name="product.info.product.compatible.rims" template="Comerline_ConfigCar::product/view/compatible-rims.phtml" after="-" cacheable="false"/>
+            <block class="Comerline\ConfigCar\Block\ConfigCar" name="product.info.product.compatible.rims" template="Comerline_ConfigCar::product/view/compatible-rims.phtml" after="-"/>
         </referenceBlock>
     </body>
 </page>
