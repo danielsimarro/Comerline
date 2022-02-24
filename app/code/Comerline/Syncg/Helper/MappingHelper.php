@@ -109,6 +109,7 @@ class MappingHelper
         $this->configurable = $configurable;
         $this->config = $configHelper;
         $this->dateTime = $dateTime;
+        $this->categories = [];
         $this->prefixLog = uniqid() . ' | Comerline Car - Rims Mapping System |';
     }
 
@@ -120,11 +121,12 @@ class MappingHelper
         $lastCategoriesMapping = $this->config->getParamsWithoutSystem('syncg/general/last_date_mapping_categories')->getValue(); // We get the last mapping date
         $lastChangeCsv = date('Y-m-d H:i:s', @filemtime($csvFile)); //We get the last CSV change date
 
-        if ($lastChangeCsv > $lastCategoriesMapping) {
+        if (1 === 1) {
             $collection = $this->productCollectionFactory->create()
                 ->addAttributeToSelect('*')
                 ->addAttributeToFilter('status', Status::STATUS_ENABLED); // We will only map the enabled products to reduce workload
             $this->csvData = $this->readCsv($csvFile); // We load the CSV file
+            $this->createCategoriesByAlphabeticOrder($this->csvData);
             $this->mapProductCategories($collection); // We traverse through the collection and in an array we map the categories to the products
             $this->assignCategoriesToProducts($this->processedProducts); // We traverse through the array and save the products with their new categories
             $this->logger->info(new Phrase($this->prefixLog . ' Rim <-> Car Mapping End.'));
@@ -133,6 +135,35 @@ class MappingHelper
             $this->logger->info(new Phrase($this->prefixLog . ' Rim <-> Car Mapping Not Necessary.'));
         }
         $this->logger->info(new Phrase($this->prefixLog . 'Finished Rim <-> Car Mapping ' . $this->getTrackTime($timeStart)));
+    }
+
+    private function createCategoriesByAlphabeticOrder($csvData)
+    {
+        $models = [];
+        foreach ($csvData as $csvRow) {
+            if (!$csvRow['ano_hasta']) {
+                if (!in_array($csvRow['marca'] . '/' . $csvRow['modelo'] . '/' . $csvRow['ano_desde'], $models)) {
+                    $models[] = $csvRow['marca'] . '/' . $csvRow['modelo'] . '/' .$csvRow['ano_desde'] . '/' . $csvRow['meta_title'] . '/' . $csvRow['meta_description'] . '/' . $csvRow['meta_title_parent'] . '/' . $csvRow['meta_description_parent'];
+                }
+            } else {
+                if (!in_array($csvRow['marca'] . '/' . $csvRow['modelo'] . '/' . $csvRow['ano_desde'] . '-' . $csvRow['ano_hasta'], $models)) {
+                    $models[] = $csvRow['marca'] . '/' . $csvRow['modelo'] . '/' . $csvRow['ano_desde'] . ' - ' . $csvRow['ano_hasta'] . '/' . $csvRow['meta_title'] . '/' . $csvRow['meta_description'] . '/' . $csvRow['meta_title_parent'] . '/' . $csvRow['meta_description_parent'];
+                }
+            }
+        }
+        sort($models);
+
+        foreach ($models as $model) {
+            $arrayModel = [];
+            $modelExploded = explode('/', $model);
+            $arrayModel['marca'] = $modelExploded[0];
+            $arrayModel['modelo'] = $modelExploded[1];
+            $arrayModel['ano'] = $modelExploded[2];
+            $arrayModel['meta_title'] = $modelExploded[3];
+            $arrayModel['meta_description'] = $modelExploded[4];
+            $arrayModel['meta_title_parent'] = $modelExploded[5];
+            $arrayModel['meta_description_parent'] = $modelExploded[6];
+        }
     }
 
     private function mapProductCategories($collection)
