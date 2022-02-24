@@ -1,0 +1,31 @@
+<?php
+
+$blockData = $block->getData();
+$validVariations = $blockData['data']['validVariations'];
+$comparableAttributes = ['diameter', 'width', 'offset', 'hub'];
+?>
+<table id="compatible-table">
+    <tr>
+        <th><?php echo __('Diametro') ?></th>
+        <th><?php echo __('Ancho') ?></th>
+        <th><?php echo __('ET') ?></th>
+        <th><?php echo __('Buje') ?></th>
+    </tr>
+    <?php
+    foreach ($validVariations as $variation) {
+        ?>
+        <tr>
+            <?php
+            $variationAttributes = explode(',', substr($variation, 0, strlen($variation) - 1));
+            for ($i = 0; $i < count($variationAttributes); $i++) {
+                ?>
+                <th id="attribute-option" attribute-text="<?php echo $comparableAttributes[$i] ?>"
+                    attribute-id="<?php echo $block->getAttributeId($comparableAttributes[$i], $variationAttributes[$i]) ?>"><?php echo $variationAttributes[$i] ?></th>
+                <?php
+            }
+            ?>
+        </tr>
+        <?php
+    }
+    ?>
+</table>
