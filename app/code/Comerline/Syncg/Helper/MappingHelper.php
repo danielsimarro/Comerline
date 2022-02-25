@@ -282,10 +282,7 @@ class MappingHelper
         } else { // In the following positions, the parent category will be the one in the prior position
             $parentId = $this->getSpecificMagentoCategory('name', $array[$arrayKeys[$position - 1]]);
         }
-
-        $categoryId = $this->getSpecificMagentoCategory(['parent_id', 'name'], [$parentId, $array[$arrayKeys[$position]]]);
-
-        return $categoryId;
+         return $this->getSpecificMagentoCategory(['parent_id', 'name'], [$parentId, $array[$arrayKeys[$position]]]);
     }
 
     private function createCategories($array, $position)
