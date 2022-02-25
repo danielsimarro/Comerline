@@ -142,12 +142,12 @@ class MappingHelper
         $models = [];
         foreach ($csvData as $csvRow) {
             if (!$csvRow['ano_hasta']) {
-                if (!in_array($csvRow['marca'] . '/' . $csvRow['modelo'] . '/' . $csvRow['ano_desde'], $models)) {
-                    $models[] = $csvRow['marca'] . '/' . $csvRow['modelo'] . '/' .$csvRow['ano_desde'] . '/' . $csvRow['meta_title'] . '/' . $csvRow['meta_description'] . '/' . $csvRow['meta_title_parent'] . '/' . $csvRow['meta_description_parent'];
+                if (!in_array($csvRow['marca'] . '%' . $csvRow['modelo'] . '%' .$csvRow['ano_desde'] . '%' . $csvRow['meta_title'] . '%' . $csvRow['meta_description'] . '%' . $csvRow['meta_title_parent'] . '%' . $csvRow['meta_description_parent'], $models)) {
+                    $models[] = $csvRow['marca'] . '%' . $csvRow['modelo'] . '%' .$csvRow['ano_desde'] . '%' . $csvRow['meta_title'] . '%' . $csvRow['meta_description'] . '%' . $csvRow['meta_title_parent'] . '%' . $csvRow['meta_description_parent'];
                 }
             } else {
-                if (!in_array($csvRow['marca'] . '/' . $csvRow['modelo'] . '/' . $csvRow['ano_desde'] . '-' . $csvRow['ano_hasta'], $models)) {
-                    $models[] = $csvRow['marca'] . '/' . $csvRow['modelo'] . '/' . $csvRow['ano_desde'] . ' - ' . $csvRow['ano_hasta'] . '/' . $csvRow['meta_title'] . '/' . $csvRow['meta_description'] . '/' . $csvRow['meta_title_parent'] . '/' . $csvRow['meta_description_parent'];
+                if (!in_array($csvRow['marca'] . '%' . $csvRow['modelo'] . '%' . $csvRow['ano_desde'] . ' - ' . $csvRow['ano_hasta'] . '%' . $csvRow['meta_title'] . '%' . $csvRow['meta_description'] . '%' . $csvRow['meta_title_parent'] . '%' . $csvRow['meta_description_parent'], $models)) {
+                    $models[] = $csvRow['marca'] . '%' . $csvRow['modelo'] . '%' . $csvRow['ano_desde'] . ' - ' . $csvRow['ano_hasta'] . '%' . $csvRow['meta_title'] . '%' . $csvRow['meta_description'] . '%' . $csvRow['meta_title_parent'] . '%' . $csvRow['meta_description_parent'];
                 }
             }
         }
@@ -155,7 +155,7 @@ class MappingHelper
 
         foreach ($models as $model) {
             $arrayModel = [];
-            $modelExploded = explode('/', $model);
+            $modelExploded = explode('%', $model);
             $arrayModel['marca'] = $modelExploded[0];
             $arrayModel['modelo'] = $modelExploded[1];
             $arrayModel['ano'] = $modelExploded[2];
@@ -163,6 +163,10 @@ class MappingHelper
             $arrayModel['meta_description'] = $modelExploded[4];
             $arrayModel['meta_title_parent'] = $modelExploded[5];
             $arrayModel['meta_description_parent'] = $modelExploded[6];
+
+            for($i = 0; $i < 3; $i++) {
+                $this->createCategories($arrayModel, $i);
+            }
         }
     }
 
@@ -274,6 +278,21 @@ class MappingHelper
         $arrayKeys = ['marca', 'modelo', 'ano', 'meta_title', 'meta_description', 'meta_title_parent', 'meta_description_parent'];
         if ($position === 0) { // In the first position, the parent category will always be 'Por Vehículo'
             $parentId = $this->getSpecificMagentoCategory('name', 'Por Vehículo');
+
+        } else { // In the following positions, the parent category will be the one in the prior position
+            $parentId = $this->getSpecificMagentoCategory('name', $array[$arrayKeys[$position - 1]]);
+        }
+
+        $categoryId = $this->getSpecificMagentoCategory(['parent_id', 'name'], [$parentId, $array[$arrayKeys[$position]]]);
+
+        return $categoryId;
+    }
+
+    private function createCategories($array, $position)
+    {
+        $arrayKeys = ['marca', 'modelo', 'ano', 'meta_title', 'meta_description', 'meta_title_parent', 'meta_description_parent'];
+        if ($position === 0) { // In the first position, the parent category will always be 'Por Vehículo'
+            $parentId = $this->getSpecificMagentoCategory('name', 'Por Vehículo');
             $metaDescriptionKey = $arrayKeys[6]; // The meta description will be 'meta_description_parent'
             $metaTitleKey = $arrayKeys[5]; // The meta title will be 'meta_title_parent'
         } else { // In the following positions, the parent category will be the one in the prior position
@@ -317,6 +336,7 @@ class MappingHelper
         try {
             $category->save();
             $categoryId = $category->getId();
+            $this->logger->info(new Phrase($this->prefixLog . ' Created Category ' . $name . '.'));
         } catch (Exception $e) {
             $this->logger->info(new Phrase($this->prefixLog . ' Error saving category ' . $name . '.'));
         }
