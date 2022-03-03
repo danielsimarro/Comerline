@@ -2,61 +2,36 @@
 $objectManager = \Magento\Framework\App\ObjectManager::getInstance();
 $cookieManager = $objectManager->get('Magento\Framework\Stdlib\CookieManagerInterface');
 $cookie = $cookieManager->getCookie('llantas_user_car');
-$carBrand = $cookieManager->getCookie('llantas_user_brand');
-$carModel = $cookieManager->getCookie('llantas_user_model');
-$carYear = $cookieManager->getCookie('llantas_user_year');
 $category = null;
-$comparableAttributes = ['diameter', 'width', 'offset', 'hub'];
+$validVariations = null;
+$blockData = $block->getData();
+if (array_key_exists('data', $blockData)) {
+    $validVariations = $blockData['data']['validVariations'];
+}
 if ($cookie) :
     $category = $block->getCategoryById($cookie);
 endif;
-if ($category):
-    $productCollection = $block->getProductCollectionByCategories(array($cookie));
-    $categoryProduct = $productCollection->getFirstItem();
-    $currentProduct = $block->getCurrentProduct();
-    $valid = 0;
-    $validVariations = [];
-    ?>
+?>
 
-    <div id="compatible-rims">
+<div id="compatible-rims">
+    <?php
+    if ($category && $validVariations):
+    ?>
+    <p id="green"> <?php echo __('Esta llanta es compatible con tu vehículo') ?> </p>
+    <?php
+    ?>
+    <div id="compatible">
         <?php
-        if ($currentProduct->getTypeId() == "simple") {
-            $validVariations = array_merge($validVariations, $block->compareProductAttributes($currentProduct, $carBrand, $carModel, $carYear));
-            if ($validVariations) {
-                ?>
-                <p id="green"> <?php echo __('Esta llanta es compatible con tu vehículo') ?> </p>
-                <?php
-            } else {
-                ?>
-                <p id="red"> <?php echo __('Esta llanta no es compatible con tu vehículo') ?> </p>
-                <?php
-            }
-        } else {
-            $children = $currentProduct->getTypeInstance()->getUsedProducts($currentProduct);
-            foreach ($children as $child) {
-                $validVariations = array_merge($validVariations, $block->compareProductAttributes($child, $carBrand, $carModel, $carYear));
-            }
-            $validVariations = array_unique($validVariations);
-            if ($validVariations) {
-                ?>
-                <p id="green"
-                   class="compatible"> <?php echo __('Esta llanta tiene variaciones compatibles con tu vehículo') ?> </p>
-                <div id="compatibles">
-                    <?php
-                        $data = ['validVariations' => json_encode($validVariations)];
-                    echo $this->getLayout()->createBlock("Comerline\ConfigCar\Block\ConfigCar")->setTemplate("Comerline_ConfigCar::product/view/comparable-attributes.phtml")->setData('data', $data)->toHtml();
-                    ?>
-                </div>
-                <?php
-            } else {
-                ?>
-                <p id="red"> <?php echo __('Esta llanta no tiene variaciones compatibles con tu vehículo') ?> </p>
-                <?php
-            }
-        }
+        $data = ['validVariations' => $validVariations];
+        echo $this->getLayout()->createBlock("Comerline\ConfigCar\Block\ConfigCar")->setTemplate("Comerline_ConfigCar::product/view/compatible-table.phtml")->setData('data', $data)->toHtml();
         ?>
     </div>
-
+</div>
+<?php
+else:
+    ?>
+    <p id="red"> <?php echo __('Esta llanta no tiene variaciones compatibles con tu vehículo') ?> </p>
+    </div>
 <?php
 endif;
 ?>
