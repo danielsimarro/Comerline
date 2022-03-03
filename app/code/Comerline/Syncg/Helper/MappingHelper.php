@@ -158,33 +158,22 @@ class MappingHelper
 
     private function createCategoriesByAlphabeticOrder($csvData)
     {
-        $models = [];
+        $model = [];
+        sort($csvData);
         foreach ($csvData as $csvRow) {
+            $model['marca'] = $csvRow['marca'];
+            $model['modelo'] = $csvRow['modelo'];
             if (!$csvRow['ano_hasta']) {
-                if (!in_array($csvRow['marca'] . '%' . $csvRow['modelo'] . '%' . $csvRow['ano_desde'] . '%' . $csvRow['meta_title'] . '%' . $csvRow['meta_description'] . '%' . $csvRow['meta_title_parent'] . '%' . $csvRow['meta_description_parent'], $models)) {
-                    $models[] = $csvRow['marca'] . '%' . $csvRow['modelo'] . '%' . $csvRow['ano_desde'] . '%' . $csvRow['meta_title'] . '%' . $csvRow['meta_description'] . '%' . $csvRow['meta_title_parent'] . '%' . $csvRow['meta_description_parent'];
-                }
+                $model['ano'] = $csvRow['ano_desde'];
             } else {
-                if (!in_array($csvRow['marca'] . '%' . $csvRow['modelo'] . '%' . $csvRow['ano_desde'] . ' - ' . $csvRow['ano_hasta'] . '%' . $csvRow['meta_title'] . '%' . $csvRow['meta_description'] . '%' . $csvRow['meta_title_parent'] . '%' . $csvRow['meta_description_parent'], $models)) {
-                    $models[] = $csvRow['marca'] . '%' . $csvRow['modelo'] . '%' . $csvRow['ano_desde'] . ' - ' . $csvRow['ano_hasta'] . '%' . $csvRow['meta_title'] . '%' . $csvRow['meta_description'] . '%' . $csvRow['meta_title_parent'] . '%' . $csvRow['meta_description_parent'];
-                }
+                $model['ano'] = $csvRow['ano_desde'] . ' - ' . $csvRow['ano_hasta'];
             }
-        }
-        sort($models);
-
-        foreach ($models as $model) {
-            $arrayModel = [];
-            $modelExploded = explode('%', $model);
-            $arrayModel['marca'] = $modelExploded[0];
-            $arrayModel['modelo'] = $modelExploded[1];
-            $arrayModel['ano'] = $modelExploded[2];
-            $arrayModel['meta_title'] = $modelExploded[3];
-            $arrayModel['meta_description'] = $modelExploded[4];
-            $arrayModel['meta_title_parent'] = $modelExploded[5];
-            $arrayModel['meta_description_parent'] = $modelExploded[6];
-
+            $model['meta_title'] = $csvRow['meta_title'];
+            $model['meta_description'] = $csvRow['meta_description'];
+            $model['meta_title_parent'] = $csvRow['meta_title_parent'];
+            $model['meta_description_parent'] = $csvRow['meta_description_parent'];
             for ($i = 0; $i < 3; $i++) {
-                $this->createCategories($arrayModel, $i);
+                $this->createCategories($model, $i);
             }
         }
     }
@@ -406,7 +395,7 @@ class MappingHelper
     private function readCsv($csv): array
     {
         try {
-            $file = @file($csv);
+            $file = fopen($csv, 'r');
             if (!$file) {
                 throw new Exception('File does not exists.');
             }
@@ -414,13 +403,10 @@ class MappingHelper
             $this->logger->error(new Phrase($this->prefixLog . ' CSV File does not exist in the media folder.'));
             die();
         }
-        $rows = array_map(function ($row) {
-            return str_getcsv($row, ';');
-        }, $file);
-        $header = array_shift($rows);
+        $headers = fgetcsv($file, 10000, ';');
         $data = [];
-        foreach ($rows as $row) {
-            $data[] = array_combine($header, $row); // We save every row of the CSV into an array
+        while ($row = fgetcsv($file, 10000, ';')) {
+            $data[base64_encode($row[0].$row[1].$row[2].$row[3])] = array_combine($headers, $row);
         }
         return $data;
     }
