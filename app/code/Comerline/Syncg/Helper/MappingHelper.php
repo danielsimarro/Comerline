@@ -11,6 +11,7 @@ use Magento\Framework\Phrase;
 use Magento\Framework\Filesystem\DirectoryList;
 use Magento\Catalog\Model\ResourceModel\Product\CollectionFactory;
 use Magento\Catalog\Model\ResourceModel\Category\CollectionFactory as CategoryCollectionFactory;
+use Magento\Framework\Registry;
 use Magento\Framework\Stdlib\DateTime\DateTime;
 use Psr\Log\LoggerInterface;
 use Magento\Catalog\Model\Product\Attribute\Source\Status;
@@ -55,7 +56,6 @@ class MappingHelper
      */
     private $prefixLog;
 
-
     /**
      * @var ProductRepositoryInterface
      */
@@ -86,6 +86,21 @@ class MappingHelper
      */
     private $processedProducts;
 
+    /**
+     * @var array
+     */
+    private $arrayKeys;
+
+    /**
+     * @var array
+     */
+    private $categories;
+
+    /**
+     * @var Registry
+     */
+    private $registry;
+
     public function __construct(
         LoggerInterface            $logger,
         DirectoryList              $dir,
@@ -96,7 +111,8 @@ class MappingHelper
         ProductRepositoryInterface $productRepository,
         Configurable               $configurable,
         Config                     $configHelper,
-        DateTime                   $dateTime
+        DateTime                   $dateTime,
+        Registry                   $registry
     )
     {
         $this->logger = $logger;
@@ -109,7 +125,10 @@ class MappingHelper
         $this->configurable = $configurable;
         $this->config = $configHelper;
         $this->dateTime = $dateTime;
+        $this->registry = $registry;
+        $this->categories = [];
         $this->prefixLog = uniqid() . ' | Comerline Car - Rims Mapping System |';
+        $this->arrayKeys = ['marca', 'modelo', 'ano', 'meta_title', 'meta_description', 'meta_title_parent', 'meta_description_parent'];
     }
 
     public function mapCarRims()
@@ -125,14 +144,38 @@ class MappingHelper
                 ->addAttributeToSelect('*')
                 ->addAttributeToFilter('status', Status::STATUS_ENABLED); // We will only map the enabled products to reduce workload
             $this->csvData = $this->readCsv($csvFile); // We load the CSV file
+            $this->createCategoriesByAlphabeticOrder($this->csvData);
             $this->mapProductCategories($collection); // We traverse through the collection and in an array we map the categories to the products
             $this->assignCategoriesToProducts($this->processedProducts); // We traverse through the array and save the products with their new categories
+            $this->deleteEmptyCategories();
             $this->logger->info(new Phrase($this->prefixLog . ' Rim <-> Car Mapping End.'));
             $this->config->setLastDateMappingCategories($this->dateTime->gmtDate());
         } else {
             $this->logger->info(new Phrase($this->prefixLog . ' Rim <-> Car Mapping Not Necessary.'));
         }
-        $this->logger->info(new Phrase($this->prefixLog . 'Finished Rim <-> Car Mapping ' . $this->getTrackTime($timeStart)));
+        $this->logger->info(new Phrase($this->prefixLog . ' Finished Rim <-> Car Mapping ' . $this->getTrackTime($timeStart)));
+    }
+
+    private function createCategoriesByAlphabeticOrder($csvData)
+    {
+        $model = [];
+        sort($csvData);
+        foreach ($csvData as $csvRow) {
+            $model['marca'] = $csvRow['marca'];
+            $model['modelo'] = $csvRow['modelo'];
+            if (!$csvRow['ano_hasta']) {
+                $model['ano'] = $csvRow['ano_desde'];
+            } else {
+                $model['ano'] = $csvRow['ano_desde'] . ' - ' . $csvRow['ano_hasta'];
+            }
+            $model['meta_title'] = $csvRow['meta_title'];
+            $model['meta_description'] = $csvRow['meta_description'];
+            $model['meta_title_parent'] = $csvRow['meta_title_parent'];
+            $model['meta_description_parent'] = $csvRow['meta_description_parent'];
+            for ($i = 0; $i < 3; $i++) {
+                $this->createCategories($model, $i);
+            }
+        }
     }
 
     private function mapProductCategories($collection)
@@ -240,21 +283,32 @@ class MappingHelper
 
     private function getCategoryIds($array, $position)
     {
-        $arrayKeys = ['marca', 'modelo', 'ano', 'meta_title', 'meta_description', 'meta_title_parent', 'meta_description_parent'];
         if ($position === 0) { // In the first position, the parent category will always be 'Por Vehículo'
             $parentId = $this->getSpecificMagentoCategory('name', 'Por Vehículo');
-            $metaDescriptionKey = $arrayKeys[6]; // The meta description will be 'meta_description_parent'
-            $metaTitleKey = $arrayKeys[5]; // The meta title will be 'meta_title_parent'
+
         } else { // In the following positions, the parent category will be the one in the prior position
-            $parentId = $this->getSpecificMagentoCategory('name', $array[$arrayKeys[$position - 1]]);
-            $metaDescriptionKey = $arrayKeys[4]; // The meta description will be 'meta_description'
-            $metaTitleKey = $arrayKeys[3]; // The meta title will be 'meta_title'
+            $parentId = $this->getSpecificMagentoCategory('name', $array[$this->arrayKeys[$position - 1]]);
+        }
+        return $this->getSpecificMagentoCategory(['parent_id', 'name'], [$parentId, $array[$this->arrayKeys[$position]]]);
+    }
+
+    private function createCategories($array, $position)
+    {
+
+        if ($position === 0) { // In the first position, the parent category will always be 'Por Vehículo'
+            $parentId = $this->getSpecificMagentoCategory('name', 'Por Vehículo');
+            $metaDescriptionKey = $this->arrayKeys[6]; // The meta description will be 'meta_description_parent'
+            $metaTitleKey = $this->arrayKeys[5]; // The meta title will be 'meta_title_parent'
+        } else { // In the following positions, the parent category will be the one in the prior position
+            $parentId = $this->getSpecificMagentoCategory('name', $array[$this->arrayKeys[$position - 1]]);
+            $metaDescriptionKey = $this->arrayKeys[4]; // The meta description will be 'meta_description'
+            $metaTitleKey = $this->arrayKeys[3]; // The meta title will be 'meta_title'
         }
         $metaDescription = $array[$metaDescriptionKey];
         $metaTitle = $array[$metaTitleKey];
 
-        $categoryId = $this->getSpecificMagentoCategory(['parent_id', 'name'], [$parentId, $array[$arrayKeys[$position]]]);
-        $name = $array[$arrayKeys[$position]];
+        $categoryId = $this->getSpecificMagentoCategory(['parent_id', 'name'], [$parentId, $array[$this->arrayKeys[$position]]]);
+        $name = $array[$this->arrayKeys[$position]];
         if (!$categoryId) { // If the category does not exist, we create it
             $categoryId = $this->createUpdateCategory($name, $metaTitle, $metaDescription, $parentId);
         } else {
@@ -269,9 +323,11 @@ class MappingHelper
         $parentCategory = $this->categoryFactory->create()->load($parentId);
         if ($categoryId) {
             $category = $this->categoryFactory->create()->load($categoryId);
+            $action = ' Updated Category ';
         } else {
             $category = $this->categoryFactory->create();
             $category->setPath($parentCategory->getPath());
+            $action = ' Created Category ';
         }
         $category->setName($name);
         $category->setIsActive(true);
@@ -286,6 +342,7 @@ class MappingHelper
         try {
             $category->save();
             $categoryId = $category->getId();
+            $this->logger->info(new Phrase($this->prefixLog . $action . $name . '.'));
         } catch (Exception $e) {
             $this->logger->info(new Phrase($this->prefixLog . ' Error saving category ' . $name . '.'));
         }
@@ -293,10 +350,52 @@ class MappingHelper
         return $categoryId;
     }
 
+    public function deleteEmptyCategories()
+    {
+        $this->logger->info(new Phrase($this->prefixLog . ' Deleting Empty Categories - Start.'));
+        $parentId = $this->getSpecificMagentoCategory('name', 'Por Vehículo');
+        $parentCategory = $this->categoryFactory->create()->load($parentId);
+        $brandCategories = $parentCategory->getChildrenCategories();
+        $modelCategories = $this->getChildCategoriesFromCategories($brandCategories);
+        $yearCategories = $this->getChildCategoriesFromCategories($modelCategories);
+        $this->registry->register('isSecureArea', true); // With this we can delete the categories without problem
+
+        $this->logger->info(new Phrase($this->prefixLog . ' Deleting Empty "Year" categories.'));
+        $this->deleteCategoriesFromIds($yearCategories);
+        $this->logger->info(new Phrase($this->prefixLog . ' Deleting Empty "Model" categories.'));
+        $this->deleteCategoriesFromIds($modelCategories);
+        $this->logger->info(new Phrase($this->prefixLog . ' Deleting Empty "Brand" categories.'));
+        $this->deleteCategoriesFromIds($brandCategories);
+        $this->logger->info(new Phrase($this->prefixLog . ' Deleting Empty Categories - Finish.'));
+    }
+
+    private function deleteCategoriesFromIds($categories)
+    {
+        foreach ($categories as $cat) {
+            if ($cat->getProductCount() <= 0) {
+                $name = $cat->getName();
+                $cat->delete();
+                $this->logger->info(new Phrase($this->prefixLog . ' Deleted Category ' . $name . '.'));
+            }
+        }
+    }
+
+    private function getChildCategoriesFromCategories($inputCategories): array
+    {
+        $categories = [];
+        foreach ($inputCategories as $category) {
+            $childCategoriesFromCategory = $category->getChildrenCategories();
+            foreach ($childCategoriesFromCategory as $cc) {
+                $categories[] = $cc;
+            }
+        }
+        return $categories;
+    }
+
     private function readCsv($csv): array
     {
         try {
-            $file = @file($csv);
+            $file = fopen($csv, 'r');
             if (!$file) {
                 throw new Exception('File does not exists.');
             }
@@ -304,13 +403,10 @@ class MappingHelper
             $this->logger->error(new Phrase($this->prefixLog . ' CSV File does not exist in the media folder.'));
             die();
         }
-        $rows = array_map(function ($row) {
-            return str_getcsv($row, ';');
-        }, $file);
-        $header = array_shift($rows);
+        $headers = fgetcsv($file, 10000, ';');
         $data = [];
-        foreach ($rows as $row) {
-            $data[] = array_combine($header, $row); // We save every row of the CSV into an array
+        while ($row = fgetcsv($file, 10000, ';')) {
+            $data[base64_encode($row[0].$row[1].$row[2].$row[3])] = array_combine($headers, $row);
         }
         return $data;
     }
