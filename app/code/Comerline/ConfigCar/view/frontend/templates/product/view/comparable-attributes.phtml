@@ -1,5 +1,4 @@
 <?php
-$comparableAttributes = ['diameter', 'width', 'offset', 'hub'];
 $objectManager = \Magento\Framework\App\ObjectManager::getInstance();
 $cookieManager = $objectManager->get('Magento\Framework\Stdlib\CookieManagerInterface');
 $carText = $cookieManager->getCookie('llantas_user_text');
@@ -25,32 +24,8 @@ if ($carText === $carBrand . ' ' . $carModel . ' ' . $carYear):
 endif;
 ?>
 </br>
-<?php if ($variations): ?>
-    <table id="compatible-table">
-        <tr>
-            <th><?php echo __('Diametro') ?></th>
-            <th><?php echo __('Ancho') ?></th>
-            <th><?php echo __('ET') ?></th>
-            <th><?php echo __('Buje') ?></th>
-        </tr>
-        <?php
-        foreach (json_decode($variations) as $variation) {
-            ?>
-            <tr>
-                <?php
-                $variationAttributes = explode(',', substr($variation, 0, strlen($variation) - 1));
-                for ($i = 0; $i < count($variationAttributes); $i++) {
-                    ?>
-                    <th id="attribute-option" attribute-text="<?php echo $comparableAttributes[$i] ?>"
-                        attribute-id="<?php echo $block->getAttributeId($comparableAttributes[$i], $variationAttributes[$i]) ?>"><?php echo $variationAttributes[$i] ?></th>
-                    <?php
-                }
-                ?>
-            </tr>
-            <?php
-        }
-        ?>
-    </table>
-<?php
+<?php if ($variations):
+    $data = ['validVariations' => json_decode($variations)];
+    echo $this->getLayout()->createBlock("Comerline\ConfigCar\Block\ConfigCar")->setTemplate("Comerline_ConfigCar::product/view/compatible-table.phtml")->setData('data', $data)->toHtml();
 endif;
 ?>

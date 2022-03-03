@@ -2,6 +2,11 @@ define(['jquery', 'Magento_Ui/js/modal/modal', 'domReady', 'mage/cookies', 'Mage
     "use strict";
     return function (config) {
         $(document).ready(function () {
+            let productPage = $('.media');
+            if ( productPage.length > 0 && $("div[data-role = 'priceBox']").first().attr('data-product-id')) {
+                let productId = $("div[data-role = 'priceBox']").first().attr('data-product-id');
+                getValidVariations(productId ,window.localStorage.getItem('llantas_variations'))
+            }
             changeModal(null, config.categoriesAttribute, '#compatible-options', null, null, window.localStorage.getItem('llantas_variations'));
             $('#configcar-modal-button').html($.cookie('llantas_user_text')); // Replace button text on page load for the one we have in the cookie
             let options = {
@@ -95,6 +100,44 @@ define(['jquery', 'Magento_Ui/js/modal/modal', 'domReady', 'mage/cookies', 'Mage
             });
 
             return filtered;
+        }
+
+        function getValidVariations(productId, variations) {
+            let param = 'variations=' + variations + "&productId=" + productId;
+            $.ajax({
+                showLoader: true,
+                url: config.getRims,
+                data: param,
+                type: "POST",
+                dataType: 'json'
+            }).done(function (data) {
+                $('#compatible-rims').html(data.output);
+                changeSelectedOptions();
+            });
+        }
+
+        function changeSelectedOptions () {
+            let diameter = $("th[attribute-text = 'diameter']").attr('attribute-id');
+            let width = $("th[attribute-text = 'width']").attr('attribute-id');
+            let offset = $("th[attribute-text = 'offset']").attr('attribute-id');
+            let hub = $("th[attribute-text = 'hub']").attr('attribute-id');
+
+
+            if ($('#compatible-rims p[green]')) {
+                _changeAttributeValue('#attribute147', diameter);
+                _changeAttributeValue('#attribute159', width);
+                _changeAttributeValue('#attribute158', offset);
+                _changeAttributeValue('#attribute156', hub);
+            }
+        }
+
+        function _changeAttributeValue (attributeId, attributeValue) {
+            let attributeMap = $(attributeId +  ' > option');
+            attributeMap.map(function() {
+                if ($(this).val() === attributeValue) {
+                    $(attributeId).val(attributeValue).change();
+                }
+            });
         }
 
     }

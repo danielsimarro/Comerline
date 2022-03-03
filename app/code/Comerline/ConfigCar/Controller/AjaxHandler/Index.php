@@ -42,7 +42,6 @@ class Index extends Action
             ->createBlock('Comerline\ConfigCar\Block\ConfigCar')
             ->setTemplate('Comerline_ConfigCar::product/view/comparable-options.phtml')
             ->setData('data', $data)
-            ->setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0', true)
             ->toHtml();
 
         return $result->setData(['output' => $block]);

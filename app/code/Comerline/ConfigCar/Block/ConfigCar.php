@@ -63,9 +63,9 @@ class ConfigCar extends Template
         return $this->getUrl('configcar/ajaxhandler/attributes', ['_secure' => true]);
     }
 
-    public function getCompatibles(): string
+    public function getRims(): string
     {
-        return $this->getUrl('configcar/ajaxhandler/compatibles', ['_secure' => true]);
+        return $this->getUrl('configcar/ajaxhandler/rims', ['_secure' => true]);
     }
 
     public function getMainCategory()
@@ -102,22 +102,18 @@ class ConfigCar extends Template
         return $collection;
     }
 
-    public function compareProductAttributes($product, $carBrand, $carModel, $carYear): array
+    public function compareProductAttributes($product, $variations): array
     {
-        $csvData = $this->configCarHelper->getFilteredCsvData($carBrand, $carModel, $carYear);
         $diameter = $this->getAttributeText($this->comprobationOrder[0], $product->getData($this->comprobationOrder[0]));
         $width = $this->getAttributeText($this->comprobationOrder[1], $product->getData($this->comprobationOrder[1]));
         $offset = $this->getAttributeText($this->comprobationOrder[2], $product->getData($this->comprobationOrder[2]));
         $hub = $this->getAttributeText($this->comprobationOrder[3], $product->getData($this->comprobationOrder[3]));
 
         $validAttributes = [];
-        foreach ($csvData as $csv) {
-            $diameterCSV = $this->configCarHelper->mountOptionText($csv['diametro']) . "''";
-            $widthCSV = $this->configCarHelper->mountOptionText($csv['ancho']) . "cm";
-            $offsetCSV = $this->configCarHelper->mountOptionText($csv['et']) . "mm";
-            $hubCSV = $this->configCarHelper->mountOptionText($csv['buje']) . "mm";
-            if (($diameter === $diameterCSV) && ($width === $widthCSV) && ($offset === $offsetCSV) && ($hub === $hubCSV)) {
-                $validAttributes[] = $diameterCSV . "," . $widthCSV . "," . $offsetCSV . "," . $hubCSV . ",";
+        foreach (json_decode($variations) as $variation) {
+            $variationExplode = explode(',', $variation);
+            if (($diameter === $variationExplode[0]) && ($width === $variationExplode[1]) && ($offset === $variationExplode[2]) && ($hub === $variationExplode[3])) {
+                $validAttributes[] = $variation;
             }
         }
 
