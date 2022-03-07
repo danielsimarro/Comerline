@@ -3,9 +3,9 @@ define(['jquery', 'Magento_Ui/js/modal/modal', 'domReady', 'mage/cookies', 'Mage
     return function (config) {
         $(document).ready(function () {
             let productPage = $('.media');
-            if ( productPage.length > 0 && $("div[data-role = 'priceBox']").first().attr('data-product-id')) {
+            if (productPage.length > 0 && $("div[data-role = 'priceBox']").first().attr('data-product-id')) {
                 let productId = $("div[data-role = 'priceBox']").first().attr('data-product-id');
-                getValidVariations(productId ,window.localStorage.getItem('llantas_variations'))
+                getValidVariations(productId, window.localStorage.getItem('llantas_variations'))
             }
             changeModal(null, config.categoriesAttribute, '#compatible-options', null, null, window.localStorage.getItem('llantas_variations'));
             $('#configcar-modal-button').html($.cookie('llantas_user_text')); // Replace button text on page load for the one we have in the cookie
@@ -103,20 +103,22 @@ define(['jquery', 'Magento_Ui/js/modal/modal', 'domReady', 'mage/cookies', 'Mage
         }
 
         function getValidVariations(productId, variations) {
-            let param = 'variations=' + variations + "&productId=" + productId;
-            $.ajax({
-                showLoader: true,
-                url: config.getRims,
-                data: param,
-                type: "POST",
-                dataType: 'json'
-            }).done(function (data) {
-                $('#compatible-rims').html(data.output);
-                changeSelectedOptions();
-            });
+            if (variations) {
+                let param = 'variations=' + variations + "&productId=" + productId;
+                $.ajax({
+                    showLoader: true,
+                    url: config.getRims,
+                    data: param,
+                    type: "POST",
+                    dataType: 'json'
+                }).done(function (data) {
+                    $('#compatible-rims').html(data.output);
+                    changeSelectedOptions();
+                });
+            }
         }
 
-        function changeSelectedOptions () {
+        function changeSelectedOptions() {
             let diameter = $("th[attribute-text = 'diameter']").attr('attribute-id');
             let width = $("th[attribute-text = 'width']").attr('attribute-id');
             let offset = $("th[attribute-text = 'offset']").attr('attribute-id');
@@ -131,9 +133,9 @@ define(['jquery', 'Magento_Ui/js/modal/modal', 'domReady', 'mage/cookies', 'Mage
             }
         }
 
-        function _changeAttributeValue (attributeId, attributeValue) {
-            let attributeMap = $(attributeId +  ' > option');
-            attributeMap.map(function() {
+        function _changeAttributeValue(attributeId, attributeValue) {
+            let attributeMap = $(attributeId + ' > option');
+            attributeMap.map(function () {
                 if ($(this).val() === attributeValue) {
                     $(attributeId).val(attributeValue).change();
                 }
