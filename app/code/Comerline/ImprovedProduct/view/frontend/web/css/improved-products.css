@@ -36,3 +36,7 @@
 .product-description {
     text-align: left;
 }
+
+.price-excluding-tax span {
+    font-size: 1.1rem !important;
+}
