@@ -29,6 +29,9 @@ atlassian*
 /.grunt
 /.php_cs
 /.php_cs.cache
+/.rnd
+/cookie_path
+/session
 /pub/media/*.*
 !/pub/media/.htaccess
 /pub/media/attribute/*
@@ -58,6 +61,7 @@ atlassian*
 !/pub/static/.htaccess
 /pub/media/amasty/amfile/attach/*
 !/pub/media/amasty/amfile/attach/.gitkeep
+/pub/media/email/*
 
 /var/*
 !/var/.htaccess
