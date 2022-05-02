@@ -539,7 +539,7 @@ class GetArticles extends SyncgApiService
             if (array_key_exists($rp, $relatedAttributes)) {
                 $attributes = $relatedAttributes[$rp]; // Array with the attributes we want to make configurable
                 $attributeModels = [];
-                $attributePositions = ['diameter', 'width', 'offset', 'hub', 'mounting', 'load', 'variation'];
+                $attributePositions = ['diameter', 'width', 'mounting', 'offset', 'hub', 'load', 'variation'];
                 foreach ($attributes as $attributeId) {
                     $attributeModel = $objectManager->create('Magento\ConfigurableProduct\Model\Product\Type\Configurable\Attribute');
                     $eavModel = $this->eavModel;
