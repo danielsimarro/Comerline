@@ -24,6 +24,22 @@ define(
                 var form = this.getForm();
 
                 var comment = form.find('.input-text.order-comment').val();
+
+                /* INIT MOD */
+
+                // if a vehicle is selected
+                if($.cookie('llantas_user_brand') && $.cookie('llantas_user_model') && $.cookie('llantas_user_year')){
+                    var selectedVehicle = $.cookie('llantas_user_brand') + ' ' +  $.cookie('llantas_user_model') + ' ' + $.cookie('llantas_user_year');
+
+                    if(comment){
+                        comment = ' - ' + comment;
+                    }
+
+                    comment = selectedVehicle + comment;
+                }
+
+                /* END MOD */
+
                 if (this.hasMaxLength() && comment.length > this.getMaxLength()) {
                     messageContainer.addErrorMessage({ message: __("Comment is too long") });
                     return false;
@@ -80,7 +96,7 @@ define(
                 if (!form.length) {
                     form = $('form.order-comment-form');
                 }
-                
+
                 return form;
             },
             hasMaxLength: function () {
