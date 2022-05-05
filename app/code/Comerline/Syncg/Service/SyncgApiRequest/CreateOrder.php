@@ -93,10 +93,20 @@ class CreateOrder extends SyncgApiService
             ],
             'form_params' => [
                 'customer' => intval($clientId),
-                'notes' => "ID de pedido Magento: " . $order->getData('increment_id'),
+                'notes' => "ID de pedido Magento: " . $order->getData('increment_id') . $this->checkComment($order),
                 'lines' => json_encode($lines)
             ],
         ];
+    }
+
+    public function checkComment($order){
+        $comment = "";
+
+        if($order->getData('bold_order_comment')){
+            $comment = "\nComentario del cliente: " . $order->getData('bold_order_comment');
+        }
+
+        return $comment;
     }
 
     public function createOrder($order, $clientId)

@@ -31,7 +31,7 @@ define(
                 if($.cookie('llantas_user_brand') && $.cookie('llantas_user_model') && $.cookie('llantas_user_year')){
                     var selectedVehicle = $.cookie('llantas_user_brand') + ' ' +  $.cookie('llantas_user_model') + ' ' + $.cookie('llantas_user_year');
 
-                    if(comment){
+                    if(comment && $.cookie('llantas_user_brand') && $.cookie('llantas_user_model') && $.cookie('llantas_user_year')){
                         comment = ' - ' + comment;
                     }
 
