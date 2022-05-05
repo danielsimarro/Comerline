@@ -4,6 +4,7 @@ namespace Comerline\Syncg\Service\SyncgApiRequest;
 
 use Comerline\Syncg\Helper\AttributeHelper;
 use Comerline\Syncg\Helper\Config;
+use Comerline\Syncg\Helper\SQLHelper;
 use Comerline\Syncg\Model\ResourceModel\SyncgStatus\Collection;
 use Comerline\Syncg\Model\ResourceModel\SyncgStatus\CollectionFactory;
 use Comerline\Syncg\Model\ResourceModel\SyncgStatusRepository;
@@ -158,6 +159,8 @@ class GetArticles extends SyncgApiService
 
     private $shortDescription;
 
+    protected $sqlHelper;
+
     public function __construct(
         Config                     $configHelper,
         Json                       $json,
@@ -181,7 +184,8 @@ class GetArticles extends SyncgApiService
         Configurable               $configurable,
         Processor                  $imageProcessor,
         EavModel                   $eavModel,
-        DatetimeGmt                $dateTime
+        DatetimeGmt                $dateTime,
+        SQLHelper                  $sqlHelper
     )
     {
         $this->config = $configHelper;
@@ -204,6 +208,7 @@ class GetArticles extends SyncgApiService
         $this->imageProcessor = $imageProcessor;
         $this->eavModel = $eavModel;
         $this->dateTime = $dateTime;
+        $this->sqlHelper = $sqlHelper;
         $this->prefixLog = uniqid() . ' | G4100 Sync |';
         $this->baseUrlDownloadImage = $this->config->getGeneralConfig('installation_url') . 'api/g4100/image/';
         parent::__construct($configHelper, $json, $responseFactory, $clientFactory, $logger);
@@ -217,13 +222,6 @@ class GetArticles extends SyncgApiService
      */
     public function buildParams($start)
     {
-        $coreConfigData = $this->config->getParamsWithoutSystem('syncg/general/last_date_sync_products')->getValue(); // We get the last sync date
-
-        $timezone = new DateTimeZone('Europe/Madrid');
-        $date = new DateTime($coreConfigData, $timezone);
-        $hours = $date->getOffset() / 3600; // We have to add the offset, since the date from the API comes in CEST
-        $newDate = $date->add(new DateInterval(("PT{$hours}H")));
-
         $this->endpoint = 'api/g4100/list';
         $this->params = [
             'allow_redirects' => true,
@@ -241,8 +239,7 @@ class GetArticles extends SyncgApiService
                     "inicio" => $start,
                     "filtro" => [
                         ["campo" => "si_vender_en_web", "valor" => "1", "tipo" => 0],
-//                        ["campo" => "descripcion", "valor" => "ETA BETA TETTSUT WHITE", "tipo" => 0], // For test. Is only product with relations
-                        ["campo" => "fecha_cambio", "valor" => $newDate->format('Y-m-d H:i'), "tipo" => 3]
+//                        ["campo" => "descripcion", "valor" => "ETA BETA JOFIEL-X MATT BLACK INOX", "tipo" => 0], // For test. Is only product with relations
                     ]
                 ]),
                 'order' => json_encode(["campo" => "id", "orden" => "ASC"])
@@ -257,7 +254,8 @@ class GetArticles extends SyncgApiService
     {
         $this->logger->info(new Phrase($this->prefixLog . ' Init Products sync'));
         $timeStart = microtime(true);
-        $productsG4100 = $this->getProductsG4100();
+        $allProductsG4100 = $this->getProductsG4100(); // We get all the products from G4100
+        $productsG4100 = $this->getModifiableProducts($allProductsG4100); // We filter the products that have 'Si vender en web' setted to 1
         if ($productsG4100) {
             $attributeSetCollection = $this->attributeCollectionFactory->create();
             $attributeSets = $attributeSetCollection->getItems();
@@ -335,6 +333,7 @@ class GetArticles extends SyncgApiService
             $this->config->setLastDateSyncProducts($this->dateTime->gmtDate());
         }
         $this->saveImages();
+        $this->sqlHelper->getProductsToDisable($allProductsG4100); // Here we disable all the products that have 'Si vender en web' setted to 0
         $this->logger->info(new Phrase($this->prefixLog . 'Finish All sync ' . $this->getTrackTime($timeStart)));
     }
 
@@ -385,6 +384,27 @@ class GetArticles extends SyncgApiService
         }
         $this->logger->info(new Phrase($this->prefixLog . ' Fetching products successful. ' . $this->getTrackTime($timeStart)));
         return $productsG4100;
+    }
+
+    /**
+     * @throws \Exception
+     */
+    private function getModifiableProducts($products): array
+    {
+        $modifiableProducts = [];
+        $coreConfigData = $this->config->getParamsWithoutSystem('syncg/general/last_date_sync_products')->getValue(); // We get the last sync date
+        $timezone = new DateTimeZone('Europe/Madrid');
+        $date = new DateTime($coreConfigData, $timezone);
+        $hours = $date->getOffset() / 3600; // We have to add the offset, since the date from the API comes in CEST
+        $newDate = $date->add(new DateInterval(("PT{$hours}H")));
+        $lastSync = strtotime($newDate->format('d-m-Y H:i'));
+        foreach ($products as $product) {
+            $lastChange = strtotime($product['fecha_cambio']);
+            if ($lastChange >= $lastSync) {
+                $modifiableProducts[] = $product;
+            }
+        }
+        return $modifiableProducts;
     }
 
     private function checkRequiredData($product): bool
@@ -496,11 +516,7 @@ class GetArticles extends SyncgApiService
             }
         }
         $product->setTypeId('simple');
-        if ($productG4100['pvp1'] !== "0.00") {
-            $product->setPrice($productG4100['pvp1']);
-        } else {
-            $product->setPrice($productG4100['pvp2']);
-        }
+        $product->setPrice($productG4100['pvp2']);
         $product->setCost($productG4100['precio_coste_estimado']);
         $product->setWebsiteIds([1]);
         $product->setCustomAttribute('tax_class_id', 2);
@@ -810,10 +826,10 @@ class GetArticles extends SyncgApiService
         $type = getimagesize($path);
         $extension = $path;
         if (str_contains($type['mime'], 'png')) {
-            $extension.= '.png';
+            $extension .= '.png';
             rename($path, $extension);
         } elseif (str_contains($type['mime'], 'jpeg')) {
-            $extension.= '.jpg';
+            $extension .= '.jpg';
             rename($path, $extension);
         }
 
@@ -850,7 +866,7 @@ class GetArticles extends SyncgApiService
                 foreach ($imageSplit as $char) {
                     $pathImage .= $char . '/';
                 }
-                $exists = glob ($pathImage . $image . '.*');
+                $exists = glob($pathImage . $image . '.*');
                 if (!$exists) { // If not exists, get image from API
                     if (!file_exists($pathImage)) {
                         mkdir($pathImage, 0777, true); // We create the folders we need
