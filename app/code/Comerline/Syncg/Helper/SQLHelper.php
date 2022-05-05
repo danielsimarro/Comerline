@@ -19,8 +19,9 @@ class SQLHelper extends AbstractHelper
         $this->resource = $resource;
     }
 
-    public function getProductsToDisable($products) {
+    public function disableProducts($products) {
         $ids = [];
+        $disable = [];
         foreach ($products as $product) {
             $ids[] = $product['id'];
         }
@@ -29,15 +30,16 @@ class SQLHelper extends AbstractHelper
         $sql = "SELECT * FROM " . $tableName . " WHERE type = '1' AND g_id NOT IN (" . implode(',', $ids) . ");";
         $result = $connection->fetchAll($sql);
         foreach ($result as $r) {
-            $this->disableProducts($r['mg_id']);
+            $disable[] = $r['mg_id'];
         }
+        $this->setStatusAsDisabled($disable);
     }
 
-    public function disableProducts($mgId)
+    private function setStatusAsDisabled($mgIds)
     {
         $connection = $this->resource->getConnection(ResourceConnection::DEFAULT_CONNECTION);
         $tableName = $connection->getTableName('catalog_product_entity_int');
-        $sql = "UPDATE " . $tableName . " SET VALUE = '2' WHERE attribute_id = 97 AND entity_id = '" . $mgId . "';";
+        $sql = "UPDATE " . $tableName . " SET VALUE = '2' WHERE attribute_id = 97 AND entity_id IN ('" . implode(',', $mgIds) . ")';";
         $connection->query($sql);
     }
 }

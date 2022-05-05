@@ -239,7 +239,7 @@ class GetArticles extends SyncgApiService
                     "inicio" => $start,
                     "filtro" => [
                         ["campo" => "si_vender_en_web", "valor" => "1", "tipo" => 0],
-//                        ["campo" => "descripcion", "valor" => "ETA BETA JOFIEL-X MATT BLACK INOX", "tipo" => 0], // For test. Is only product with relations
+                        ["campo" => "descripcion", "valor" => "MAK LEIPZIG GLOSS BLACK", "tipo" => 0], // For test. Is only product with relations
                     ]
                 ]),
                 'order' => json_encode(["campo" => "id", "orden" => "ASC"])
@@ -333,7 +333,7 @@ class GetArticles extends SyncgApiService
             $this->config->setLastDateSyncProducts($this->dateTime->gmtDate());
         }
         $this->saveImages();
-        $this->sqlHelper->getProductsToDisable($allProductsG4100); // Here we disable all the products that have 'Si vender en web' setted to 0
+        $this->sqlHelper->disableProducts($allProductsG4100); // Here we disable all the products that have 'Si vender en web' setted to 0
         $this->logger->info(new Phrase($this->prefixLog . 'Finish All sync ' . $this->getTrackTime($timeStart)));
     }
 
