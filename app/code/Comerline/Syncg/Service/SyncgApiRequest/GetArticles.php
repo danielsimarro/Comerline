@@ -239,7 +239,7 @@ class GetArticles extends SyncgApiService
                     "inicio" => $start,
                     "filtro" => [
                         ["campo" => "si_vender_en_web", "valor" => "1", "tipo" => 0],
-                        ["campo" => "descripcion", "valor" => "MAK LEIPZIG GLOSS BLACK", "tipo" => 0], // For test. Is only product with relations
+//                        ["campo" => "descripcion", "valor" => "MAK LEIPZIG GLOSS BLACK", "tipo" => 0], // For test. Is only product with relations
                     ]
                 ]),
                 'order' => json_encode(["campo" => "id", "orden" => "ASC"])
