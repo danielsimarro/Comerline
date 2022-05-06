@@ -32,7 +32,7 @@ class SQLHelper extends AbstractHelper
         foreach ($result as $r) {
             $disable[] = $r['mg_id'];
         }
-        if ($disable) {
+        if ($disable) { // If $disable is empty, we don't have to set any product status to disabled, so we skip it
             $this->setStatusAsDisabled($disable);
         }
     }
