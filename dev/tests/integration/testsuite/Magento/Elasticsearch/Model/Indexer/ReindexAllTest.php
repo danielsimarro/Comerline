@@ -63,6 +63,14 @@ class ReindexAllTest extends \PHPUnit\Framework\TestCase
      */
     private $productRepository;
 
+    /**
+     * Elasticsearch7 engine configuration is also compatible with OpenSearch 1
+     */
+    private const ENGINE_SUPPORTED_VERSIONS = [
+        7 => 'elasticsearch7',
+        1 => 'elasticsearch7',
+    ];
+
     protected function setUp(): void
     {
         $this->connectionManager = Bootstrap::getObjectManager()->create(ConnectionManager::class);
@@ -79,7 +87,14 @@ class ReindexAllTest extends \PHPUnit\Framework\TestCase
     protected function assertPreConditions(): void
     {
         $currentEngine = Bootstrap::getObjectManager()->get(EngineResolverInterface::class)->getCurrentSearchEngine();
-        $this->assertEquals($this->getInstalledSearchEngine(), $currentEngine);
+        $this->assertEquals(
+            $this->getInstalledSearchEngine(),
+            $currentEngine,
+            sprintf(
+                'Search engine configuration "%s" is not compatible with the installed version',
+                $currentEngine
+            )
+        );
     }
 
     /**
@@ -128,6 +143,45 @@ class ReindexAllTest extends \PHPUnit\Framework\TestCase
         $firstInSearchResults = (int) $result[0]['_id'];
         $productSimpleId = (int) $productSimple->getId();
         $this->assertEquals($productSimpleId, $firstInSearchResults);
+    }
+
+    /**
+     * Test sorting of products with lower and upper case names after full reindex
+     *
+     * @magentoDbIsolation enabled
+     * @magentoConfigFixture current_store catalog/search/elasticsearch_index_prefix indexerhandlertest
+     * @magentoDataFixture Magento/Elasticsearch/_files/case_sensitive.php
+     */
+    public function testSortCaseSensitive(): void
+    {
+        $productFirst = $this->productRepository->get('fulltext-1');
+        $productSecond = $this->productRepository->get('fulltext-2');
+        $productThird = $this->productRepository->get('fulltext-3');
+        $productFourth = $this->productRepository->get('fulltext-4');
+        $productFifth = $this->productRepository->get('fulltext-5');
+        $correctSortedIds = [
+            $productFirst->getId(),
+            $productFourth->getId(),
+            $productSecond->getId(),
+            $productFifth->getId(),
+            $productThird->getId(),
+        ];
+        $this->reindexAll();
+        $result = $this->sortByName();
+        $firstInSearchResults = (int) $result[0]['_id'];
+        $secondInSearchResults = (int) $result[1]['_id'];
+        $thirdInSearchResults = (int) $result[2]['_id'];
+        $fourthInSearchResults = (int) $result[3]['_id'];
+        $fifthInSearchResults = (int) $result[4]['_id'];
+        $actualSortedIds = [
+            $firstInSearchResults,
+            $secondInSearchResults,
+            $thirdInSearchResults,
+            $fourthInSearchResults,
+            $fifthInSearchResults
+        ];
+        $this->assertCount(5, $result);
+        $this->assertEquals($correctSortedIds, $actualSortedIds);
     }
 
     /**
@@ -231,7 +285,7 @@ class ReindexAllTest extends \PHPUnit\Framework\TestCase
         if (!$this->searchEngine) {
             // phpstan:ignore "Class Magento\TestModuleCatalogSearch\Model\ElasticsearchVersionChecker not found."
             $version = Bootstrap::getObjectManager()->get(ElasticsearchVersionChecker::class)->getVersion();
-            $this->searchEngine = 'elasticsearch' . $version;
+            $this->searchEngine = self::ENGINE_SUPPORTED_VERSIONS[$version] ?? 'elasticsearch' . $version;
         }
         return $this->searchEngine;
     }

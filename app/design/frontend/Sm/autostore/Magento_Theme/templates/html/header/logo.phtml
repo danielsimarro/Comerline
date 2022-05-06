@@ -19,7 +19,7 @@
 		<?php } else { ?>
 		<h2 class="logo-content">
 			<?php } ?>
-			
+
 		<strong class="text-logo">
             <?= /* @escapeNotVerified */
             $storeName ?>
@@ -27,13 +27,7 @@
         <strong class="logo">
             <a class="logo" href="<?php echo $block->getUrl(''); ?>" title="<?php /* @escapeNotVerified */
             echo $storeName ?>">
-                <img src="<?php /* @escapeNotVerified */
-                echo $block->getLogoSrc() ?>"
-                     alt="<?php /* @escapeNotVerified */
-                     echo $block->getLogoAlt() ?>"
-                    <?php echo $block->getLogoWidth() ? 'width="' . $block->getLogoWidth() . '"' : '' ?>
-                    <?php echo $block->getLogoHeight() ? 'height="' . $block->getLogoHeight() . '"' : '' ?>
-                />
+                <img src="<?php echo $block->getUrl(''); ?>pub/media/logo/stores/1/logo-new.png" alt="" width="179" height="48">
 
             </a>
         </strong>
