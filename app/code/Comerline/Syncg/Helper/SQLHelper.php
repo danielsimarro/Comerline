@@ -23,23 +23,25 @@ class SQLHelper extends AbstractHelper
         $ids = [];
         $disable = [];
         foreach ($products as $product) {
-            $ids[] = $product['id'];
+            $ids[] = $product['cod']; // We have to get COD instead of ID from G4100, otherwise we will never get the correct products
         }
         $connection = $this->resource->getConnection(ResourceConnection::DEFAULT_CONNECTION);
         $tableName = $connection->getTableName('comerline_syncg_status');
-        $sql = "SELECT * FROM " . $tableName . " WHERE type = '1' AND g_id NOT IN (" . implode(',', $ids) . ");";
+        $sql = "SELECT * FROM " . $tableName . " WHERE (type = '1' OR type = '3') AND g_id NOT IN (" . implode(',', $ids) . ");";
         $result = $connection->fetchAll($sql);
         foreach ($result as $r) {
             $disable[] = $r['mg_id'];
         }
-        $this->setStatusAsDisabled($disable);
+        if ($disable) {
+            $this->setStatusAsDisabled($disable);
+        }
     }
 
     private function setStatusAsDisabled($mgIds)
     {
         $connection = $this->resource->getConnection(ResourceConnection::DEFAULT_CONNECTION);
         $tableName = $connection->getTableName('catalog_product_entity_int');
-        $sql = "UPDATE " . $tableName . " SET VALUE = '2' WHERE attribute_id = 97 AND entity_id IN ('" . implode(',', $mgIds) . ")';";
+        $sql = "UPDATE " . $tableName . " SET VALUE = '2' WHERE attribute_id = 97 AND entity_id IN (" . implode(',', $mgIds) . ");";
         $connection->query($sql);
     }
 }
