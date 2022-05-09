@@ -239,10 +239,7 @@ class GetArticles extends SyncgApiService
                     "si_vender_en_web", "existencias_globales", "grupo", "acotacion", "marca", "SEO_description", "SEO_title"]),
                 'filters' => json_encode([
                     "salto" => $start,
-                    "filtro" => [
-//                        ["campo" => "si_vender_en_web", "valor" => "1", "tipo" => 0],
-//                        ["campo" => "descripcion", "valor" => "MAK LEIPZIG GLOSS BLACK", "tipo" => 0], // For test. Is only product with relations
-                    ]
+                    "filtro" => [] // Filters need to be an empty array, otherwise the API doesn't work
                 ]),
                 'order' => json_encode(["campo" => "id", "orden" => "ASC"])
             ]),
