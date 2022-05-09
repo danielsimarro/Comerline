@@ -159,6 +159,8 @@ class GetArticles extends SyncgApiService
 
     private $shortDescription;
 
+    private $parentG;
+
     protected $sqlHelper;
 
     public function __construct(
@@ -236,9 +238,9 @@ class GetArticles extends SyncgApiService
                     "desc_detallada", "desc_interna", "envase", "frente", "fondo", "alto", "peso", "diametro", "diametro2", "pvp1", "pvp2", "precio_coste_estimado", "modelo",
                     "si_vender_en_web", "existencias_globales", "grupo", "acotacion", "marca", "SEO_description", "SEO_title"]),
                 'filters' => json_encode([
-                    "inicio" => $start,
+                    "salto" => $start,
                     "filtro" => [
-                        ["campo" => "si_vender_en_web", "valor" => "1", "tipo" => 0],
+//                        ["campo" => "si_vender_en_web", "valor" => "1", "tipo" => 0],
 //                        ["campo" => "descripcion", "valor" => "MAK LEIPZIG GLOSS BLACK", "tipo" => 0], // For test. Is only product with relations
                     ]
                 ]),
@@ -254,83 +256,92 @@ class GetArticles extends SyncgApiService
     {
         $this->logger->info(new Phrase($this->prefixLog . ' Init Products sync'));
         $timeStart = microtime(true);
-        $allProductsG4100 = $this->getProductsG4100(); // We get all the products from G4100
-        $productsG4100 = $this->getModifiableProducts($allProductsG4100); // We filter the products that have 'Si vender en web' setted to 1
-        if ($productsG4100) {
-            $attributeSetCollection = $this->attributeCollectionFactory->create();
-            $attributeSets = $attributeSetCollection->getItems();
-            $attributeSetsMap = [];
-            foreach ($attributeSets as $attributeSet) {
-                $attributeSetsMap[$attributeSet->getAttributeSetName()] = $attributeSet->getAttributeSetId();
-            }
-            $attributeSetId = "";  // Variable where we will store the attribute set ID
-            $relatedProducts = []; // Array where we will store the products that have related products
-            $relatedAttributes = []; // Array where we will store the attributes that are related
-            $relatedProductsSons = []; // Array where we will store the related products
-            $this->categories = $this->getMagentoCategories();
-            $countProductsG4100 = count($productsG4100);
-            for ($i = 0; $i < $countProductsG4100; $i++) {
-                $productG4100 = $productsG4100[$i];
-                $this->description = $productG4100['desc_detallada'];
-                $this->shortDescription = $productG4100['desc_interna'];
-                $prefixLog = $this->prefixLog . ' [' . $countProductsG4100 . '/' . ($i + 1) . '][G4100 Product: ' . $productG4100['cod'] . ']';
-                if ($this->checkRequiredData($productG4100)) {
-                    $collectionSyncg = $this->syncgStatusCollectionFactory->create()
-                        ->addFieldToFilter('g_id', $productG4100['cod'])
-                        ->addFieldToFilter('type', [['eq' => SyncgStatus::TYPE_PRODUCT], ['eq' => SyncgStatus::TYPE_PRODUCT_SIMPLE]]); // We check if the product already exists
-                    if (array_key_exists('familias', $productG4100)) { // We check if the product has an attribute set. If it does, then checks what it is
-                        if (isset($attributeSetsMap[$productG4100['familias'][0]['nombre']])) { // If the name of the attribute set is the same as the one on G4100...
-                            $attributeSetId = $attributeSetsMap[$productG4100['familias'][0]['nombre']]; // We save the ID to use it later
-                        }
+        $start = 0; // Counter to check from which page we start the query
+        $loop = true; // Variable to check if we need to break the loop or keep on it
+        $allProductsG4100 = [];
+        $counter = 0;
+        while ($loop) {
+            $allProductsG4100 = array_merge($allProductsG4100, $this->getProductsG4100($start)); // We get all the products from G4100
+            $start += 100;
+            $counter++;
+            if ($counter == 10) {
+                $counter = 0;
+                $productsG4100 = $this->getModifiableProducts($allProductsG4100); // We filter the products that have 'Si vender en web' setted to 1
+                if ($productsG4100) {
+                    $attributeSetCollection = $this->attributeCollectionFactory->create();
+                    $attributeSets = $attributeSetCollection->getItems();
+                    $attributeSetsMap = [];
+                    foreach ($attributeSets as $attributeSet) {
+                        $attributeSetsMap[$attributeSet->getAttributeSetName()] = $attributeSet->getAttributeSetId();
                     }
-                    if ($collectionSyncg->getSize() > 0) { // If the product already exists, that means we only have to update it
-                        foreach ($collectionSyncg as $itemSyncg) {
-                            $productId = $itemSyncg->getData('mg_id');
-                            $product = $this->productRepository->getById($productId, true); // We load the product in edit mode
-                            $this->createUpdateProduct($product, $productG4100, $attributeSetId);
-                            $this->productRepository->save($product);
-                            $this->logger->info(new Phrase($prefixLog . ' | [Magento Product: ' . $productId . '] | Edited'));
-                            $this->addImagesPending($productG4100, $productId);
-                        }
-                    } else {
-                        $product = $this->productFactory->create(); // If the product doesn't exists, we create it
-                        $this->createUpdateProduct($product, $productG4100, $attributeSetId);
-                        $product = $this->productRepository->save($product);
-                        $this->logger->info(new Phrase($prefixLog . ' | [Magento Product: ' . $product->getId() . '] | Created'));
-                        $this->addImagesPending($productG4100, $product->getId());
-                    }
-                    if (array_key_exists('relacionados', $productG4100)) { // If the product has related products we get it's ID and save it on an array to work later with it
-                        $collectionSyncg = $this->syncgStatusCollectionFactory->create()
-                            ->addFieldToFilter('g_id', $productG4100['cod'])
-                            ->addFieldToFilter('type', SyncgStatus::TYPE_PRODUCT); // We check if the product already exists
-                        if ($collectionSyncg->getSize() > 0) {
-                            foreach ($collectionSyncg as $c) {
-                                $product = $this->productRepository->getById($c->getData('mg_id'), true);
-                                $productId = $product->getId();
+                    $attributeSetId = "";  // Variable where we will store the attribute set ID
+                    $this->categories = $this->getMagentoCategories();
+                    $countProductsG4100 = count($productsG4100);
+                    for ($i = 0; $i < $countProductsG4100; $i++) {
+                        $productG4100 = $productsG4100[$i];
+                        $this->description = $productG4100['desc_detallada'];
+                        $this->shortDescription = $productG4100['desc_interna'];
+                        $this->parentG = $productG4100['relacionado_con'] ?? null;
+                        $prefixLog = $this->prefixLog . ' [' . $countProductsG4100 . '/' . ($i + 1) . '][G4100 Product: ' . $productG4100['cod'] . ']';
+                        if ($this->checkRequiredData($productG4100)) {
+                            $collectionSyncg = $this->syncgStatusCollectionFactory->create()
+                                ->addFieldToFilter('g_id', $productG4100['cod'])
+                                ->addFieldToFilter('type', [['eq' => SyncgStatus::TYPE_PRODUCT], ['eq' => SyncgStatus::TYPE_PRODUCT_SIMPLE]]); // We check if the product already exists
+                            if (array_key_exists('familias', $productG4100)) { // We check if the product has an attribute set. If it does, then checks what it is
+                                if (isset($attributeSetsMap[$productG4100['familias'][0]['nombre']])) { // If the name of the attribute set is the same as the one on G4100...
+                                    $attributeSetId = $attributeSetsMap[$productG4100['familias'][0]['nombre']]; // We save the ID to use it later
+                                }
                             }
+                            if ($collectionSyncg->getSize() > 0) { // If the product already exists, that means we only have to update it
+                                foreach ($collectionSyncg as $itemSyncg) {
+                                    $productId = $itemSyncg->getData('mg_id');
+                                    $product = $this->productRepository->getById($productId, true); // We load the product in edit mode
+                                    $this->createUpdateProduct($product, $productG4100, $attributeSetId);
+                                    $this->productRepository->save($product);
+                                    $this->logger->info(new Phrase($prefixLog . ' | [Magento Product: ' . $productId . '] | Edited'));
+                                    $this->addImagesPending($productG4100, $productId);
+                                }
+                            } else {
+                                $product = $this->productFactory->create(); // If the product doesn't exists, we create it
+                                $this->createUpdateProduct($product, $productG4100, $attributeSetId);
+                                $product = $this->productRepository->save($product);
+                                $this->logger->info(new Phrase($prefixLog . ' | [Magento Product: ' . $product->getId() . '] | Created'));
+                                $this->addImagesPending($productG4100, $product->getId());
+                            }
+//                            if (array_key_exists('relacionados', $productG4100)) { // If the product has related products we get it's ID and save it on an array to work later with it
+//                                $collectionSyncg = $this->syncgStatusCollectionFactory->create()
+//                                    ->addFieldToFilter('g_id', $productG4100['cod'])
+//                                    ->addFieldToFilter('type', SyncgStatus::TYPE_PRODUCT); // We check if the product already exists
+//                                if ($collectionSyncg->getSize() > 0) {
+//                                    foreach ($collectionSyncg as $c) {
+//                                        $product = $this->productRepository->getById($c->getData('mg_id'), true);
+//                                    }
+//                                }
+////                                $magentoId[] = $this->createSimpleProduct($productG4100, $attributeSetId, $productId); // We get the ID since we will create a duplicate of this product to avoid losing options
+////                                $relatedProducts[] = $product->getEntityId();
+////                                foreach ($productG4100['relacionados'] as $r) {
+////                                    if ($r['cod'] !== $productG4100['cod']) { // If the related product is the same as the one we created, we skip it, since we already have duplicated it as a simple product
+////                                        $relatedProductsSons[$product->getEntityId()][] = $r['cod'];
+////                                        $relatedAttributes[$product->getEntityId()] = $this->getAttributesIds($productG4100);
+////                                    }
+////                                }
+//                            }
+                            $this->syncgStatusRepository->updateEntityStatus($product->getEntityId(), $productG4100['cod'], $this->parentG, null, SyncgStatus::TYPE_PRODUCT, SyncgStatus::STATUS_COMPLETED);
                         } else {
-                            $productId = $product->getId();
-                        }
-                        $magentoId[] = $this->createSimpleProduct($productG4100, $attributeSetId, $productId); // We get the ID since we will create a duplicate of this product to avoid losing options
-                        $relatedProducts[] = $product->getEntityId();
-                        foreach ($productG4100['relacionados'] as $r) {
-                            if ($r['cod'] !== $productG4100['cod']) { // If the related product is the same as the one we created, we skip it, since we already have duplicated it as a simple product
-                                $relatedProductsSons[$product->getEntityId()][] = $r['cod'];
-                                $relatedAttributes[$product->getEntityId()] = $this->getAttributesIds($productG4100);
-                            }
+                            $this->logger->error(new Phrase($prefixLog . ' | Product not valid'));
                         }
                     }
-                    $this->syncgStatusRepository->updateEntityStatus($product->getEntityId(), $productG4100['cod'], SyncgStatus::TYPE_PRODUCT, SyncgStatus::STATUS_COMPLETED);
+                    $this->logger->info(new Phrase($this->prefixLog . 'Finish Products sync ' . $this->getTrackTime($timeStart)));
+//                    The product relations will be done in a different way
+//                    if (isset($magentoId)) {
+//                        $this->createRelatedProducts($relatedProducts, $relatedAttributes, $relatedProductsSons, $magentoId); // Here we relate all the simple products with their parents
+//                    }
+//                    $this->logger->info(new Phrase($this->prefixLog . 'Finish Products relation ' . $this->getTrackTime($timeStart)));
+                    $this->config->setLastDateSyncProducts($this->dateTime->gmtDate());
                 } else {
-                    $this->logger->error(new Phrase($prefixLog . ' | Product not valid'));
+                    $loop = false;
                 }
             }
-            $this->logger->info(new Phrase($this->prefixLog . 'Finish Products sync ' . $this->getTrackTime($timeStart)));
-            if (isset($magentoId)) {
-                $this->createRelatedProducts($relatedProducts, $relatedAttributes, $relatedProductsSons, $magentoId); // Here we relate all the simple products with their parents
-            }
-            $this->logger->info(new Phrase($this->prefixLog . 'Finish Products relation ' . $this->getTrackTime($timeStart)));
-            $this->config->setLastDateSyncProducts($this->dateTime->gmtDate());
         }
         $this->saveImages();
         $this->sqlHelper->disableProducts($allProductsG4100); // Here we disable all the products that have 'Si vender en web' setted to 0
@@ -353,34 +364,21 @@ class GetArticles extends SyncgApiService
         }
     }
 
-    private function getProductsG4100(): array
+    private function getProductsG4100($start): array
     {
         $timeStart = microtime(true);
-        $loop = true; // Variable to check if we need to break the loop or keep on it
-        $start = 0; // Counter to check from which page we start the query
         $productsG4100 = []; // Array where we will store the items, ordered in pages
         $this->logger->info(new Phrase($this->prefixLog . ' Fetching products'));
         $countPages = 0;
-        while ($loop) {
-            $timeStartLoop = microtime(true);
-            $this->buildParams($start);
-            $response = $this->execute();
-            $loop = false;
-            if ($response !== null && array_key_exists('listado', $response) && $response['listado']) {
-                $countPages++;
-                $productsG4100 = array_merge($productsG4100, $response['listado']);
-                if (strpos($this->order, 'ASC')) {
-                    $start = intval($response['listado'][count($response['listado']) - 1]['id'] + 1);// If orden is ASC, the first item that the API gives us
-                    // is the first, so we get it for the next query, and we add 1 to avoid duplicating that item
-                } else {
-                    $start = intval($response['listado'][0]['id']) + 1; // If orden is not ASC, the first item that the API gives us is the one with highest ID,
-                    // so we get it for the next query, and we add 1 to avoid duplicating that item
-                }
-                $this->logger->info(new Phrase($this->prefixLog . ' Cached page ' . $countPages . '. Products ' . count($productsG4100) . ' ' . $this->getTrackTime($timeStartLoop)));
-                $loop = true;
-            } elseif (!isset($response['listado'])) {
-                $this->logger->error(new Phrase($this->prefixLog . ' Error fetching products.'));
-            }
+        $timeStartLoop = microtime(true);
+        $this->buildParams($start);
+        $response = $this->execute();
+        if ($response !== null && array_key_exists('listado', $response) && $response['listado']) {
+            $countPages++;
+            $productsG4100 = array_merge($productsG4100, $response['listado']);
+            $this->logger->info(new Phrase($this->prefixLog . ' Cached page ' . $countPages . '. Products ' . count($productsG4100) . ' ' . $this->getTrackTime($timeStartLoop)));
+        } elseif (!isset($response['listado'])) {
+            $this->logger->error(new Phrase($this->prefixLog . ' Error fetching products.'));
         }
         $this->logger->info(new Phrase($this->prefixLog . ' Fetching products successful. ' . $this->getTrackTime($timeStart)));
         return $productsG4100;
@@ -400,7 +398,7 @@ class GetArticles extends SyncgApiService
         $lastSync = strtotime($newDate->format('d-m-Y H:i'));
         foreach ($products as $product) {
             $lastChange = strtotime($product['fecha_cambio']);
-            if ($lastChange >= $lastSync) {
+            if ($lastChange >= $lastSync && $product['si_vender_en_web'] === true) {
                 $modifiableProducts[] = $product;
             }
         }
@@ -507,13 +505,15 @@ class GetArticles extends SyncgApiService
                 $oldRelateds[] = $cp->getID();
             }
             $this->setRelatedsVisibility($oldRelateds, true);
-        } else {
+        } else if ($product->getId()) {
             $parentProduct = $this->configurable->getParentIdsByChild($product->getId());
             if (isset($parentProduct[0])) {
                 $product->setVisibility(1);
             } else {
                 $product->setVisibility(4);
             }
+        } else {
+            $product->setVisibility(4);
         }
         $product->setTypeId('simple');
         $product->setPrice($productG4100['pvp2']);

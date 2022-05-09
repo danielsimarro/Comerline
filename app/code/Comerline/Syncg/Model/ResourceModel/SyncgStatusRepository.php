@@ -59,7 +59,7 @@ class SyncgStatusRepository
         $this->logger = $logger;
     }
 
-    public function updateEntityStatus($mgId, $gId, $type, $status)
+    public function updateEntityStatus($mgId, $gId, $parentG, $parentMg, $type, $status)
     {
         $collection = $this->syncgStatusCollectionFactory->create()
             ->addFieldToFilter('type', $type)
@@ -68,6 +68,8 @@ class SyncgStatusRepository
         if ($collection->getSize() > 0) {
             foreach ($collection as $item) {
                 $this->syncgStatus = $this->syncgStatusFactory->create()->load($item->getData('id'));
+                $this->syncgStatus->setParentG($parentG);
+                $this->syncgStatus->setParentMg($parentMg);
                 $this->syncgStatus->setStatus($status);
                 $this->syncgStatus->setUpdatedAt($this->date->date());
                 $this->saveSyncgStatus($this->syncgStatus);
@@ -77,6 +79,8 @@ class SyncgStatusRepository
             $this->syncgStatus->setType($type);
             $this->syncgStatus->setMgId($mgId);
             $this->syncgStatus->setGId($gId);
+            $this->syncgStatus->setParentG($parentG);
+            $this->syncgStatus->setParentMg($parentMg);
             $this->syncgStatus->setStatus($status);
             $this->syncgStatus->setCreatedAt($this->date->date());
             $this->saveSyncgStatus($this->syncgStatus);
