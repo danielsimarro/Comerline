@@ -241,7 +241,7 @@ class GetArticles extends SyncgApiService
                     "salto" => $start,
                     "filtro" => [] // Filters need to be an empty array, otherwise the API doesn't work
                 ]),
-                'order' => json_encode(["campo" => "id", "orden" => "ASC"])
+                'order' => json_encode(["campo" => "fecha_cambio", "orden" => "ASC"])
             ]),
         ];
         $decoded = json_decode($this->params['body']);
@@ -257,9 +257,11 @@ class GetArticles extends SyncgApiService
         $loop = true; // Variable to check if we need to break the loop or keep on it
         $allProductsG4100 = [];
         $counter = 0;
+        $page = 1;
         while ($loop) {
-            $allProductsG4100 = array_merge($allProductsG4100, $this->getProductsG4100($start)); // We get all the products from G4100
+            $allProductsG4100 = array_merge($allProductsG4100, $this->getProductsG4100($start, $page)); // We get all the products from G4100
             $start += 100;
+            $page++;
             $counter++;
             if ($counter == 10) {
                 $counter = 0;
@@ -278,11 +280,11 @@ class GetArticles extends SyncgApiService
                         $productG4100 = $productsG4100[$i];
                         $this->description = $productG4100['desc_detallada'];
                         $this->shortDescription = $productG4100['desc_interna'];
-                        $this->parentG = $productG4100['relacionado_con'] ?? null;
                         $prefixLog = $this->prefixLog . ' [' . $countProductsG4100 . '/' . ($i + 1) . '][G4100 Product: ' . $productG4100['cod'] . ']';
                         if ($this->checkRequiredData($productG4100)) {
                             $collectionSyncg = $this->syncgStatusCollectionFactory->create()
                                 ->addFieldToFilter('g_id', $productG4100['cod'])
+                                ->addFieldToFilter('mg_id', ['neq' => 'NULL'])
                                 ->addFieldToFilter('type', [['eq' => SyncgStatus::TYPE_PRODUCT], ['eq' => SyncgStatus::TYPE_PRODUCT_SIMPLE]]); // We check if the product already exists
                             if (array_key_exists('familias', $productG4100)) { // We check if the product has an attribute set. If it does, then checks what it is
                                 if (isset($attributeSetsMap[$productG4100['familias'][0]['nombre']])) { // If the name of the attribute set is the same as the one on G4100...
@@ -305,36 +307,26 @@ class GetArticles extends SyncgApiService
                                 $this->logger->info(new Phrase($prefixLog . ' | [Magento Product: ' . $product->getId() . '] | Created'));
                                 $this->addImagesPending($productG4100, $product->getId());
                             }
-//                            if (array_key_exists('relacionados', $productG4100)) { // If the product has related products we get it's ID and save it on an array to work later with it
-//                                $collectionSyncg = $this->syncgStatusCollectionFactory->create()
-//                                    ->addFieldToFilter('g_id', $productG4100['cod'])
-//                                    ->addFieldToFilter('type', SyncgStatus::TYPE_PRODUCT); // We check if the product already exists
-//                                if ($collectionSyncg->getSize() > 0) {
-//                                    foreach ($collectionSyncg as $c) {
-//                                        $product = $this->productRepository->getById($c->getData('mg_id'), true);
-//                                    }
-//                                }
-////                                $magentoId[] = $this->createSimpleProduct($productG4100, $attributeSetId, $productId); // We get the ID since we will create a duplicate of this product to avoid losing options
-////                                $relatedProducts[] = $product->getEntityId();
-////                                foreach ($productG4100['relacionados'] as $r) {
-////                                    if ($r['cod'] !== $productG4100['cod']) { // If the related product is the same as the one we created, we skip it, since we already have duplicated it as a simple product
-////                                        $relatedProductsSons[$product->getEntityId()][] = $r['cod'];
-////                                        $relatedAttributes[$product->getEntityId()] = $this->getAttributesIds($productG4100);
-////                                    }
-////                                }
-//                            }
-                            $this->syncgStatusRepository->updateEntityStatus($product->getEntityId(), $productG4100['cod'], $this->parentG, null, SyncgStatus::TYPE_PRODUCT, SyncgStatus::STATUS_COMPLETED);
+                            $this->syncgStatusRepository->updateEntityStatus($product->getEntityId(), $productG4100['cod'], SyncgStatus::TYPE_PRODUCT, SyncgStatus::STATUS_COMPLETED);
+                            $this->config->setLastDateSyncProducts($productG4100['fecha_cambio']);
+                            if (array_key_exists('relacionados', $productG4100)) {
+                                $relatedIds = [];
+                                foreach ($productG4100['relacionados'] as $related) {
+                                    $relatedIds[] = $related['cod'];
+                                }
+                                $this->sqlHelper->setRelatedProducts($relatedIds, $productG4100['cod'], $product->getId());
+                            }
                         } else {
                             $this->logger->error(new Phrase($prefixLog . ' | Product not valid'));
                         }
                     }
+                    $allProductsG4100 = [];
                     $this->logger->info(new Phrase($this->prefixLog . 'Finish Products sync ' . $this->getTrackTime($timeStart)));
 //                    The product relations will be done in a different way
 //                    if (isset($magentoId)) {
 //                        $this->createRelatedProducts($relatedProducts, $relatedAttributes, $relatedProductsSons, $magentoId); // Here we relate all the simple products with their parents
 //                    }
 //                    $this->logger->info(new Phrase($this->prefixLog . 'Finish Products relation ' . $this->getTrackTime($timeStart)));
-                    $this->config->setLastDateSyncProducts($this->dateTime->gmtDate());
                 } else {
                     $loop = false;
                 }
@@ -361,19 +353,17 @@ class GetArticles extends SyncgApiService
         }
     }
 
-    private function getProductsG4100($start): array
+    private function getProductsG4100($start, $page): array
     {
         $timeStart = microtime(true);
         $productsG4100 = []; // Array where we will store the items, ordered in pages
         $this->logger->info(new Phrase($this->prefixLog . ' Fetching products'));
-        $countPages = 0;
         $timeStartLoop = microtime(true);
         $this->buildParams($start);
         $response = $this->execute();
         if ($response !== null && array_key_exists('listado', $response) && $response['listado']) {
-            $countPages++;
             $productsG4100 = array_merge($productsG4100, $response['listado']);
-            $this->logger->info(new Phrase($this->prefixLog . ' Cached page ' . $countPages . '. Products ' . count($productsG4100) . ' ' . $this->getTrackTime($timeStartLoop)));
+            $this->logger->info(new Phrase($this->prefixLog . ' Cached page ' . $page . '. Products ' . count($productsG4100) . ' ' . $this->getTrackTime($timeStartLoop)));
         } elseif (!isset($response['listado'])) {
             $this->logger->error(new Phrase($this->prefixLog . ' Error fetching products.'));
         }
@@ -905,7 +895,7 @@ class GetArticles extends SyncgApiService
                             $types = ['small_image'];
                         }
                         $product->addImageToMediaGallery($g4100ImageCache['path'] . $g4100ImageCache['image'], $types, false, false);
-                        $this->syncgStatusRepository->updateEntityStatus($product->getId(), $g4100ImageCache['image'], SyncgStatus::TYPE_IMAGE, SyncgStatus::STATUS_COMPLETED);
+                        $this->syncgStatusRepository->updateEntityStatus($product->getId(), $g4100ImageCache['image'],SyncgStatus::TYPE_IMAGE, SyncgStatus::STATUS_COMPLETED);
                         $this->logger->info(new Phrase($prefixLog . ' [Magento Product: ' . $product->getId() . '] | Image ' . $g4100ImageCache['image'] . ' | Add Image'));
                     }
                 } catch (Exception $e) {

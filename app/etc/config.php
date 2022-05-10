@@ -326,7 +326,6 @@ return [
         'Amazon_Payment' => 1,
         'Aplazame_Payment' => 1,
         'Bold_OrderComment' => 1,
-        'Comerline_CheckoutObservations' => 0,
         'Comerline_ConfigCar' => 1,
         'Comerline_ImprovedMegaMenu' => 1,
         'Comerline_ImprovedProduct' => 1,

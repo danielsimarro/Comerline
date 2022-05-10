@@ -44,4 +44,11 @@ class SQLHelper extends AbstractHelper
         $sql = "UPDATE " . $tableName . " SET VALUE = '2' WHERE attribute_id = 97 AND entity_id IN (" . implode(',', $mgIds) . ");";
         $connection->query($sql);
     }
+
+    public function setRelatedProducts($relatedIds, $parentGId, $parentMgId) {
+        $connection = $this->resource->getConnection(ResourceConnection::DEFAULT_CONNECTION);
+        $tableName = $connection->getTableName('comerline_syncg_status');
+        $sql = "INSERT INTO ". $tableName ." (type, mg_id, g_id, status, parent_g, parent_mg) VALUES(1, null, " . $relatedIds[0] . ", 0, " . $parentGId . ", " . $parentMgId .") ON DUPLICATE KEY UPDATE parent_g='" . $parentGId . "', parent_mg='" . $parentMgId ."'";
+        $connection->query($sql);
+    }
 }
