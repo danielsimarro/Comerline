@@ -76,6 +76,11 @@ class Config extends AbstractHelper
         $this->configWriter->save(self::PATH .'general/last_date_sync_products', $date, 'default');
     }
 
+    public function setLastG4100ProductId($productId)
+    {
+        $this->configWriter->save(self::PATH . 'general/last_inserted_g4100_product', $productId, 'default');
+    }
+
     public function setLastDateMappingCategories($date)
     {
         $this->configWriter->save(self::PATH .'general/last_date_mapping_categories', $date, 'default');

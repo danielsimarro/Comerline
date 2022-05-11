@@ -109,9 +109,10 @@ class InstallSchema implements InstallSchemaInterface
                 $installer->getTable('comerline_syncg_status'),
                 $setup->getIdxName(
                     $installer->getTable('comerline_syncg_status'),
-                    ['type','mg_id', 'g_id', 'status'],
+                    ['type','g_id'],
                 ),
-                ['type','mg_id', 'g_id', 'status'],
+                ['type', 'g_id'],
+                \Magento\Framework\DB\Adapter\AdapterInterface::INDEX_TYPE_UNIQUE
             );
         $installer->endSetup();
     }
