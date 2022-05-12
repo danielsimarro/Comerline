@@ -51,6 +51,8 @@ class CheckDeletedArticles extends SyncgApiService
      */
     private $order;
 
+    private $prefixLog;
+
     /**
      * @var ProductFactory
      */
@@ -87,6 +89,7 @@ class CheckDeletedArticles extends SyncgApiService
         $this->productFactory = $productFactory;
         $this->productRepository = $productRepository;
         $this->productResource = $productResource;
+        $this->prefixLog = uniqid() . ' | G4100 Sync |';
         parent::__construct($configHelper, $json, $responseFactory, $clientFactory, $logger);
     }
 
@@ -130,7 +133,7 @@ class CheckDeletedArticles extends SyncgApiService
         $loop = true; // Variable to check if we need to break the loop or keep on it
         $start = 0; // Counter to check from which page we start the query
         $pages = []; // Array where we will store the items, ordered in pages
-        $this->logger->info(new Phrase('G4100 Sync | Fetching deleted products'));
+        $this->logger->info(new Phrase($this->prefixLog . ' Fetching deleted products'));
         while ($loop) {
             $this->buildParams($start);
             $response = $this->execute();
@@ -150,10 +153,10 @@ class CheckDeletedArticles extends SyncgApiService
                 }
             } else {
                 $loop = false;
-                $this->logger->error(new Phrase('G4100 Sync | Error fetching deleted products.'));
+                $this->logger->error(new Phrase($this->prefixLog . ' Error fetching deleted products.'));
             }
         }
-        $this->logger->info(new Phrase('G4100 Sync | Fetching deleted products successful.'));
+        $this->logger->info(new Phrase($this->prefixLog . ' Fetching deleted products successful.'));
         if ($pages) {
             $ids = []; // Array where we will store the active products ids
             foreach ($pages as $page) {
@@ -172,9 +175,9 @@ class CheckDeletedArticles extends SyncgApiService
                         $product->setStatus(0);
                         $product->save();
                         $this->syncgStatus = $this->syncgStatusRepository->updateEntityStatus($deletedId, $id, SyncgStatus::TYPE_PRODUCT, SyncgStatus::STATUS_DELETED);
-                        $this->logger->info(new Phrase('G4100 Sync | [G4100 Product: ' . $id . '] | [Magento Product: ' . $product->getId() . '] | DELETED.'));
+                        $this->logger->info(new Phrase($this->prefixLog . ' [G4100 Product: ' . $id . '] | [Magento Product: ' . $product->getId() . '] | DELETED.'));
                     } catch (LocalizedException $e) {
-                        $this->logger->error(new Phrase('G4100 Sync | [G4100 Product: ' . $id . '] | [Magento Product: ' . $product->getId() . "] | MAGENTO PRODUCT DOESN'T EXISTS."));
+                        $this->logger->error(new Phrase($this->prefixLog . ' [G4100 Product: ' . $id . '] | [Magento Product: ' . $product->getId() . "] | MAGENTO PRODUCT DOESN'T EXISTS."));
                     }
                 }
             }

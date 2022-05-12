@@ -159,8 +159,6 @@ class GetArticles extends SyncgApiService
 
     private $shortDescription;
 
-    private $parentG;
-
     protected $sqlHelper;
 
     public function __construct(
@@ -239,7 +237,7 @@ class GetArticles extends SyncgApiService
                     "si_vender_en_web", "existencias_globales", "grupo", "acotacion", "marca", "SEO_description", "SEO_title"]),
                 'filters' => json_encode([
                     "salto" => $start,
-                    "filtro" => $filters // Filters need to be an empty array, otherwise the API doesn't work
+                    "filtro" => $filters
                 ]),
                 'order' => json_encode(["campo" => "fecha_cambio", "orden" => "ASC"])
             ]),
@@ -255,8 +253,6 @@ class GetArticles extends SyncgApiService
         $timeStart = microtime(true);
         $start = 0; // Counter to check from which page we start the query
         $fetchLoop = true; // Variable to check if we need to break the loop or keep on it
-        $relateLoop = true; // Variable to check if we need to break the loop or keep on it
-        $imageLoop = true; // Variable to check if we need to break the loop or keep on it
         $allProductsG4100 = [];
         $counter = 0;
         $page = 1;
@@ -281,6 +277,7 @@ class GetArticles extends SyncgApiService
                         $countProductsG4100 = count($productsG4100);
                         for ($i = 0; $i < $countProductsG4100; $i++) {
                             $productG4100 = $productsG4100[$i];
+                            $this->config->setLastG4100ProductId($productG4100['cod']);
                             $this->description = $productG4100['desc_detallada'];
                             $this->shortDescription = $productG4100['desc_interna'];
                             $prefixLog = $this->prefixLog . ' [' . $countProductsG4100 . '/' . ($i + 1) . '][G4100 Product: ' . $productG4100['cod'] . ']';
@@ -288,7 +285,7 @@ class GetArticles extends SyncgApiService
                                 $collectionSyncg = $this->syncgStatusCollectionFactory->create()
                                     ->addFieldToFilter('g_id', $productG4100['cod'])
                                     ->addFieldToFilter('mg_id', ['neq' => 'NULL'])
-                                    ->addFieldToFilter('type', [['eq' => SyncgStatus::TYPE_PRODUCT], ['eq' => SyncgStatus::TYPE_PRODUCT_SIMPLE]]); // We check if the product already exists
+                                    ->addFieldToFilter('type', [['eq' => SyncgStatus::TYPE_PRODUCT]]); // We check if the product already exists
                                 if (array_key_exists('familias', $productG4100)) { // We check if the product has an attribute set. If it does, then checks what it is
                                     if (isset($attributeSetsMap[$productG4100['familias'][0]['nombre']])) { // If the name of the attribute set is the same as the one on G4100...
                                         $attributeSetId = $attributeSetsMap[$productG4100['familias'][0]['nombre']]; // We save the ID to use it later
@@ -311,8 +308,6 @@ class GetArticles extends SyncgApiService
                                     $this->addImagesPending($productG4100, $product->getId());
                                 }
                                 $this->syncgStatusRepository->updateEntityStatus($product->getEntityId(), $productG4100['cod'], SyncgStatus::TYPE_PRODUCT, SyncgStatus::STATUS_COMPLETED);
-                                $this->config->setLastDateSyncProducts($productG4100['fecha_cambio']);
-                                $this->config->setLastG4100ProductId($productG4100['cod']);
                                 if (array_key_exists('relacionados', $productG4100)) {
                                     $this->createSimpleProduct($productG4100, $attributeSetId); // We duplicate the product to avoid losing options
                                     $relatedIds = [];
@@ -326,25 +321,29 @@ class GetArticles extends SyncgApiService
                             }
                         }
                         $allProductsG4100 = [];
+                    } else {
+                        $this->config->setLastDateSyncProducts(end($allProductsG4100)['fecha_cambio']);
+                        $this->config->setLastG4100ProductId(end($allProductsG4100)['cod']);
                     }
-                } else {
-                    $fetchLoop = false;
                 }
+                $fetchLoop = false;
             }
         }
         $this->logger->info(new Phrase($this->prefixLog . ' Finish Products sync ' . $this->getTrackTime($timeStart)));
         $this->logger->info(new Phrase($this->prefixLog . ' Start Product Relations'));
-        while ($relateLoop) {
-            $relatedProducts = $this->sqlHelper->getRelatedProducts();
+        $timeStart = microtime(true);
+        $relatedProducts = $this->sqlHelper->getRelatedProducts();
+        $relatedCount = 0;
+        foreach ($relatedProducts as $rp) {
+            $relatedCount += count($rp);
+        }
+        if ($relatedCount >= 1000) {
             $this->createRelatedProducts($relatedProducts);
-            $relateLoop = false;
         }
-        while ($imageLoop) {
-            $this->saveImages();
-            $imageLoop = false;
-        }
+        $this->logger->info(new Phrase($this->prefixLog . ' Finish Product Relations ' . $this->getTrackTime($timeStart)));
+        $this->saveImages();
         $this->sqlHelper->disableProducts($allProductsG4100); // Here we disable all the products that have 'Si vender en web' setted to 0
-        $this->logger->info(new Phrase($this->prefixLog . 'Finish All sync ' . $this->getTrackTime($timeStart)));
+        $this->logger->info(new Phrase($this->prefixLog . ' Finish All sync ' . $this->getTrackTime($timeStart)));
     }
 
     private function addImagesPending($productG4100, $magentoProductId)
@@ -373,17 +372,11 @@ class GetArticles extends SyncgApiService
         $lastDateSync = $this->config->getParamsWithoutSystem('syncg/general/last_date_sync_products')->getValue(); // We get the last sync date
         $lastG4100Id = $this->config->getParamsWithoutSystem('syncg/general/last_inserted_g4100_product')->getValue(); // We get the last G4100 product inserted
         if ($lastDateSync) {
-            $filters = [
-                ["campo" => "descripcion", "valor" => "MAK LEIPZIG SILVER", "tipo" => 0],
-                ["campo" => "fecha_cambio", "valor" => $lastDateSync, "tipo" => 3]
-            ];
+            $filters[] = ["campo" => "fecha_cambio", "valor" => $lastDateSync, "tipo" => 3];
+            $filters[] = ["campo" => "descripcion", "valor" => 'ETA BETA ROCHEL MATT BLACK POLISH', "tipo" => 0]; // For testing
         }
-        if ($lastDateSync && $lastG4100Id) {
-            $filters = [
-                ["campo" => "descripcion", "valor" => "MAK LEIPZIG SILVER", "tipo" => 0],
-                ["campo" => "cod", "valor" => $lastG4100Id, "tipo" => 3],
-                ["campo" => "fecha_cambio", "valor" => $lastDateSync, "tipo" => 3]
-            ];
+        if ($lastG4100Id) {
+            $filters[] = ["campo" => "cod", "valor" => $lastG4100Id, "tipo" => 3];
         }
         $this->buildParams($start, $filters);
         $response = $this->execute();
@@ -403,15 +396,8 @@ class GetArticles extends SyncgApiService
     private function getModifiableProducts($products): array
     {
         $modifiableProducts = [];
-        $coreConfigData = $this->config->getParamsWithoutSystem('syncg/general/last_date_sync_products')->getValue(); // We get the last sync date
-//        $timezone = new DateTimeZone('Europe/Madrid');
-//        $date = new DateTime($coreConfigData, $timezone);
-//        $hours = $date->getOffset() / 3600; // We have to add the offset, since the date from the API comes in CEST
-//        $newDate = $date->add(new DateInterval(("PT{$hours}H")));
-        $lastSync = strtotime($coreConfigData);
         foreach ($products as $product) {
-            $lastChange = strtotime($product['fecha_cambio']);
-            if ($lastChange >= $lastSync && $product['si_vender_en_web'] === true) {
+            if ($product['si_vender_en_web'] === true) {
                 $modifiableProducts[] = $product;
             }
         }
@@ -598,11 +584,12 @@ class GetArticles extends SyncgApiService
             try {
                 $this->productRepository->save($product);
                 $this->logger->info(new Phrase($prefixLog . ' | Changed to configurable'));
+                $this->deleteImagesFromChild($relatedIds);
                 $this->setRelatedsVisibility($relatedIds); // We need to make the simple products related to this one hidden
+                $this->sqlHelper->updateRelatedProductsStatus($relatedIds); // We set all the related products status to completed
             } catch (InputException $e) {
                 $this->logger->error(new Phrase($prefixLog . ' | Error changing to configurable'));
             }
-            $this->deleteImagesFromChild($relatedIds);
         }
     }
 
@@ -850,10 +837,10 @@ class GetArticles extends SyncgApiService
 
     private function saveImages()
     {
+        $this->logger->info(new Phrase($this->prefixLog . ' Init Images sync'));
+        $timeStart = microtime(true);
         $pendingImages = $this->getPendingImages();
-        if ($pendingImages->getSize() > 0) {
-            $this->logger->info(new Phrase($this->prefixLog . ' Init Images sync'));
-            $timeStart = microtime(true);
+        if ($pendingImages->getSize() > 1000) {
             $g4100CacheFolder = $this->dir->getPath('media') . '/g4100_cache/'; // Folder where we will cache all the images
             $g4100ImagesCache = [];
 
@@ -920,7 +907,7 @@ class GetArticles extends SyncgApiService
                 curl_close($this->curlDownloadImage);
                 $this->curlDownloadImage = null;
             }
-            $this->logger->info(new Phrase($this->prefixLog . 'Finish Images sync ' . $this->getTrackTime($timeStart)));
         }
+        $this->logger->info(new Phrase($this->prefixLog . ' Finish Images sync ' . $this->getTrackTime($timeStart)));
     }
 }
