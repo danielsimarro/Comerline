@@ -35,8 +35,8 @@ use Magento\Framework\Webapi\Rest\Request;
 use Magento\Store\Model\StoreManagerInterface;
 use PHPUnit\Exception;
 use Psr\Log\LoggerInterface;
-use Safe\DateTime;
 use Magento\Framework\Stdlib\DateTime\DateTime as DatetimeGmt;
+use Datetime as DatetimeOrigin;
 
 class GetArticles extends SyncgApiService
 {
@@ -253,15 +253,16 @@ class GetArticles extends SyncgApiService
         $timeStart = microtime(true);
         $start = 0; // Counter to check from which page we start the query
         $fetchLoop = true; // Variable to check if we need to break the loop or keep on it
+        $skipRelated = true;
+        $skipImages = true;
         $allProductsG4100 = [];
         $counter = 0;
-        $page = 1;
         while ($fetchLoop) {
-            $allProductsG4100 = array_merge($allProductsG4100, $this->getProductsG4100($start, $page)); // We get all the products from G4100
+            $newProducts = $this->getProductsG4100($start, $counter);
+            $allProductsG4100 = array_merge($allProductsG4100, $newProducts); // We get all the products from G4100
             $start += 100;
-            $page++;
             $counter++;
-            if ($counter == 10) {
+            if ($counter == 10 || ($allProductsG4100 && !($newProducts))) {
                 $counter = 0;
                 if ($allProductsG4100) {
                     $productsG4100 = $this->getModifiableProducts($allProductsG4100); // We filter the products that have 'Si vender en web' setted to 1
@@ -325,23 +326,35 @@ class GetArticles extends SyncgApiService
                         $this->config->setLastDateSyncProducts(end($allProductsG4100)['fecha_cambio']);
                         $this->config->setLastG4100ProductId(end($allProductsG4100)['cod']);
                     }
+                } else {
+                    $skipRelated = false;
                 }
                 $fetchLoop = false;
+            } elseif (!($allProductsG4100) && !($newProducts)) {
+                $fetchLoop = false;
+                $skipRelated = false;
             }
         }
         $this->logger->info(new Phrase($this->prefixLog . ' Finish Products sync ' . $this->getTrackTime($timeStart)));
-        $this->logger->info(new Phrase($this->prefixLog . ' Start Product Relations'));
-        $timeStart = microtime(true);
-        $relatedProducts = $this->sqlHelper->getRelatedProducts();
-        $relatedCount = 0;
-        foreach ($relatedProducts as $rp) {
-            $relatedCount += count($rp);
+        if (!$skipRelated) {
+            $this->logger->info(new Phrase($this->prefixLog . ' Start Product Relations'));
+            $timeStart = microtime(true);
+            $relatedProducts = $this->sqlHelper->getRelatedProducts();
+            $relatedCount = 0;
+            foreach ($relatedProducts as $rp) {
+                $relatedCount += count($rp);
+            }
+            if ($relatedCount > 0) {
+                $relatedSlice = array_slice($relatedProducts, 2, 50, true);
+                $this->createRelatedProducts($relatedSlice);
+            } else {
+                $skipImages = false;
+            }
+            $this->logger->info(new Phrase($this->prefixLog . ' Finish Product Relations ' . $this->getTrackTime($timeStart)));
         }
-        if ($relatedCount >= 1000) {
-            $this->createRelatedProducts($relatedProducts);
+        if (!$skipImages) {
+            $this->saveImages();
         }
-        $this->logger->info(new Phrase($this->prefixLog . ' Finish Product Relations ' . $this->getTrackTime($timeStart)));
-        $this->saveImages();
         $this->sqlHelper->disableProducts($allProductsG4100); // Here we disable all the products that have 'Si vender en web' setted to 0
         $this->logger->info(new Phrase($this->prefixLog . ' Finish All sync ' . $this->getTrackTime($timeStart)));
     }
@@ -365,18 +378,20 @@ class GetArticles extends SyncgApiService
     private function getProductsG4100($start, $page): array
     {
         $timeStart = microtime(true);
+        $page++;
         $productsG4100 = []; // Array where we will store the items, ordered in pages
         $this->logger->info(new Phrase($this->prefixLog . ' Fetching products'));
         $timeStartLoop = microtime(true);
         $filters = [];
         $lastDateSync = $this->config->getParamsWithoutSystem('syncg/general/last_date_sync_products')->getValue(); // We get the last sync date
         $lastG4100Id = $this->config->getParamsWithoutSystem('syncg/general/last_inserted_g4100_product')->getValue(); // We get the last G4100 product inserted
+        $lastDateSync = date('Y-m-d H:i', strtotime($lastDateSync));
         if ($lastDateSync) {
             $filters[] = ["campo" => "fecha_cambio", "valor" => $lastDateSync, "tipo" => 3];
-            $filters[] = ["campo" => "descripcion", "valor" => 'ETA BETA ROCHEL MATT BLACK POLISH', "tipo" => 0]; // For testing
+//            $filters[] = ["campo" => "descripcion", "valor" => 'MAK LEIPZIG SILVER', "tipo" => 0]; // For testing
         }
         if ($lastG4100Id) {
-            $filters[] = ["campo" => "cod", "valor" => $lastG4100Id, "tipo" => 3];
+//            $filters[] = ["campo" => "cod", "valor" => $lastG4100Id, "tipo" => 8];
         }
         $this->buildParams($start, $filters);
         $response = $this->execute();
@@ -619,56 +634,6 @@ class GetArticles extends SyncgApiService
         return $categories;
     }
 
-//    private function getRelatedProductsIds($rp, $relatedProductsSons): array
-//    {
-//        $related = [];
-//        $arrayCombination = [];
-////        foreach ($magentoId as $id) {
-////            if (array_key_exists($rp, $id)) {
-////                $childProductId = intval($id[$rp]);
-////                $parentProductId = intval($rp);
-////                $options = $this->getProductOptions($childProductId);
-////                if (!in_array($options, $arrayCombination)) {
-////                    $related[] = $childProductId; // We also add $magentoId, as we need it
-////                    $arrayCombination[] = $options;
-////                    $this->logger->info(new Phrase($this->prefixLog . ' [Magento Product: ' . $childProductId
-////                        . '] | RELATED TO CONFIGURABLE | [' . 'Magento Product: ' . $parentProductId . '].'));
-////                } else {
-////                    $productSon = $this->productRepository->getById(key($id), true, 0, true);
-////                    $this->disableProduct($productSon);
-////                }
-////            }
-////        }
-//        foreach ($relatedProductsSons as $son) {
-//            $options = $this->getProductOptions($son);
-//            if (!in_array($options, $arrayCombination) && $son !== $rp) {
-//                $related[] = $son; // For each of them, we save the Magento ID to use it later
-//                $arrayCombination[] = $options;
-//                $this->logger->info(new Phrase($this->prefixLog . ' | [Magento Product: ' . $son . '] | RELATED TO CONFIGURABLE | [' . 'Magento Product: ' . $rp . '].'));
-//            } else {
-//                $productSon = $this->productRepository->getById($son, true, 0, true);
-//                $this->disableProduct($productSon);
-//            }
-//        }
-//
-//        return $related;
-//    }
-//
-//    private function disableProduct($product)
-//    {
-//        $product->setStatus(2); // If the product can't be related to the configurable, we disable it
-//        $product->setVisibility(1); // If the product can't be related to the configurable, we set its visibility to not visible
-//        $this->productRepository->save($product);
-//        $product->save(); // Second save to avoid a product saving bug in Magento 2
-//    }
-//
-//    private function getProductOptions($productId): string
-//    {
-//        $productSon = $this->productRepository->getById($productId);
-//        return $productSon->getData('width') . $productSon->getData('load') . $productSon->getData('hub') .
-//            $productSon->getData('diameter') . $productSon->getData('mounting') . $productSon->getData('offset');
-//    }
-
     private function setRelatedsVisibility($related, $current = null)
     {
         foreach ($related as $r) {
@@ -840,73 +805,71 @@ class GetArticles extends SyncgApiService
         $this->logger->info(new Phrase($this->prefixLog . ' Init Images sync'));
         $timeStart = microtime(true);
         $pendingImages = $this->getPendingImages();
-        if ($pendingImages->getSize() > 1000) {
-            $g4100CacheFolder = $this->dir->getPath('media') . '/g4100_cache/'; // Folder where we will cache all the images
-            $g4100ImagesCache = [];
+        $g4100CacheFolder = $this->dir->getPath('media') . '/g4100_cache/'; // Folder where we will cache all the images
+        $g4100ImagesCache = [];
 
-            foreach ($pendingImages as $pendingImage) { // Download and fill images group by magento product id
-                $image = $pendingImage->getData('g_id');
-                $magentoProductId = $pendingImage->getData('mg_id');
-                $imageSplit = str_split($image);  // Here we split all the characters in the image to create the folders
-                $pathImage = $g4100CacheFolder;
-                foreach ($imageSplit as $char) {
-                    $pathImage .= $char . '/';
-                }
-                $exists = glob($pathImage . $image . '.*');
-                if (!$exists) { // If not exists, get image from API
-                    if (!file_exists($pathImage)) {
-                        mkdir($pathImage, 0777, true); // We create the folders we need
-                    }
-                    $image = $this->downloadImage($pathImage . $image, $image);
-                } else {
-                    $explode = explode('/', $exists[0]);
-                    $image = end($explode);
-                }
-                $g4100ImagesCache[$magentoProductId][] = [
-                    'path' => $pathImage,
-                    'image' => $image
-                ];
+        foreach ($pendingImages as $pendingImage) { // Download and fill images group by magento product id
+            $image = $pendingImage->getData('g_id');
+            $magentoProductId = $pendingImage->getData('mg_id');
+            $imageSplit = str_split($image);  // Here we split all the characters in the image to create the folders
+            $pathImage = $g4100CacheFolder;
+            foreach ($imageSplit as $char) {
+                $pathImage .= $char . '/';
             }
+            $exists = glob($pathImage . $image . '.*');
+            if (!$exists) { // If not exists, get image from API
+                if (!file_exists($pathImage)) {
+                    mkdir($pathImage, 0777, true); // We create the folders we need
+                }
+                $image = $this->downloadImage($pathImage . $image, $image);
+            } else {
+                $explode = explode('/', $exists[0]);
+                $image = end($explode);
+            }
+            $g4100ImagesCache[$magentoProductId][] = [
+                'path' => $pathImage,
+                'image' => $image
+            ];
+        }
 
-            $countImages = 0;
-            $countMap = count($g4100ImagesCache);
-            foreach ($g4100ImagesCache as $magentoProductId => $images) { // Set images to magento product
-                $countImages++;
-                $prefixLog = $this->prefixLog . ' [' . $countMap . '/' . $countImages . ']';
-                $product = $this->productRepository->getById($magentoProductId, true); // Load product
-                $existingMediaGalleryEntries = $product->getMediaGalleryEntries();
-                foreach ($existingMediaGalleryEntries as $key => $entry) {
-                    unset($existingMediaGalleryEntries[$key]);
-                    $magentoImage = $entry->getFile();
-                    $this->imageProcessor->removeImage($product, $magentoImage); // We remove the image from Magento
-                    $magentoImage = 'pub/media/catalog/product' . $magentoImage;
-                    if (file_exists($magentoImage)) {
-                        unlink($magentoImage); // We remove the image from the HDD to save storage
-                    }
+        $countImages = 0;
+        $countMap = count($g4100ImagesCache);
+        foreach ($g4100ImagesCache as $magentoProductId => $images) { // Set images to magento product
+            $countImages++;
+            $prefixLog = $this->prefixLog . ' [' . $countMap . '/' . $countImages . ']';
+            $product = $this->productRepository->getById($magentoProductId, true); // Load product
+            $existingMediaGalleryEntries = $product->getMediaGalleryEntries();
+            foreach ($existingMediaGalleryEntries as $key => $entry) {
+                unset($existingMediaGalleryEntries[$key]);
+                $magentoImage = $entry->getFile();
+                $this->imageProcessor->removeImage($product, $magentoImage); // We remove the image from Magento
+                $magentoImage = 'pub/media/catalog/product' . $magentoImage;
+                if (file_exists($magentoImage)) {
+                    unlink($magentoImage); // We remove the image from the HDD to save storage
                 }
-                $product->setMediaGalleryEntries($existingMediaGalleryEntries);
-                $this->productResource->save($product);
-                try {
-                    foreach ($images as $key => $g4100ImageCache) {
-                        if ($key === 0) {
-                            $types = ['image', 'small_image', 'thumbnail'];
-                        } else {
-                            $types = ['small_image'];
-                        }
-                        $product->addImageToMediaGallery($g4100ImageCache['path'] . $g4100ImageCache['image'], $types, false, false);
-                        $this->syncgStatusRepository->updateEntityStatus($product->getId(), $g4100ImageCache['image'], SyncgStatus::TYPE_IMAGE, SyncgStatus::STATUS_COMPLETED);
-                        $this->logger->info(new Phrase($prefixLog . ' [Magento Product: ' . $product->getId() . '] | Image ' . $g4100ImageCache['image'] . ' | Add Image'));
-                    }
-                } catch (Exception $e) {
-                    $this->logger->error($prefixLog . ' ' . $e->getMessage());
-                }
-                $this->productResource->save($product);
             }
+            $product->setMediaGalleryEntries($existingMediaGalleryEntries);
+            $this->productResource->save($product);
+            try {
+                foreach ($images as $key => $g4100ImageCache) {
+                    if ($key === 0) {
+                        $types = ['image', 'small_image', 'thumbnail'];
+                    } else {
+                        $types = ['small_image'];
+                    }
+                    $product->addImageToMediaGallery($g4100ImageCache['path'] . $g4100ImageCache['image'], $types, false, false);
+                    $this->syncgStatusRepository->updateEntityStatus($product->getId(), $g4100ImageCache['image'], SyncgStatus::TYPE_IMAGE, SyncgStatus::STATUS_COMPLETED);
+                    $this->logger->info(new Phrase($prefixLog . ' [Magento Product: ' . $product->getId() . '] | Image ' . $g4100ImageCache['image'] . ' | Add Image'));
+                }
+            } catch (Exception $e) {
+                $this->logger->error($prefixLog . ' ' . $e->getMessage());
+            }
+            $this->productResource->save($product);
+        }
 
-            if ($this->curlDownloadImage) {
-                curl_close($this->curlDownloadImage);
-                $this->curlDownloadImage = null;
-            }
+        if ($this->curlDownloadImage) {
+            curl_close($this->curlDownloadImage);
+            $this->curlDownloadImage = null;
         }
         $this->logger->info(new Phrase($this->prefixLog . ' Finish Images sync ' . $this->getTrackTime($timeStart)));
     }

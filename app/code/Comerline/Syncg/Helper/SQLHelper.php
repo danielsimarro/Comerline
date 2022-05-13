@@ -65,11 +65,12 @@ class SQLHelper extends AbstractHelper
         $connection->query($sql);
     }
 
-    public function getRelatedProducts() {
+    public function getRelatedProducts(): array
+    {
         $relatedProducts = [];
         $connection = $this->resource->getConnection(ResourceConnection::DEFAULT_CONNECTION);
         $tableName = $connection->getTableName('comerline_syncg_status');
-        $sql = "SELECT * FROM " . $tableName . " WHERE parent_mg <> '';";
+        $sql = "SELECT * FROM " . $tableName . " WHERE parent_mg <> '' AND status = 0;";
         $result = $connection->fetchAll($sql);
         foreach ($result as $r) {
             $parent = $r['parent_mg'];
