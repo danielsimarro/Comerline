@@ -70,7 +70,7 @@ class SQLHelper extends AbstractHelper
         $relatedProducts = [];
         $connection = $this->resource->getConnection(ResourceConnection::DEFAULT_CONNECTION);
         $tableName = $connection->getTableName('comerline_syncg_status');
-        $sql = "SELECT * FROM " . $tableName . " WHERE parent_mg <> '' AND status = 0;";
+        $sql = "SELECT * FROM " . $tableName . " WHERE parent_mg <> '' AND status = 0 AND (type = 1 OR type = 3);";
         $result = $connection->fetchAll($sql);
         foreach ($result as $r) {
             $parent = $r['parent_mg'];

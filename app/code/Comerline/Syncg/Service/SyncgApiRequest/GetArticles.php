@@ -262,7 +262,7 @@ class GetArticles extends SyncgApiService
             $allProductsG4100 = array_merge($allProductsG4100, $newProducts); // We get all the products from G4100
             $start += 100;
             $counter++;
-            if ($counter == 10 || ($allProductsG4100 && !($newProducts))) {
+            if ($counter == 20 || ($allProductsG4100 && !($newProducts))) {
                 $counter = 0;
                 if ($allProductsG4100) {
                     $productsG4100 = $this->getModifiableProducts($allProductsG4100); // We filter the products that have 'Si vender en web' setted to 1
@@ -320,6 +320,7 @@ class GetArticles extends SyncgApiService
                             } else {
                                 $this->logger->error(new Phrase($prefixLog . ' | Product not valid'));
                             }
+                            $this->config->setLastDateSyncProducts($productG4100['fecha_cambio']);
                         }
                         $allProductsG4100 = [];
                     } else {
@@ -345,7 +346,7 @@ class GetArticles extends SyncgApiService
                 $relatedCount += count($rp);
             }
             if ($relatedCount > 0) {
-                $relatedSlice = array_slice($relatedProducts, 2, 50, true);
+                $relatedSlice = array_slice($relatedProducts, 0, 10000, true);
                 $this->createRelatedProducts($relatedSlice);
             } else {
                 $skipImages = false;
@@ -391,7 +392,7 @@ class GetArticles extends SyncgApiService
 //            $filters[] = ["campo" => "descripcion", "valor" => 'MAK LEIPZIG SILVER', "tipo" => 0]; // For testing
         }
         if ($lastG4100Id) {
-//            $filters[] = ["campo" => "cod", "valor" => $lastG4100Id, "tipo" => 8];
+            $filters[] = ["campo" => "cod", "valor" => $lastG4100Id, "tipo" => 8];
         }
         $this->buildParams($start, $filters);
         $response = $this->execute();
@@ -797,7 +798,8 @@ class GetArticles extends SyncgApiService
     {
         return $this->syncgStatusCollectionFactory->create()
             ->addFieldToFilter('type', SyncgStatus::TYPE_IMAGE)
-            ->addFieldToFilter('status', SyncgStatus::STATUS_PENDING);
+            ->addFieldToFilter('status', SyncgStatus::STATUS_PENDING)
+            ->setPageSize(20);
     }
 
     private function saveImages()
