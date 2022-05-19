@@ -516,7 +516,6 @@ class GetArticles extends SyncgApiService
         $product->setShortDescription($this->shortDescription);
         $product->setMetaTitle($productG4100['SEO_title']);
         $product->setMetaDescription($productG4100['SEO_description']);
-        $product->setStoreId(0);
         $product->setAttributeSetId($attributeSetId);
         $url = strtolower(str_replace(" ", "-", $productG4100['descripcion']));
         if (!(array_key_exists('relacionados', $productG4100))) {

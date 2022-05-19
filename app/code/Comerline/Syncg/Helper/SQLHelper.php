@@ -39,7 +39,7 @@ class SQLHelper extends AbstractHelper
         if ($ids) {
             $connection = $this->resource->getConnection(ResourceConnection::DEFAULT_CONNECTION);
             $tableName = $connection->getTableName('comerline_syncg_status');
-            $sql = "SELECT * FROM " . $tableName . " WHERE (type = '1' OR type = '3') AND g_id IN (" . implode(',', $ids) . ");";
+            $sql = "SELECT * FROM " . $tableName . " WHERE type IN (1,3) AND g_id IN (" . implode(',', $ids) . ");";
             $result = $connection->fetchAll($sql);
             foreach ($result as $r) {
                 $disable[] = $r['mg_id'];
@@ -83,7 +83,7 @@ class SQLHelper extends AbstractHelper
         $relatedProducts = [];
         $connection = $this->resource->getConnection(ResourceConnection::DEFAULT_CONNECTION);
         $tableName = $connection->getTableName('comerline_syncg_status');
-        $sql = "SELECT * FROM " . $tableName . " WHERE parent_mg <> '' AND status = 0 AND (type = 1 OR type = 3);";
+        $sql = "SELECT * FROM " . $tableName . " WHERE parent_mg <> '' AND status = 0 AND type IN (1,3);";
         $result = $connection->fetchAll($sql);
         foreach ($result as $r) {
             $parent = $r['parent_mg'];
