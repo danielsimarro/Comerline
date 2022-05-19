@@ -5,21 +5,32 @@ namespace Comerline\Syncg\Helper;
 use Magento\Framework\App\Helper\AbstractHelper;
 use Magento\Framework\App\Helper\Context;
 use Magento\Framework\App\ResourceConnection;
+use Magento\Framework\Phrase;
+use Psr\Log\LoggerInterface;
 
 class SQLHelper extends AbstractHelper
 {
     protected $resource;
 
+    /**
+     * @var LoggerInterface
+     */
+    protected $logger;
+
     public function __construct(
         Context            $context,
-        ResourceConnection $resource
+        ResourceConnection $resource,
+        LoggerInterface    $logger
     )
     {
         parent::__construct($context);
         $this->resource = $resource;
+        $this->logger = $logger;
+        $this->prefixLog = uniqid() . ' | G4100 Sync |';
     }
 
     public function disableProducts($products) {
+        $this->logger->info(new Phrase($this->prefixLog . ' Init Disable Products.'));
         $ids = [];
         $disable = [];
         foreach ($products as $product) {
@@ -28,15 +39,17 @@ class SQLHelper extends AbstractHelper
         if ($ids) {
             $connection = $this->resource->getConnection(ResourceConnection::DEFAULT_CONNECTION);
             $tableName = $connection->getTableName('comerline_syncg_status');
-            $sql = "SELECT * FROM " . $tableName . " WHERE (type = '1' OR type = '3') AND g_id NOT IN (" . implode(',', $ids) . ");";
+            $sql = "SELECT * FROM " . $tableName . " WHERE (type = '1' OR type = '3') AND g_id IN (" . implode(',', $ids) . ");";
             $result = $connection->fetchAll($sql);
             foreach ($result as $r) {
                 $disable[] = $r['mg_id'];
+                $this->logger->info(new Phrase($this->prefixLog . ' [Magento Product: ' . $r['mg_id'] . '] | DISABLED PRODUCT.'));
             }
             if ($disable) { // If $disable is empty, we don't have to set any product status to disabled, so we skip it
                 $this->setStatusAsDisabled($disable);
             }
         }
+        $this->logger->info(new Phrase($this->prefixLog . ' Finish Disable Products.'));
     }
 
     private function setStatusAsDisabled($mgIds)

@@ -263,20 +263,20 @@ class GetArticles extends SyncgApiService
         $allProductsG4100 = [];
         $counter = 0;
         while ($fetchLoop) {
-            $currentChangeDate = $this->config->getParamsWithoutSystem('syncg/general/last_date_sync_products')->getValue();
-            $currentG4100Id = $this->config->getParamsWithoutSystem('syncg/general/last_inserted_g4100_product')->getValue();
-            $currentChangeDate = date('d-m-Y H:i', strtotime($currentChangeDate));
-            if (!$currentG4100Id) {
+            $lastDateSync = $this->config->getParamsWithoutSystem('syncg/general/last_date_sync_products')->getValue();
+            $lastG4100Id = $this->config->getParamsWithoutSystem('syncg/general/last_inserted_g4100_product')->getValue();
+            $lastDateSync = date('d-m-Y H:i', strtotime($lastDateSync));
+            if (!$lastG4100Id) {
                 $this->type = 8;
                 $this->useId = false;
             } else {
                 $this->type = 0;
                 $this->useId = true;
             }
-            $newProducts = $this->getProductsG4100($counter, $this->type, $this->useId);
+            $newProducts = $this->getProductsG4100($counter, $this->type, $this->useId, $lastDateSync, $lastG4100Id);
             if ($newProducts) {
                $this->config->setLastG4100ProductId(end($newProducts)['cod']);
-               if ((strtotime($currentChangeDate) < strtotime(end($newProducts)['fecha_cambio']))) {
+               if ((strtotime($lastDateSync) < strtotime(end($newProducts)['fecha_cambio']))) {
                     $this->config->setLastDateSyncProducts(end($newProducts)['fecha_cambio']);
                 }
             } else {
@@ -395,7 +395,7 @@ class GetArticles extends SyncgApiService
         }
     }
 
-    private function getProductsG4100($page, $type, $useId): array
+    private function getProductsG4100($page, $type, $useId, $lastDateSync, $lastG4100Id): array
     {
         $timeStart = microtime(true);
         $page++;
@@ -403,8 +403,6 @@ class GetArticles extends SyncgApiService
         $this->logger->info(new Phrase($this->prefixLog . ' Fetching products'));
         $timeStartLoop = microtime(true);
         $filters = [];
-        $lastDateSync = $this->config->getParamsWithoutSystem('syncg/general/last_date_sync_products')->getValue(); // We get the last sync date
-        $lastG4100Id = $this->config->getParamsWithoutSystem('syncg/general/last_inserted_g4100_product')->getValue(); // We get the last G4100 product inserted
         $this->logger->info(new Phrase($this->prefixLog . ' Last G4100 ID: '. $lastG4100Id));
         $lastDateSync = date('Y-m-d H:i', strtotime($lastDateSync));
         $this->logger->info(new Phrase('Last Date Sync: ' . $lastDateSync));
