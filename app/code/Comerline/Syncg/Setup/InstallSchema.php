@@ -13,7 +13,6 @@ class InstallSchema implements InstallSchemaInterface
     {
         $installer = $setup;
         $installer->startSetup();
-        if (!$installer->tableExists('comerline_syncg_status')) {
             $table = $installer->getConnection()->newtable(
                 $installer->getTable('comerline_syncg_status')
             )
@@ -64,6 +63,24 @@ class InstallSchema implements InstallSchemaInterface
                     'status'
                 )
                 ->addColumn(
+                    'parent_g',
+                    Table::TYPE_INTEGER,
+                    null,
+                    [
+                        'unsigned' => true,
+                    ],
+                    'G4100 ID'
+                )
+                ->addColumn(
+                    'parent_mg',
+                    Table::TYPE_INTEGER,
+                    null,
+                    [
+                        'unsigned' => true,
+                    ],
+                    'G4100 ID'
+                )
+                ->addColumn(
                     'created_at',
                     Table::TYPE_TIMESTAMP,
                     null,
@@ -92,11 +109,11 @@ class InstallSchema implements InstallSchemaInterface
                 $installer->getTable('comerline_syncg_status'),
                 $setup->getIdxName(
                     $installer->getTable('comerline_syncg_status'),
-                    ['type','mg_id', 'g_id', 'status'],
+                    ['type','g_id'],
                 ),
-                ['type','mg_id', 'g_id', 'status'],
+                ['type', 'g_id'],
+                \Magento\Framework\DB\Adapter\AdapterInterface::INDEX_TYPE_UNIQUE
             );
-        }
         $installer->endSetup();
     }
 }

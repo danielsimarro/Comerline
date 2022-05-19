@@ -63,11 +63,14 @@ class SyncgStatusRepository
     {
         $collection = $this->syncgStatusCollectionFactory->create()
             ->addFieldToFilter('type', $type)
-            ->addFieldToFilter('mg_id', $mgId)
             ->addFieldToFilter('g_id', $gId);
         if ($collection->getSize() > 0) {
             foreach ($collection as $item) {
                 $this->syncgStatus = $this->syncgStatusFactory->create()->load($item->getData('id'));
+                if ($this->syncgStatus->getData('parent_g') && !$this->syncgStatus->getData('mg_id')) {
+                    $status = 0;
+                }
+                $this->syncgStatus->setMgId($mgId);
                 $this->syncgStatus->setStatus($status);
                 $this->syncgStatus->setUpdatedAt($this->date->date());
                 $this->saveSyncgStatus($this->syncgStatus);
