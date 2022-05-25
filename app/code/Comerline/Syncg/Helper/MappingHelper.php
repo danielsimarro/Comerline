@@ -191,7 +191,11 @@ class MappingHelper
 
             if ($parentIds) { // If it does....
                 foreach ($parentIds as $parentId) {
-                    $this->processedProducts[$parentId] = array_unique(array_merge($this->processedProducts[$parentId], $productCategories)); // We add the child categories to the parent product
+                    if (array_key_exists($parentId, $this->processedProducts)) {
+                        $this->processedProducts[$parentId] = array_unique(array_merge($this->processedProducts[$parentId], $productCategories)); // We add the child categories to the parent product
+                    } else {
+                        $this->processedProducts[$parentId] = $productCategories;
+                    }
                 }
             }
         }
