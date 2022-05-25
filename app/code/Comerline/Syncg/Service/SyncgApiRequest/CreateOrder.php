@@ -136,7 +136,7 @@ class CreateOrder extends SyncgApiService
                 }
                 $collectionSyncg = $this->syncgStatusCollectionFactory->create() // With the Magento ID, we get the G4100 ID of the product
                 ->addFieldToFilter('mg_id', $idMg)
-                    ->addFieldToFilter('type', SyncgStatus::TYPE_PRODUCT);
+                    ->addFieldToFilter('type', ['in' => [SyncgStatus::TYPE_PRODUCT,SyncgStatus::TYPE_PRODUCT_SIMPLE]]);
                 if ($collectionSyncg->getSize() > 0) {
                     foreach ($collectionSyncg as $itemSyncg) {
                         $codeG4100 = $itemSyncg->getData('g_id');
@@ -150,11 +150,21 @@ class CreateOrder extends SyncgApiService
                 array_push($lines, ["articulo" => $idG4100, "cantidad" => $qty, "precio" => $price, "descuento" => 0]);
             }
         }
-        $idUpdate = intval($this->config->getGeneralConfig('shipping_rate_g4100_id'));
+        $codUpdate = $this->config->getGeneralConfig('shipping_rate_g4100_id');
+        $this->buildParams($codUpdate);
+        $response = $this->execute();
+        if ($response) {
+            $idUpdate = intval($response['listado'][0]['id']);
+        }
         $dataUpdate = strval($order->getData('base_shipping_amount'));
         array_push($lines, ["articulo" => $idUpdate, "cantidad" => 1, "precio" => $dataUpdate, "descuento" => 0]); // We add the shipping rates here
         if ($order->getData('coupon_code')) {
-            $idDiscount = intval($this->config->getGeneralConfig('discount_g4100_id'));
+            $codDiscount = $this->config->getGeneralConfig('discount_g4100_id');
+            $this->buildParams($codDiscount);
+            $response = $this->execute();
+            if ($response) {
+                $idDiscount = intval($response['listado'][0]['id']);
+            }
             $dataDiscount = strval($order->getData('discount_amount'));
             array_push($lines, ["articulo" => $idDiscount, "cantidad" => 1, "precio" => $dataDiscount, "descuento" => 0]); // We add the discount here (if exists)
         }
