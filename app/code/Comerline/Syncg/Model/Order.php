@@ -29,7 +29,7 @@ class Order
     public function getOrderDetails($orderIds)
     {
         foreach ($orderIds as $id){
-            $order = $this->orderRepository->get(intval($id)+1);
+            $order = $this->orderRepository->get(intval($id));
             $file = fopen('/home/alberto/order.txt', 'w');
             fwrite($file, "ID Pedido: " . $order->getData('increment_id') . "\n");
             fwrite($file, "Nombre Cliente: " . $order->getData('customer_firstname') . "\n");
