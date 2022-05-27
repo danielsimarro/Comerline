@@ -2,6 +2,7 @@
 
 namespace Comerline\Syncg\Model;
 
+use Comerline\Syncg\Model\ResourceModel\SyncgStatus\CollectionFactory;
 use Comerline\Syncg\Model\ResourceModel\SyncgStatusRepository;
 use Magento\Framework\Filesystem;
 use \Magento\Sales\Api\OrderRepositoryInterface;
@@ -20,24 +21,34 @@ class Order
      */
     private $syncgStatusRepository;
 
+    /**
+     * @var CollectionFactory
+     */
+    private $syncgStatusCollectionFactory;
 
+    /**
+     * @var Filesystem
+     */
     protected $filesystem;
 
     public function __construct(
         OrderRepositoryInterface $orderRepository,
-        SyncgStatusRepository $syncgStatusRepository,
-        Filesystem $filesystem
-    ){
+        SyncgStatusRepository    $syncgStatusRepository,
+        Filesystem               $filesystem,
+        CollectionFactory        $syncgStatusCollectionFactory
+    )
+    {
         $this->orderRepository = $orderRepository;
         $this->syncgStatusRepository = $syncgStatusRepository;
         $this->filesystem = $filesystem;
+        $this->syncgStatusCollectionFactory = $syncgStatusCollectionFactory;
     }
 
     public function getOrderDetails($orderIds)
     {
         $varPath = $this->filesystem->getDirectoryRead(DirectoryList::VAR_DIR)->getAbsolutePath();
         $relativePath = $varPath . 'log/order.log';
-        foreach ($orderIds as $id){
+        foreach ($orderIds as $id) {
             $order = $this->orderRepository->get(intval($id));
             $orderData = "ID Pedido: " . $order->getData('increment_id') . "\n";
             $orderData .= "Nombre Cliente: " . $order->getData('customer_firstname') . "\n";
@@ -46,17 +57,25 @@ class Order
             $orderData .= "Artículos[ " . "\n";
             $items = $order->getData('items');
             $count = 1;
-            foreach($items as $item) {
+            foreach ($items as $item) {
                 $orderData .= "Artículo " . $count . ": \n";
-                $orderData .=  "Nombre Artículo: " . $item->getData('name') . "\n";
-                $orderData .=  "SKU: " . $item->getData('sku') . "\n";
-                $orderData .=  "Precio: " . $item->getData('price') . "\n";
+                $orderData .= "Nombre Artículo: " . $item->getData('name') . "\n";
+                $orderData .= "SKU: " . $item->getData('sku') . "\n";
+                $orderData .= "Precio: " . $item->getData('price') . "\n";
                 $count++;
             }
-            $orderData .=  "] \n";
-            $orderData .=  "Precio Total (con envío): " . $order->getData('base_grand_total') . "\n";
+            $orderData .= "] \n";
+            $orderData .= "Precio Total (con envío): " . $order->getData('base_grand_total') . "\n";
             file_put_contents($relativePath, $orderData);
-            $this->syncgStatusRepository->updateEntityStatus($id, 0, SyncgStatus::TYPE_ORDER, SyncgStatus::STATUS_COMPLETED);
+            $collectionSyncg = $this->syncgStatusCollectionFactory->create()
+                ->addFieldToFilter('mg_id', $id)
+                ->addFieldToFilter('type', [['eq' => SyncgStatus::TYPE_ORDER]]); // We check if the order already exists
+            if ($collectionSyncg->getSize() > 0) {
+                foreach ($collectionSyncg as $itemSyncg) {
+                    $gId = $itemSyncg->getData('g_id');
+                    $this->syncgStatusRepository->updateEntityStatus($id, $gId, SyncgStatus::TYPE_ORDER, SyncgStatus::STATUS_COMPLETED);
+                }
+            }
         }
     }
 }
