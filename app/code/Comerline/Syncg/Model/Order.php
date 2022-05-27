@@ -38,7 +38,7 @@ class Order
         $varPath = $this->filesystem->getDirectoryRead(DirectoryList::VAR_DIR)->getAbsolutePath();
         $relativePath = $varPath . 'log/order.log';
         foreach ($orderIds as $id){
-            $order = $this->orderRepository->get(intval($id)+1);
+            $order = $this->orderRepository->get(intval($id));
             $orderData = "ID Pedido: " . $order->getData('increment_id') . "\n";
             $orderData .= "Nombre Cliente: " . $order->getData('customer_firstname') . "\n";
             $orderData .= "Apellidos Cliente: " . $order->getData('customer_firstname') . "\n";
