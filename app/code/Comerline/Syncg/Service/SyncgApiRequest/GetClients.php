@@ -63,8 +63,14 @@ class GetClients extends SyncgApiService
         parent::__construct($configHelper, $json, $responseFactory, $clientFactory, $logger);
     }
 
-    public function buildParams($clientEmail, $search, $client = null)
+    public function buildParams($client, $search)
     {
+        if ($client[7] != '') {
+            $filters[] = ["campo" => "referencia", "valor" => $client[7], "tipo" => 0];
+        } else {
+            $filters[] = ["campo" => "cp", "valor" => $client[6], "tipo" => 0];
+            $filters[] = ["campo" => "email", "valor" => $client[2], "tipo" => 0];
+        }
         if ($search) {
             $this->endpoint = 'api/g4100/list';
             $this->params = [
@@ -76,12 +82,10 @@ class GetClients extends SyncgApiService
                 ],
                 'body' => json_encode([
                     'endpoint' => 'personas/listar',
-                    'fields' => json_encode(["nombre", "direccion1", "email", "poblacion", "telefono", "id_provincia", "cp"]),
+                    'fields' => json_encode(["nombre", "direccion1", "email", "poblacion", "telefono", "id_provincia", "cp", "referencia"]),
                     'filters' => json_encode([
                         "inicio" => 0,
-                        "filtro" => [
-                            ["campo" => "email", "valor" => $clientEmail, "tipo" => 0],
-                        ]
+                        "filtro" => $filters
                     ]),
                     'order' => json_encode(["campo" => "id", "orden" => "ASC"])
                 ]),
@@ -100,7 +104,7 @@ class GetClients extends SyncgApiService
                 ],
                 'body' => json_encode([
                     'endpoint' => 'personas',
-                    'fields' => json_encode(["nombre", "direccion1", "email", "poblacion", "telefono", "id_provincia", "cp"]),
+                    'fields' => json_encode(["nombre", "direccion1", "email", "poblacion", "telefono", "id_provincia", "cp", "referencia"]),
                     'datas' => json_encode($client)
                 ]),
             ];
@@ -109,6 +113,11 @@ class GetClients extends SyncgApiService
 
     public function checkClients($order){
         $this->connectToAPI(); // First we need to login
+        if ($order->getData('customer_id') !== null) {
+            $clientMgId = $order->getData('customer_id'); // Client's Magento Id
+        } else {
+            $clientMgId = ''; // Client's Magento Id
+        }
         $clientEmail = $order->getData('customer_email'); // Client's email
         $clientName = $order->getData('customer_firstname') . " " . $order->getData('customer_lastname'); // Client's name
         $clientAddress = $order->getData('addresses')[0]->getData('street'); // Client's street
@@ -116,14 +125,14 @@ class GetClients extends SyncgApiService
         $clientPhone = $order->getData('addresses')[0]->getData('telephone');
         $clientProvince = $this->getProvince->checkProvince($order->getData('addresses')[0]->getData('region')); // Client's province
         $clientPostcode = $order->getData('addresses')[0]->getData('postcode'); // Client's postcode
-        $client = [$clientName, $clientAddress, $clientEmail, $clientCity, $clientPhone, $clientProvince, $clientPostcode]; // We put it all togheter on an array
-        $this->buildParams($clientEmail, $search = true); // First, we search if the client exists in G4100
+        $client = [$clientName, $clientAddress, $clientEmail, $clientCity, $clientPhone, $clientProvince, $clientPostcode, $clientMgId]; // We put it all togheter on an array
+        $this->buildParams($client, true); // First, we search if the client exists in G4100
         $response = $this->execute();
         if (!empty($response['listado'])) { // If it exists, we get it's ID
             $clientG4100 = $response['listado'][0];
             $clientG4100Id = $clientG4100['id'];
         } else { // If it doesn't exists, we create it and then we get the ID
-            $this->buildParams($clientEmail, $search = false, $client);
+            $this->buildParams($client, false);
             $response = $this->execute();
             $clientG4100Id = $response['id'];
         }
