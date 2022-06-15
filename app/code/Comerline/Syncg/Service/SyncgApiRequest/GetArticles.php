@@ -10,8 +10,6 @@ use Comerline\Syncg\Model\ResourceModel\SyncgStatus\CollectionFactory;
 use Comerline\Syncg\Model\ResourceModel\SyncgStatusRepository;
 use Comerline\Syncg\Model\SyncgStatus;
 use Comerline\Syncg\Service\SyncgApiService;
-use DateInterval;
-use DateTimeZone;
 use GuzzleHttp\ClientFactory;
 use GuzzleHttp\Psr7\ResponseFactory;
 use Magento\Catalog\Api\Data\ProductInterfaceFactory as ProductFactory;
@@ -36,7 +34,6 @@ use Magento\Store\Model\StoreManagerInterface;
 use PHPUnit\Exception;
 use Psr\Log\LoggerInterface;
 use Magento\Framework\Stdlib\DateTime\DateTime as DatetimeGmt;
-use Datetime as DatetimeOrigin;
 
 class GetArticles extends SyncgApiService
 {
@@ -220,14 +217,29 @@ class GetArticles extends SyncgApiService
         parent::__construct($configHelper, $json, $responseFactory, $clientFactory, $logger);
     }
 
-    /**
-     * @param $start
-     * @return void
-     * @throws \Exception
-     * @todo Este método es posible que deba ser de la clase padre
-     */
-    public function buildParams($filters)
+    public function buildParams()
     {
+        $lastDateSync = $this->config->getParamsWithoutSystem('syncg/general/last_date_sync_products')->getValue();
+        $lastDateSync = date('Y-m-d H:i', strtotime($lastDateSync));
+        $lastG4100Id = $this->config->getParamsWithoutSystem('syncg/general/last_inserted_g4100_product')->getValue();
+
+        if (!$lastG4100Id) {
+            $this->type = 8;
+            $this->useId = false;
+        } else {
+            $this->type = 0;
+            $this->useId = true;
+        }
+        if ($lastDateSync) {
+            $filters[] = ["campo" => "fecha_cambio", "valor" => $lastDateSync, "tipo" => $this->type];
+            $this->logger->info(new Phrase($this->prefixLog . ' Filters fecha_cambio: Value = ' . $lastDateSync . '; Type = ' . $this->type));
+//            $filters[] = ["campo" => "descripcion", "valor" => 'MAK LEIPZIG SILVER', "tipo" => 0]; // For testing
+        }
+        if ($this->useId) {
+            $filters[] = ["campo" => "cod", "valor" => $lastG4100Id, "tipo" => 8];
+            $this->logger->info(new Phrase($this->prefixLog . ' Filters cod: Value = ' . $lastG4100Id . '; Type = 8'));
+        }
+
         $this->endpoint = 'api/g4100/list';
         $this->params = [
             'allow_redirects' => true,
@@ -253,110 +265,100 @@ class GetArticles extends SyncgApiService
         $this->order = $decoded['order']; // We will need this to get the products correctly
     }
 
+    public function processProductsApi(): bool
+    {
+        $timeStart = microtime(true);
+        $allProductsG4100 = [];
+        $counter = 0;
+        $fetchLoop = true;
+        $finishGetProductsApi = false;
+        while ($fetchLoop) {
+            $newProducts = $this->getProductsG4100($counter);
+            if (!$newProducts) {
+                $this->config->setLastG4100ProductId(''); // Clear last product id when no find product
+            }
+            $allProductsG4100 = array_merge($allProductsG4100, $newProducts); // We get all the products from G4100
+            $counter++;
+            if ($counter == 10 && $allProductsG4100) {
+                $productsG4100 = $this->getModifiableProducts($allProductsG4100); // We filter the products that have 'Si vender en web' setted to 1
+                if ($productsG4100) {
+                    $attributeSetCollection = $this->attributeCollectionFactory->create();
+                    $attributeSets = $attributeSetCollection->getItems();
+                    $attributeSetsMap = [];
+                    foreach ($attributeSets as $attributeSet) {
+                        $attributeSetsMap[$attributeSet->getAttributeSetName()] = $attributeSet->getAttributeSetId();
+                    }
+                    $attributeSetId = "";  // Variable where we will store the attribute set ID
+                    $this->categories = $this->getMagentoCategories();
+                    $countProductsG4100 = count($productsG4100);
+                    for ($i = 0; $i < $countProductsG4100; $i++) {
+                        $productG4100 = $productsG4100[$i];
+                        $this->description = $productG4100['desc_detallada'];
+                        $this->shortDescription = $productG4100['desc_interna'];
+                        $prefixLog = $this->prefixLog . ' [' . $countProductsG4100 . '/' . ($i + 1) . '][G4100 Product: ' . $productG4100['cod'] . ']';
+                        if ($this->checkRequiredData($productG4100)) {
+                            $collectionSyncg = $this->syncgStatusCollectionFactory->create()
+                                ->addFieldToFilter('g_id', $productG4100['cod'])
+                                ->addFieldToFilter('mg_id', ['neq' => 'NULL'])
+                                ->addFieldToFilter('type', [['eq' => SyncgStatus::TYPE_PRODUCT]]); // We check if the product already exists
+                            if (array_key_exists('familias', $productG4100)) { // We check if the product has an attribute set. If it does, then checks what it is
+                                if (isset($attributeSetsMap[$productG4100['familias'][0]['nombre']])) { // If the name of the attribute set is the same as the one on G4100...
+                                    $attributeSetId = $attributeSetsMap[$productG4100['familias'][0]['nombre']]; // We save the ID to use it later
+                                }
+                            }
+                            $product = null;
+                            $productAction = 'Edited';
+                            $productId = 0;
+                            if ($collectionSyncg->getSize() > 0) { // If the product already exists, that means we only have to update it
+                                foreach ($collectionSyncg as $itemSyncg) {
+                                    $product = $this->productRepository->getById($productId, true); // We load the product in edit mode
+                                }
+                            } else {
+                                $product = $this->productFactory->create(); // If the product doesn't exists, we create it
+                            }
+                            if ($product) {
+                                $this->createUpdateProduct($product, $productG4100, $attributeSetId);
+                                $this->productRepository->save($product);
+                                $productId = $product->getId();
+                                $this->logger->info(new Phrase($prefixLog . ' | [Magento Product: ' . $product->getId() . '] | ' . $productAction));
+                            }
+
+                            $this->syncgStatusRepository->updateEntityStatus($product->getEntityId(), $productG4100['cod'], SyncgStatus::TYPE_PRODUCT, SyncgStatus::STATUS_COMPLETED);
+                            if (array_key_exists('relacionados', $productG4100)) {
+                                // @todo debemos insertar solo las imágenes de productos configurables o de single que no tengan padre. De momento solo lo hacemos para los relacionados
+                                $this->addImagesPending($productG4100, $productId);
+                                $this->createSimpleProduct($productG4100, $attributeSetId); // We duplicate the product to avoid losing options
+                                $relatedIds = [];
+                                foreach ($productG4100['relacionados'] as $related) {
+                                    $relatedIds[] = $related['cod'];
+                                }
+                                $this->sqlHelper->setRelatedProducts($relatedIds, $productG4100['cod'], $product->getId());
+                            }
+                        } else {
+                            $this->logger->error(new Phrase($prefixLog . ' | Product not valid'));
+                        }
+                        $this->config->setLastG4100ProductId($productG4100['cod']);
+                        $this->config->setLastDateSyncProducts($productG4100['fecha_cambio']);
+                    }
+                }
+                $this->sqlHelper->disableProducts($allProductsG4100); // Here we disable all the products that have 'Si vender en web' setted to 0
+                $fetchLoop = false;
+            } elseif (!$allProductsG4100) {
+                $fetchLoop = false;
+                $finishGetProductsApi = true;
+                $this->logger->info(new Phrase($this->prefixLog . ' Finish Products sync ' . $this->getTrackTime($timeStart)));
+            }
+        }
+        return $finishGetProductsApi;
+    }
+
     public function send()
     {
         $this->logger->info(new Phrase($this->prefixLog . ' Init Products sync'));
         $timeStart = microtime(true);
-        $fetchLoop = true; // Variable to check if we need to break the loop or keep on it
-        $skipRelated = true;
         $skipImages = true;
-        $allProductsG4100 = [];
-        $counter = 0;
-        while ($fetchLoop) {
-            $lastDateSync = $this->config->getParamsWithoutSystem('syncg/general/last_date_sync_products')->getValue();
-            $lastG4100Id = $this->config->getParamsWithoutSystem('syncg/general/last_inserted_g4100_product')->getValue();
-            $lastDateSync = date('d-m-Y H:i', strtotime($lastDateSync));
-            if (!$lastG4100Id) {
-                $this->type = 8;
-                $this->useId = false;
-            } else {
-                $this->type = 0;
-                $this->useId = true;
-            }
-            $newProducts = $this->getProductsG4100($counter, $this->type, $this->useId, $lastDateSync, $lastG4100Id);
-            if ($newProducts) {
-               $this->config->setLastG4100ProductId(end($newProducts)['cod']);
-               if ((strtotime($lastDateSync) < strtotime(end($newProducts)['fecha_cambio']))) {
-                    $this->config->setLastDateSyncProducts(end($newProducts)['fecha_cambio']);
-                }
-            } else {
-                $this->config->setLastG4100ProductId('');
-            }
-            $allProductsG4100 = array_merge($allProductsG4100, $newProducts); // We get all the products from G4100
-            $counter++;
-            if ($counter == 10) {
-                $counter = 0;
-                if ($allProductsG4100) {
-                    $productsG4100 = $this->getModifiableProducts($allProductsG4100); // We filter the products that have 'Si vender en web' setted to 1
-                    if ($productsG4100) {
-                        $attributeSetCollection = $this->attributeCollectionFactory->create();
-                        $attributeSets = $attributeSetCollection->getItems();
-                        $attributeSetsMap = [];
-                        foreach ($attributeSets as $attributeSet) {
-                            $attributeSetsMap[$attributeSet->getAttributeSetName()] = $attributeSet->getAttributeSetId();
-                        }
-                        $attributeSetId = "";  // Variable where we will store the attribute set ID
-                        $this->categories = $this->getMagentoCategories();
-                        $countProductsG4100 = count($productsG4100);
-                        for ($i = 0; $i < $countProductsG4100; $i++) {
-                            $productG4100 = $productsG4100[$i];
-                            $this->config->setLastG4100ProductId($productG4100['cod']);
-                            $this->description = $productG4100['desc_detallada'];
-                            $this->shortDescription = $productG4100['desc_interna'];
-                            $prefixLog = $this->prefixLog . ' [' . $countProductsG4100 . '/' . ($i + 1) . '][G4100 Product: ' . $productG4100['cod'] . ']';
-                            if ($this->checkRequiredData($productG4100)) {
-                                $collectionSyncg = $this->syncgStatusCollectionFactory->create()
-                                    ->addFieldToFilter('g_id', $productG4100['cod'])
-                                    ->addFieldToFilter('mg_id', ['neq' => 'NULL'])
-                                    ->addFieldToFilter('type', [['eq' => SyncgStatus::TYPE_PRODUCT]]); // We check if the product already exists
-                                if (array_key_exists('familias', $productG4100)) { // We check if the product has an attribute set. If it does, then checks what it is
-                                    if (isset($attributeSetsMap[$productG4100['familias'][0]['nombre']])) { // If the name of the attribute set is the same as the one on G4100...
-                                        $attributeSetId = $attributeSetsMap[$productG4100['familias'][0]['nombre']]; // We save the ID to use it later
-                                    }
-                                }
-                                if ($collectionSyncg->getSize() > 0) { // If the product already exists, that means we only have to update it
-                                    foreach ($collectionSyncg as $itemSyncg) {
-                                        $productId = $itemSyncg->getData('mg_id');
-                                        $product = $this->productRepository->getById($productId, true); // We load the product in edit mode
-                                        $this->createUpdateProduct($product, $productG4100, $attributeSetId);
-                                        $this->productRepository->save($product);
-                                        $this->logger->info(new Phrase($prefixLog . ' | [Magento Product: ' . $productId . '] | Edited'));
-                                        $this->addImagesPending($productG4100, $productId);
-                                    }
-                                } else {
-                                    $product = $this->productFactory->create(); // If the product doesn't exists, we create it
-                                    $this->createUpdateProduct($product, $productG4100, $attributeSetId);
-                                    $product = $this->productRepository->save($product);
-                                    $this->logger->info(new Phrase($prefixLog . ' | [Magento Product: ' . $product->getId() . '] | Created'));
-                                    $this->addImagesPending($productG4100, $product->getId());
-                                }
-                                $this->syncgStatusRepository->updateEntityStatus($product->getEntityId(), $productG4100['cod'], SyncgStatus::TYPE_PRODUCT, SyncgStatus::STATUS_COMPLETED);
-                                if (array_key_exists('relacionados', $productG4100)) {
-                                    $this->createSimpleProduct($productG4100, $attributeSetId); // We duplicate the product to avoid losing options
-                                    $relatedIds = [];
-                                    foreach ($productG4100['relacionados'] as $related) {
-                                        $relatedIds[] = $related['cod'];
-                                    }
-                                    $this->sqlHelper->setRelatedProducts($relatedIds, $productG4100['cod'], $product->getId());
-                                }
-                            } else {
-                                $this->logger->error(new Phrase($prefixLog . ' | Product not valid'));
-                            }
-                            $this->config->setLastDateSyncProducts($productG4100['fecha_cambio']);
-                        }
-                        $allProductsG4100 = [];
-                    }
-                } else {
-                    $skipRelated = false;
-                }
-                $fetchLoop = false;
-            } elseif (!($allProductsG4100) && !($newProducts)  && ($counter > 3)) {
-                $fetchLoop = false;
-                $skipRelated = false;
-            }
-        }
-        $this->logger->info(new Phrase($this->prefixLog . ' Finish Products sync ' . $this->getTrackTime($timeStart)));
-        if (!$skipRelated) {
+        $finishGetProductsApi = $this->processProductsApi();
+        if ($finishGetProductsApi) { // Process Related products
             $this->logger->info(new Phrase($this->prefixLog . ' Start Product Relations'));
             $timeStart = microtime(true);
             $relatedProducts = $this->sqlHelper->getRelatedProducts();
@@ -372,10 +374,9 @@ class GetArticles extends SyncgApiService
             }
             $this->logger->info(new Phrase($this->prefixLog . ' Finish Product Relations ' . $this->getTrackTime($timeStart)));
         }
-        if (!$skipImages) {
+        if (!$skipImages) { // Process images
             $this->saveImages();
         }
-        $this->sqlHelper->disableProducts($allProductsG4100); // Here we disable all the products that have 'Si vender en web' setted to 0
         $this->logger->info(new Phrase($this->prefixLog . ' Finish All sync ' . $this->getTrackTime($timeStart)));
     }
 
@@ -388,35 +389,26 @@ class GetArticles extends SyncgApiService
         }
     }
 
-    private function deleteImagesFromChild($magentoProductIds)
+    private function getProductsG4100($page): array
     {
-        foreach ($magentoProductIds as $magentoProductId) {
-            $this->syncgStatusRepository->deleteEntity($magentoProductId, SyncgStatus::TYPE_IMAGE);
+        $lastDateSync = $this->config->getParamsWithoutSystem('syncg/general/last_date_sync_products')->getValue();
+        $lastG4100Id = $this->config->getParamsWithoutSystem('syncg/general/last_inserted_g4100_product')->getValue();
+        if (!$lastG4100Id) {
+            $this->type = 8;
+            $this->useId = false;
+        } else {
+            $this->type = 0;
+            $this->useId = true;
         }
-    }
 
-    private function getProductsG4100($page, $type, $useId, $lastDateSync, $lastG4100Id): array
-    {
         $timeStart = microtime(true);
         $page++;
         $productsG4100 = []; // Array where we will store the items, ordered in pages
         $this->logger->info(new Phrase($this->prefixLog . ' Fetching products'));
         $timeStartLoop = microtime(true);
-        $filters = [];
-        $this->logger->info(new Phrase($this->prefixLog . ' Last G4100 ID: '. $lastG4100Id));
-        $lastDateSync = date('Y-m-d H:i', strtotime($lastDateSync));
-        $this->logger->info(new Phrase('Last Date Sync: ' . $lastDateSync));
-        $this->logger->info(new Phrase($this->prefixLog . ' Last Date Sync: ' . $lastDateSync));
-        if ($lastDateSync) {
-            $filters[] = ["campo" => "fecha_cambio", "valor" => $lastDateSync, "tipo" => $type];
-            $this->logger->info(new Phrase($this->prefixLog . ' Filters fecha_cambio: Value = ' . $lastDateSync . '; Type = ' . $type));
-//            $filters[] = ["campo" => "descripcion", "valor" => 'MAK LEIPZIG SILVER', "tipo" => 0]; // For testing
-        }
-        if ($useId) {
-            $filters[] = ["campo" => "cod", "valor" => $lastG4100Id, "tipo" => 8];
-            $this->logger->info(new Phrase($this->prefixLog . ' Filters cod: Value = ' . $lastG4100Id . '; Type = 8'));
-        }
-        $this->buildParams($filters);
+        $this->logger->info(new Phrase($this->prefixLog . ' Last G4100 ID: ' . $lastG4100Id));
+        $this->logger->info(new Phrase($this->prefixLog . ' Last Date Syng: ' . $lastDateSync));
+        $this->buildParams();
         $response = $this->execute();
         if ($response !== null && array_key_exists('listado', $response) && $response['listado']) {
             $productsG4100 = array_merge($productsG4100, $response['listado']);
@@ -469,9 +461,9 @@ class GetArticles extends SyncgApiService
     {
         $simpleProduct = $productG4100;
         unset($simpleProduct['relacionados']); // We remove related products as we don't need them
-        if ($simpleProduct['ref_fabricante'] !== "") {
-            $sku = $simpleProduct['ref_fabricante'] .= '-' . $simpleProduct['id']; // We add the ID to the SKU to avoid errors
-        } else {                                                                           // If ref_fabricante is empty, we use ref_proveedor
+        if ($simpleProduct['ref_fabricante'] !== "") { // We add the ID to the SKU to avoid errors
+            $sku = $simpleProduct['ref_fabricante'] .= '-' . $simpleProduct['id'];
+        } else { // If ref_fabricante is empty, we use ref_proveedor
             $sku = $simpleProduct['ref_proveedor'] .= '-' . $simpleProduct['id'];
         }
         $originalCod = $simpleProduct['cod'];
@@ -481,16 +473,14 @@ class GetArticles extends SyncgApiService
         } catch (NoSuchEntityException $e) {
             $product = false; // Otherwise, we have to create it
         }
-        if ($product) {
-            $this->createUpdateProduct($product, $simpleProduct, $attributeSetId);
-            $this->productResource->save($product);
-            $this->logger->info(new Phrase($this->prefixLog . ' [Magento Product: ' . $product->getId() . '] | Edited'));
-        } else {
+        $productAction = 'Edited';
+        if (!$product) {
             $product = $this->productFactory->create();
-            $this->createUpdateProduct($product, $simpleProduct, $attributeSetId);
-            $this->productResource->save($product);
-            $this->logger->info(new Phrase($this->prefixLog . ' [G4100 Product: ' . $simpleProduct['cod'] . '] | [Magento Product: ' . $product->getId() . '] | Created'));
+            $productAction = 'Created';
         }
+        $this->createUpdateProduct($product, $simpleProduct, $attributeSetId);
+        $this->productResource->save($product);
+        $this->logger->info(new Phrase($this->prefixLog . ' [Magento Product: ' . $product->getId() . '] | ' . $productAction));
         $this->syncgStatusRepository->updateEntityStatus($product->getEntityId(), $originalCod, SyncgStatus::TYPE_PRODUCT_SIMPLE, SyncgStatus::STATUS_COMPLETED);
     }
 
@@ -600,7 +590,7 @@ class GetArticles extends SyncgApiService
                     'label' => $attr->getData('frontend_label')
                 ];
                 $new = $attributeModel->setData($data);
-                array_push($attributeModels, $new);
+                $attributeModels[] = $new;
                 try {
                     $attributeModel->setData($data)->save(); // We create the attribute model
                 } catch (\Magento\Framework\Exception\AlreadyExistsException $e) {
@@ -705,37 +695,34 @@ class GetArticles extends SyncgApiService
         }
     }
 
+    /**
+     * Key attribute g4100, value attribute Magento
+     * @return string[]
+     */
+    private function getAttributesMap(): array
+    {
+        return [
+            'frente' => 'width',
+            'fondo' => 'offset',
+            'diametro' => 'diameter',
+            'alto' => 'hub',
+            'envase' => 'mounting',
+            'diametro2' => 'load',
+            'acotacion' => 'variation',
+            'marca' => 'brand'
+        ];
+    }
+
     private function getAttributesIds($attributes): array
     {
+        $code = []; // Array where we will store the attributes IDs
         if ($attributes) { // If this is exists, that means we have attributes
-            $code = []; // Array where we will store the attributes IDs
-            $width = $attributes['frente'];
-            if ($width !== "") {
-                $code[] = $this->attributeHelper->getAttribute('width')->getAttributeId(); // With this helper we get the ID of the desired attribute
-            }
-            $offset = $attributes['fondo'];
-            if ($offset !== "") {
-                $code[] = $this->attributeHelper->getAttribute('offset')->getAttributeId();
-            }
-            $diameter = $attributes['diametro'];
-            if ($diameter !== "") {
-                $code[] = $this->attributeHelper->getAttribute('diameter')->getAttributeId();
-            }
-            $hub = $attributes['alto'];
-            if ($hub !== "") {
-                $code[] = $this->attributeHelper->getAttribute('hub')->getAttributeId();
-            }
-            $mounting = $attributes['envase'];
-            if ($mounting !== "") {
-                $code[] = $this->attributeHelper->getAttribute('mounting')->getAttributeId();
-            }
-            $load = $attributes['diametro2'];
-            if ($load !== "") {
-                $code[] = $this->attributeHelper->getAttribute('load')->getAttributeId();
-            }
-            $variation = $attributes['acotacion'];
-            if ($variation !== "") {
-                $code[] = $this->attributeHelper->getAttribute('variation')->getAttributeId();
+            $attributesMap = $this->getAttributesMap();
+            foreach ($attributesMap as $attributeG4100 => $attributeMg) {
+                $value = $attributes[$attributeG4100];
+                if ($value !== "") {
+                    $code[] = $this->attributeHelper->getAttribute($attributeMg)->getAttributeId(); // With this helper we get the ID of the desired attribute
+                }
             }
         }
         return $code;
@@ -744,66 +731,24 @@ class GetArticles extends SyncgApiService
     private function insertAttributes($attributes, $product)
     {
         if ($attributes) { // If this is exists, that means we have attributes
-            $width = $attributes['frente'];
-            if ($width !== "") {
-                $width .= "cm";
-                $widthId = $this->attributeHelper->createOrGetId('width', $width);
-                $product->setCustomAttribute('width', $widthId);
-            } else {
-                $product->setCustomAttribute('width', '');      // We do this to put it on empty in case that is what we get from the API
-            }                                                  // Useful when we delete an attribute, this sets it to empty
-            $offset = $attributes['fondo'];
-            if ($offset !== "") {
-                $offset .= "mm";
-                $offsetId = $this->attributeHelper->createOrGetId('offset', $offset);
-                $product->setCustomAttribute('offset', $offsetId);
-            } else {
-                $product->setCustomAttribute('offset', '');
-            }
-            $diameter = $attributes['diametro'];
-            if ($diameter !== "") {
-                $diameter .= "''";
-                $diameterId = $this->attributeHelper->createOrGetId('diameter', $diameter);
-                $product->setCustomAttribute('diameter', $diameterId);
-            } else {
-                $product->setCustomAttribute('diameter', '');
-            }
-            $hub = $attributes['alto'];
-            if ($hub !== "") {
-                $hub .= "mm";
-                $hubId = $this->attributeHelper->createOrGetId('hub', $hub);
-                $product->setCustomAttribute('hub', $hubId);
-            } else {
-                $product->setCustomAttribute('hub', '');
-            }
-            $mounting = $attributes['envase'];
-            if ($mounting !== "") {
-                $mountingId = $this->attributeHelper->createOrGetId('mounting', $mounting);
-                $product->setCustomAttribute('mounting', $mountingId);
-            } else {
-                $product->setCustomAttribute('mounting', '');
-            }
-            $load = $attributes['diametro2'];
-            if ($load !== "") {
-                $load .= "kg";
-                $loadId = $this->attributeHelper->createOrGetId('load', $load);
-                $product->setCustomAttribute('load', strval($loadId));
-            } else {
-                $product->setCustomAttribute('load', '');
-            }
-            $variation = $attributes['acotacion'];
-            if ($variation !== "") {
-                $variationId = $this->attributeHelper->createOrGetId('variation', $variation);
-                $product->setCustomAttribute('variation', $variationId);
-            } else {
-                $product->setCustomAttribute('variation', '');
-            }
-            $brand = $attributes['marca'];
-            if ($brand !== "") {
-                $brandId = $this->attributeHelper->createOrGetId('brand', $brand);
-                $product->setCustomAttribute('brand', $brandId);
-            } else {
-                $product->setCustomAttribute('brand', '');
+            $attributesMap = $this->getAttributesMap();
+            foreach ($attributesMap as $attributeG4100 => $attributeMg) {
+                $value = $attributes[$attributeG4100];
+                if ($value !== '') {
+                    if ($attributeG4100 == 'frente') {
+                        $value .= 'cm';
+                    } elseif (in_array($attributeG4100, ['fondo', 'alto'])) {
+                        $value .= 'mm';
+                    } elseif ($attributeG4100 == 'diametro2') {
+                        $value .= 'kg';
+                    } elseif ($attributeG4100 == 'diametro') {
+                        $value .= "''";
+                    }
+                    $attributeId = $this->attributeHelper->createOrGetId($attributeMg, $value);
+                    $product->setCustomAttribute($attributeMg, $attributeId);
+                } else {
+                    $product->setCustomAttribute('diameter', '');
+                }
             }
         }
     }

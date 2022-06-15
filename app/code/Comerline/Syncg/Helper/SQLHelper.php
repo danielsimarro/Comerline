@@ -17,6 +17,8 @@ class SQLHelper extends AbstractHelper
      */
     protected $logger;
 
+    const ATTRIBUTE_STATUS_ID = 97;
+
     public function __construct(
         Context            $context,
         ResourceConnection $resource,
@@ -29,12 +31,14 @@ class SQLHelper extends AbstractHelper
         $this->prefixLog = uniqid() . ' | G4100 Sync |';
     }
 
-    public function disableProducts($products) {
+    public function disableProducts($productsG4100) {
         $this->logger->info(new Phrase($this->prefixLog . ' Init Disable Products.'));
         $ids = [];
         $disable = [];
-        foreach ($products as $product) {
-            $ids[] = $product['cod']; // We have to get COD instead of ID from G4100, otherwise we will never get the correct products
+        foreach ($productsG4100 as $product) {
+            if ($product['si_vender_en_web'] === false) {
+                $ids[] = $product['cod']; // We have to get COD instead of ID from G4100, otherwise we will never get the correct products
+            }
         }
         if ($ids) {
             $connection = $this->resource->getConnection(ResourceConnection::DEFAULT_CONNECTION);
@@ -56,7 +60,8 @@ class SQLHelper extends AbstractHelper
     {
         $connection = $this->resource->getConnection(ResourceConnection::DEFAULT_CONNECTION);
         $tableName = $connection->getTableName('catalog_product_entity_int');
-        $sql = "UPDATE " . $tableName . " SET VALUE = '2' WHERE attribute_id = 97 AND entity_id IN (" . implode(',', $mgIds) . ");";
+        // @todo el atributo 97 puesto a fuego es peligroso, deberíamos tenerlo en una constante para controlarlo
+        $sql = "UPDATE " . $tableName . " SET VALUE = '2' WHERE attribute_id = '" . self::ATTRIBUTE_STATUS_ID . "' AND entity_id IN (" . implode(',', $mgIds) . ");";
         $connection->query($sql);
     }
 
