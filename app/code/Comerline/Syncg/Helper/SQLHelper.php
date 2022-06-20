@@ -65,11 +65,20 @@ class SQLHelper extends AbstractHelper
         $connection->query($sql);
     }
 
+
+    /**
+     * @todo hay que mejorar esta función. Los productos simples (con padre) se deben insertar siempre con tipo 3 puesto que serán
+     * productos simples. Además se deben insertar como PENDING aquellos que no existan y/o no tengan padre.
+     * @param $relatedIds
+     * @param $parentGId
+     * @param $parentMgId
+     * @return void
+     */
     public function setRelatedProducts($relatedIds, $parentGId, $parentMgId) {
         $connection = $this->resource->getConnection(ResourceConnection::DEFAULT_CONNECTION);
         $tableName = $connection->getTableName('comerline_syncg_status');
         foreach ($relatedIds as $rid) {
-            $sql = "INSERT INTO ". $tableName ." (type, mg_id, g_id, status, parent_g, parent_mg) VALUES(1, null, " . $rid . ", 0, " . $parentGId . ", " . $parentMgId .") ON DUPLICATE KEY UPDATE parent_g='" . $parentGId . "', parent_mg='" . $parentMgId ."', status=0";
+            $sql = "INSERT INTO ". $tableName ." (type, mg_id, g_id, status, parent_g, parent_mg) VALUES(3, null, " . $rid . ", 0, " . $parentGId . ", " . $parentMgId .") ON DUPLICATE KEY UPDATE parent_g='" . $parentGId . "', parent_mg='" . $parentMgId ."', status=0";
             $connection->query($sql);
         }
         $sql = "UPDATE ". $tableName ." SET parent_mg = '" . $parentMgId . "', status = 0 WHERE g_id = '" . $parentGId . "' AND type = '3'";
@@ -94,6 +103,6 @@ class SQLHelper extends AbstractHelper
             $parent = $r['parent_mg'];
             $relatedProducts[$parent][] = $r['mg_id'];
         }
-        return array_filter($relatedProducts);
+        return $relatedProducts;
     }
 }
