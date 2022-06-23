@@ -290,6 +290,8 @@ class GetArticles extends SyncgApiService
                         $this->shortDescription = $productG4100['desc_interna'];
                         $prefixLog = $this->prefixLog . ' [' . ($i + 1) . '/' . $countProductsG4100 . '][G4100 Product: ' . $productG4100['cod'] . ']';
                         if ($this->checkRequiredData($productG4100)) {
+                            // @todo tenemos que revisar esto. Aquí tenemos productos padre y la opción del producto padre
+                            // tal y como está ahora no actualizará nunca las opciones (productos simples)
                             $collectionSyncg = $this->syncgStatusCollectionFactory->create()
                                 ->addFieldToFilter('g_id', $productG4100['cod'])
                                 ->addFieldToFilter('mg_id', ['neq' => 'NULL'])
@@ -323,10 +325,10 @@ class GetArticles extends SyncgApiService
                                 foreach ($productG4100['relacionados'] as $related) {
                                     $relatedIds[] = $related['cod'];
                                 }
-                                $this->sqlHelper->setRelatedProducts($relatedIds, $productG4100['cod'], $productId);
+                                $this->sqlHelper->setRelatedProducts($relatedIds, $productG4100['cod']); // Add pending relations
                                 $this->syncgStatusRepository->updateEntityStatus($productId, $productG4100['cod'], SyncgStatus::TYPE_PRODUCT, SyncgStatus::STATUS_COMPLETED);
                             } else {
-                                $this->syncgStatusRepository->updateEntityStatus($productId, $productG4100['cod'], SyncgStatus::TYPE_PRODUCT_SIMPLE, SyncgStatus::STATUS_PENDING);
+                                $this->syncgStatusRepository->updateEntityStatus($productId, $productG4100['cod'], SyncgStatus::TYPE_PRODUCT_SIMPLE, SyncgStatus::STATUS_COMPLETED);
                             }
                         } else {
                             $this->logger->error(new Phrase($prefixLog . ' | Product not valid'));
@@ -368,8 +370,8 @@ class GetArticles extends SyncgApiService
     {
         $this->logger->info(new Phrase($this->prefixLog . ' Init Products sync'));
         $timeStart = microtime(true);
-//        $finishGetProductsApi = $this->processProductsApi(); // Process product API
-        $finishGetProductsApi = true; // @todo test
+        $finishGetProductsApi = $this->processProductsApi(); // Process product API
+//        $finishGetProductsApi = true; // @todo test
         $finishRelatedProducts = false;
         if ($finishGetProductsApi) { // Process Related products
             $finishRelatedProducts = $this->processRelatedProducts();
@@ -466,7 +468,7 @@ class GetArticles extends SyncgApiService
         $this->createUpdateProduct($product, $simpleProduct, $attributeSetId);
         $this->productResource->save($product);
         $this->logger->info(new Phrase($this->prefixLog . ' [Magento Product: ' . $product->getId() . '] | ' . $productAction));
-        $this->syncgStatusRepository->updateEntityStatus($product->getEntityId(), $originalCod, SyncgStatus::TYPE_PRODUCT_SIMPLE, SyncgStatus::STATUS_PENDING);
+        $this->syncgStatusRepository->updateEntityStatus($product->getEntityId(), $originalCod, SyncgStatus::TYPE_PRODUCT_SIMPLE, SyncgStatus::STATUS_COMPLETED, $originalCod);
     }
 
     private function createUpdateProduct($product, $productG4100, $attributeSetId)
@@ -556,11 +558,10 @@ class GetArticles extends SyncgApiService
     {
         $objectManager = ObjectManager::getInstance(); // Instance of Object Manager. We need it for some operations that didn't work with dependency injection
         $timeStart = microtime(true);
-        foreach ($relatedProducts as $parent => $sons) {
-            $rp = $parent;
-            $prefixLog = $this->prefixLog . ' [Magento Product: ' . $rp . ']';
-            $product = $this->productRepository->getById($rp);
-            $attributes = $this->getAttributesIds($product); // Array with the attributes we want to make configurable
+        foreach ($relatedProducts as $parentMgId => $sons) {
+            $prefixLog = $this->prefixLog . ' [Magento Product: ' . $parentMgId . ']';
+            $parentProduct = $this->productRepository->getById($parentMgId);
+            $attributes = $this->getAttributesIds($parentProduct); // Array with the attributes we want to make configurable
             $attributeModels = [];
             $attributePositions = ['diameter', 'width', 'mounting', 'offset', 'hub', 'load', 'variation'];
             foreach ($attributes as $attributeId) {
@@ -570,9 +571,9 @@ class GetArticles extends SyncgApiService
                 $position = array_search($attr->getData('attribute_code'), $attributePositions);
                 $data = [
                     'attribute_id' => $attributeId,
-                    'product_id' => $product->getId(),
+                    'product_id' => $parentProduct->getId(),
                     'position' => strval($position),
-                    'sku' => $product->getSku(),
+                    'sku' => $parentProduct->getSku(),
                     'label' => $attr->getData('frontend_label')
                 ];
                 $new = $attributeModel->setData($data);
@@ -583,22 +584,21 @@ class GetArticles extends SyncgApiService
                     $this->logger->error($prefixLog . ' | Attribute model already exists. Skipping creation....'); // If the attribute model already exists, it throws an exception,
                 }                                                       // so we need to catch it to avoid execution from stopping
             }
-            $product->load('media_gallery');
-            $product->setTypeId("configurable"); // We change the type of the product to configurable
-            $product->setAttributeSetId($product->getData('attribute_set_id'));
-            $this->configurable->setUsedProductAttributeIds($attributes, $product);
-            $product->setNewVariationsAttributeSetId(intval($product->getData('attribute_set_id')));
-            $relatedIds = $this->getRelatedProductsIds($sons, $product->getId());
-            $extensionConfigurableAttributes = $product->getExtensionAttributes();
+            $parentProduct->load('media_gallery');
+            $parentProduct->setTypeId("configurable"); // We change the type of the product to configurable
+            $parentProduct->setAttributeSetId($parentProduct->getData('attribute_set_id'));
+            $this->configurable->setUsedProductAttributeIds($attributes, $parentProduct);
+            $parentProduct->setNewVariationsAttributeSetId(intval($parentProduct->getData('attribute_set_id')));
+            $relatedIds = $this->getRelatedProductsIds($sons, $parentProduct->getId());
+            $extensionConfigurableAttributes = $parentProduct->getExtensionAttributes();
             $extensionConfigurableAttributes->setConfigurableProductLinks($relatedIds); // Linking by ID the products that are related to this configurable
             $extensionConfigurableAttributes->setConfigurableProductOptions($attributeModels); // Linking the options that are configurable
-            $product->setExtensionAttributes($extensionConfigurableAttributes);
-            $product->setCanSaveConfigurableAttributes(true);
+            $parentProduct->setExtensionAttributes($extensionConfigurableAttributes);
+            $parentProduct->setCanSaveConfigurableAttributes(true);
             try {
-                $this->productRepository->save($product);
+                $this->productRepository->save($parentProduct);
                 $this->logger->info(new Phrase($prefixLog . ' | Changed to configurable'));
-                $this->setRelatedsVisibility($relatedIds); // We need to make the simple products related to this one hidden
-                $this->sqlHelper->updateRelatedProductsStatus($relatedIds); // We set all the related products status to completed
+                $this->sqlHelper->updateRelatedProductsStatus($relatedIds, $parentMgId); // We set all the related products status to completed
             } catch (InputException $e) {
                 $this->logger->error(new Phrase($prefixLog . ' | Error changing to configurable'));
             }

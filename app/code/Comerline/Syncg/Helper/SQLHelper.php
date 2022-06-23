@@ -2,6 +2,7 @@
 
 namespace Comerline\Syncg\Helper;
 
+use Comerline\Syncg\Model\SyncgStatus;
 use Magento\Framework\App\Helper\AbstractHelper;
 use Magento\Framework\App\Helper\Context;
 use Magento\Framework\App\ResourceConnection;
@@ -31,7 +32,8 @@ class SQLHelper extends AbstractHelper
         $this->prefixLog = uniqid() . ' | G4100 Sync |';
     }
 
-    public function disableProducts($productsG4100) {
+    public function disableProducts($productsG4100)
+    {
         $this->logger->info(new Phrase($this->prefixLog . ' Init Disable Products.'));
         $ids = [];
         $disable = [];
@@ -67,28 +69,28 @@ class SQLHelper extends AbstractHelper
 
 
     /**
-     * @todo hay que mejorar esta función. Los productos simples (con padre) se deben insertar siempre con tipo 3 puesto que serán
-     * productos simples. Además se deben insertar como PENDING aquellos que no existan y/o no tengan padre.
      * @param $relatedIds
      * @param $parentGId
-     * @param $parentMgId
      * @return void
      */
-    public function setRelatedProducts($relatedIds, $parentGId, $parentMgId) {
+    public function setRelatedProducts($relatedIds, $parentGId)
+    {
         $connection = $this->resource->getConnection(ResourceConnection::DEFAULT_CONNECTION);
         $tableName = $connection->getTableName('comerline_syncg_status');
-        foreach ($relatedIds as $rid) {
-            $sql = "INSERT INTO ". $tableName ." (type, mg_id, g_id, status, parent_g, parent_mg) VALUES(3, null, " . $rid . ", 0, " . $parentGId . ", " . $parentMgId .") ON DUPLICATE KEY UPDATE parent_g='" . $parentGId . "', parent_mg='" . $parentMgId ."', status=0";
+        foreach ($relatedIds as $relationG4100Cod) {
+            $sql = "INSERT INTO " . $tableName . " (type, mg_id, g_id, status, parent_g, parent_mg) " .
+                "VALUES(" . SyncgStatus::TYPE_PRODUCT_SIMPLE . ", null, " . $relationG4100Cod . ", " . SyncgStatus::STATUS_PENDING . ", " . $parentGId . ", 0) " .
+                "ON DUPLICATE KEY UPDATE parent_g = '" . $parentGId . "', parent_mg = 0";
             $connection->query($sql);
         }
-        $sql = "UPDATE ". $tableName ." SET parent_mg = '" . $parentMgId . "', status = 0 WHERE g_id = '" . $parentGId . "' AND type = '3'";
-        $connection->query($sql);
     }
 
-    public function updateRelatedProductsStatus($relatedIds) {
+    public function updateRelatedProductsStatus($relatedIds, $parentMgId)
+    {
         $connection = $this->resource->getConnection(ResourceConnection::DEFAULT_CONNECTION);
         $tableName = $connection->getTableName('comerline_syncg_status');
-        $sql = "UPDATE ". $tableName ." SET status = '1' WHERE mg_id IN (" . implode(',', $relatedIds) . ") AND (type = 1 OR type = 3)";
+        $sql = "UPDATE " . $tableName . " SET parent_mg = '" . $parentMgId . "' " .
+            "WHERE mg_id IN (" . implode(',', $relatedIds) . ") AND type = " . SyncgStatus::TYPE_PRODUCT_SIMPLE;
         $connection->query($sql);
     }
 
@@ -97,11 +99,13 @@ class SQLHelper extends AbstractHelper
         $relatedProducts = [];
         $connection = $this->resource->getConnection(ResourceConnection::DEFAULT_CONNECTION);
         $tableName = $connection->getTableName('comerline_syncg_status');
-        $sql = "SELECT * FROM " . $tableName . " WHERE parent_mg <> '' AND status = 0 AND type IN (1,3);";
+        $sql = "SELECT table1.mg_id, table2.g_id FROM " . $tableName . " AS table1 " .
+            "JOIN " . $tableName . " AS table2 ON table1.parent_g = table2.g_id AND `type` = " . SyncgStatus::TYPE_PRODUCT . " " .
+            "WHERE table1.parent_g != 0 AND table1.parent_mg = 0 " .
+            "AND table1.`type` = " . SyncgStatus::TYPE_PRODUCT_SIMPLE . ";";
         $result = $connection->fetchAll($sql);
         foreach ($result as $r) {
-            $parent = $r['parent_mg'];
-            $relatedProducts[$parent][] = $r['mg_id'];
+            $relatedProducts[$r['g_id']][] = $r['mg_id'];
         }
         return $relatedProducts;
     }
