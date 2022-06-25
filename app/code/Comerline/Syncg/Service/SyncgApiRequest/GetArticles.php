@@ -698,6 +698,7 @@ class GetArticles extends SyncgApiService
         $code = []; // Array where we will store the attributes IDs
         if ($attributes) { // If this is exists, that means we have attributes
             $attributesMap = $this->getAttributesMap();
+            unset($attributesMap['marca']);
             foreach ($attributesMap as $attributeG4100 => $attributeMg) {
                 $value = $attributes[$attributeG4100];
                 if ($value !== "") {
