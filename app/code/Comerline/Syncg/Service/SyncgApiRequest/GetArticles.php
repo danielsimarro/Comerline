@@ -282,6 +282,7 @@ class GetArticles extends SyncgApiService
                     }
                     $attributeSetId = "";  // Variable where we will store the attribute set ID
                     $this->categories = $this->getMagentoCategories();
+                    $this->storeManager->setCurrentStore(0); // All store views
                     $countProductsG4100 = count($productsG4100);
 
                     for ($i = 0; $i < $countProductsG4100; $i++) {
@@ -294,8 +295,11 @@ class GetArticles extends SyncgApiService
                             // tal y como está ahora no actualizará nunca las opciones (productos simples)
                             $collectionSyncg = $this->syncgStatusCollectionFactory->create()
                                 ->addFieldToFilter('g_id', $productG4100['cod'])
-                                ->addFieldToFilter('mg_id', ['neq' => 'NULL'])
-                                ->addFieldToFilter('type', [['eq' => SyncgStatus::TYPE_PRODUCT]]); // We check if the product already exists
+                                ->addFieldToFilter('mg_id', ['neq' => 0])
+                                ->addFieldToFilter('type', ['in' => [SyncgStatus::TYPE_PRODUCT, SyncgStatus::TYPE_PRODUCT_SIMPLE]]) // We check if the product already exists
+                                ->addOrder('type', 'asc')
+                                ->setPageSize(1)
+                                ->setCurPage(0);
                             if (array_key_exists('familias', $productG4100)) { // We check if the product has an attribute set. If it does, then checks what it is
                                 if (isset($attributeSetsMap[$productG4100['familias'][0]['nombre']])) { // If the name of the attribute set is the same as the one on G4100...
                                     $attributeSetId = $attributeSetsMap[$productG4100['familias'][0]['nombre']]; // We save the ID to use it later
@@ -350,6 +354,7 @@ class GetArticles extends SyncgApiService
 
     private function processRelatedProducts() {
         $finishRelatedProducts = false;
+        $this->storeManager->setCurrentStore(0); // All store views
         $this->logger->info(new Phrase($this->prefixLog . ' Start Product Relations'));
         $timeStart = microtime(true);
         $relatedProducts = $this->sqlHelper->getRelatedProducts();
@@ -370,8 +375,8 @@ class GetArticles extends SyncgApiService
     {
         $this->logger->info(new Phrase($this->prefixLog . ' Init Products sync'));
         $timeStart = microtime(true);
-        $finishGetProductsApi = $this->processProductsApi(); // Process product API
-//        $finishGetProductsApi = true; // @todo test
+//        $finishGetProductsApi = $this->processProductsApi(); // Process product API
+        $finishGetProductsApi = true; // @todo test
         $finishRelatedProducts = false;
         if ($finishGetProductsApi) { // Process Related products
             $finishRelatedProducts = $this->processRelatedProducts();
@@ -502,7 +507,6 @@ class GetArticles extends SyncgApiService
         $product->setTaxClassId(0);
         $product->setPrice($productG4100['pvp2']);
         $product->setCost($productG4100['precio_coste_estimado']);
-        $product->setWebsiteIds([1]);
         $product->setCustomAttribute('tax_class_id', 2);
         $product->setCustomAttribute('g4100_id', $productG4100['cod']);
         $product->setWeight($productG4100['peso']);
@@ -522,6 +526,7 @@ class GetArticles extends SyncgApiService
 
         $product->setCategoryIds($categoryIds);
         if (!$product->getId()) { // New product
+            $this->insertAttributes($productG4100, $product);
             if ($this->isProductG4100Configurable($productG4100)) {
                 $product->setVisibility(4);
                 $product->setTypeId('configurable');
@@ -532,7 +537,6 @@ class GetArticles extends SyncgApiService
             // Set url
             $url = strtolower(str_replace(" ", "-", $productG4100['descripcion']));
             if (!$this->isProductG4100Configurable($productG4100)) {
-                $this->insertAttributes($productG4100, $product);
                 $url .= '-' . $cod;
             }
             if ($product->getUrlKey() === null) {
@@ -545,7 +549,7 @@ class GetArticles extends SyncgApiService
                 'use_config_manage_stock' => 0,
                 'manage_stock' => 1,
                 'is_in_stock' => 1,
-                'qty' => $productG4100['existencias_globales']
+                'qty' => 10 // @todo test harcode 10. Tenemos que concretar existencias con Isbue $productG4100['existencias_globales']
             ]);
         }
     }
@@ -600,7 +604,7 @@ class GetArticles extends SyncgApiService
                 $this->logger->info(new Phrase($prefixLog . ' | Changed to configurable'));
                 $this->sqlHelper->updateRelatedProductsStatus($relatedIds, $parentMgId); // We set all the related products status to completed
             } catch (InputException $e) {
-                $this->logger->error(new Phrase($prefixLog . ' | Error changing to configurable'));
+                $this->logger->error(new Phrase($prefixLog . ' | Error changing to configurable ' . $e->getMessage()));
             }
             $timeEnd = microtime(true);
             if (round(($timeEnd - $timeStart), 2) > 60) {
