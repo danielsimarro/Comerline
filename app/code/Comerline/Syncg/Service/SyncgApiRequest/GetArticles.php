@@ -215,20 +215,19 @@ class GetArticles extends SyncgApiService
         parent::__construct($configHelper, $json, $responseFactory, $clientFactory, $logger);
     }
 
-    private function buildParams()
+    private function buildParams($page)
     {
         $lastDateSync = $this->config->getParamsWithoutSystem('syncg/general/last_date_sync_products')->getValue();
         $lastDateSync = date('Y-m-d H:i', strtotime($lastDateSync));
         $lastG4100Cod = $this->config->getParamsWithoutSystem('syncg/general/last_inserted_g4100_product')->getValue();
 
-//        if ($lastG4100Cod) {
-//            $filters[] = ["campo" => "fecha_cambio", "valor" => $lastDateSync, "tipo" => 0]; // fecha_cambio = last_date_sync
-//            $filters[] = ["campo" => "cod", "valor" => $lastG4100Cod, "tipo" => 8]; // cod > last_inserted_g4100
-//        } elseif ($lastDateSync) {
-//            $filters[] = ["campo" => "fecha_cambio", "valor" => $lastDateSync, "tipo" => 8]; // fecha_cambio > last_date_sync
-//        }
-//        $filters[] = ["campo" => "descripcion", "valor" => 'MAK LEIPZIG', "tipo" => 2]; // For testing @todo test
-        $filters[] = ["campo" => "descripcion", "valor" => 'MAK LEIPZIG GLOSS BLACK', "tipo" => 2]; // For testing @todo test
+        if ($lastG4100Cod) {
+            $filters[] = ["campo" => "fecha_cambio", "valor" => $lastDateSync, "tipo" => 0]; // fecha_cambio = last_date_sync
+            $filters[] = ["campo" => "cod", "valor" => $lastG4100Cod, "tipo" => 8]; // cod > last_inserted_g4100
+        } elseif ($lastDateSync) {
+            $filters[] = ["campo" => "fecha_cambio", "valor" => $lastDateSync, "tipo" => 8]; // fecha_cambio > last_date_sync
+        }
+//        $filters[] = ["campo" => "descripcion", "valor" => 'MAK LEIPZIG GLOSS BLACK', "tipo" => 2]; // For testing @todo test
         $this->logger->info(new Phrase($this->prefixLog . ' Filters | fecha_cambio: ' . $lastDateSync . ' | cod: ' . $lastG4100Cod));
 
         $this->endpoint = 'api/g4100/list';
@@ -245,11 +244,11 @@ class GetArticles extends SyncgApiService
                     "desc_detallada", "desc_interna", "envase", "frente", "fondo", "alto", "peso", "diametro", "diametro2", "pvp1", "pvp2", "precio_coste_estimado", "modelo",
                     "si_vender_en_web", "existencias_globales", "grupo", "acotacion", "marca", "SEO_description", "SEO_title"]),
                 'filters' => json_encode([
-                    "salto" => 0,
+                    "salto" => $page * 100,
                     "filtro" => $filters
                 ]),
-                'order' => json_encode(["campo" => "cod", "orden" => "ASC"]) // @todo test
-//                'order' => json_encode(["campo" => "fecha_cambio, cod", "orden" => "ASC, ASC"])
+                'order' => json_encode(["campo" => "fecha_cambio, cod", "orden" => "ASC, ASC"])
+//                'order' => json_encode(["campo" => "cod", "orden" => "ASC"]) // @todo test
             ]),
         ];
         $decoded = json_decode($this->params['body']);
@@ -265,13 +264,15 @@ class GetArticles extends SyncgApiService
         $fetchLoop = true;
         $finishGetProductsApi = false;
         while ($fetchLoop) {
+            $lastG4100Cod = $this->config->getParamsWithoutSystem('syncg/general/last_inserted_g4100_product')->getValue();
             $newProducts = $this->getProductsG4100($counter);
-            if (!$newProducts) {
+            if (!$newProducts && $lastG4100Cod) {
                 $this->config->setLastG4100ProductId(''); // Clear last product id when no find product to continue pagination
+                $newProducts = $this->getProductsG4100($counter); // Get products only filter date_change
             }
             $allProductsG4100 = array_merge($allProductsG4100, $newProducts); // We get all the products from G4100
             $counter++;
-            if ($allProductsG4100 && (count($allProductsG4100) > 30 || !$newProducts)) { // @todo test
+            if ($allProductsG4100 && (count($allProductsG4100) >= 1000 || !$newProducts)) {
                 $productsG4100 = $this->getModifiableProducts($allProductsG4100); // We filter the products that have 'Si vender en web' setted to 1
                 if ($productsG4100) {
                     $attributeSetCollection = $this->attributeCollectionFactory->create();
@@ -291,8 +292,6 @@ class GetArticles extends SyncgApiService
                         $this->shortDescription = $productG4100['desc_interna'];
                         $prefixLog = $this->prefixLog . ' [' . ($i + 1) . '/' . $countProductsG4100 . '][G4100 Product: ' . $productG4100['cod'] . ']';
                         if ($this->checkRequiredData($productG4100)) {
-                            // @todo tenemos que revisar esto. Aquí tenemos productos padre y la opción del producto padre
-                            // tal y como está ahora no actualizará nunca las opciones (productos simples)
                             $collectionSyncg = $this->syncgStatusCollectionFactory->create()
                                 ->addFieldToFilter('g_id', $productG4100['cod'])
                                 ->addFieldToFilter('mg_id', ['neq' => 0])
@@ -340,6 +339,11 @@ class GetArticles extends SyncgApiService
                         $this->config->setLastG4100ProductId($productG4100['cod']);
                         $this->config->setLastDateSyncProducts($productG4100['fecha_cambio']);
                     }
+                } else {
+                    // No modifiable products, set last product cod and date change to next execution
+                    $lastProduct = end($allProductsG4100);
+                    $this->config->setLastG4100ProductId($lastProduct['cod']);
+                    $this->config->setLastDateSyncProducts($lastProduct['fecha_cambio']);
                 }
                 $this->sqlHelper->disableProducts($allProductsG4100); // Here we disable all the products that have 'Si vender en web' setted to 0
                 $fetchLoop = false;
@@ -375,8 +379,7 @@ class GetArticles extends SyncgApiService
     {
         $this->logger->info(new Phrase($this->prefixLog . ' Init Products sync'));
         $timeStart = microtime(true);
-//        $finishGetProductsApi = $this->processProductsApi(); // Process product API
-        $finishGetProductsApi = true; // @todo test
+        $finishGetProductsApi = $this->processProductsApi(); // Process product API
         $finishRelatedProducts = false;
         if ($finishGetProductsApi) { // Process Related products
             $finishRelatedProducts = $this->processRelatedProducts();
@@ -398,10 +401,10 @@ class GetArticles extends SyncgApiService
 
     private function getProductsG4100($page): array
     {
-        $page++;
         $productsG4100 = []; // Array where we will store the items, ordered in pages
         $timeStartLoop = microtime(true);
-        $this->buildParams();
+        $this->buildParams($page);
+        $page++;
         $response = $this->execute();
         if ($response !== null && array_key_exists('listado', $response) && $response['listado']) {
             $productsG4100 = $response['listado'];
