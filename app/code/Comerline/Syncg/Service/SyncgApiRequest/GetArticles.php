@@ -228,7 +228,7 @@ class GetArticles extends SyncgApiService
             $filters[] = ["campo" => "fecha_cambio", "valor" => $lastDateSync, "tipo" => 8]; // fecha_cambio > last_date_sync
         }
 //        $filters[] = ["campo" => "descripcion", "valor" => 'MAK LEIPZIG GLOSS BLACK', "tipo" => 2]; // For testing @todo test
-        $this->logger->info(new Phrase($this->prefixLog . ' Filters | fecha_cambio: ' . $lastDateSync . ' | cod: ' . $lastG4100Cod));
+        $this->logger->info(new Phrase($this->prefixLog . ' Filters | page: ' . $page . ' | fecha_cambio: ' . $lastDateSync . ' | cod: ' . $lastG4100Cod));
 
         $this->endpoint = 'api/g4100/list';
         $this->params = [
@@ -267,6 +267,7 @@ class GetArticles extends SyncgApiService
             $lastG4100Cod = $this->config->getParamsWithoutSystem('syncg/general/last_inserted_g4100_product')->getValue();
             $newProducts = $this->getProductsG4100($counter);
             if (!$newProducts && $lastG4100Cod) {
+                $counter = 0; // new filter, reset pagination
                 $this->config->setLastG4100ProductId(''); // Clear last product id when no find product to continue pagination
                 $newProducts = $this->getProductsG4100($counter); // Get products only filter date_change
             }
