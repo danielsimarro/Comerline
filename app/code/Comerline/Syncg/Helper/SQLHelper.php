@@ -62,7 +62,6 @@ class SQLHelper extends AbstractHelper
     {
         $connection = $this->resource->getConnection(ResourceConnection::DEFAULT_CONNECTION);
         $tableName = $connection->getTableName('catalog_product_entity_int');
-        // @todo el atributo 97 puesto a fuego es peligroso, deberíamos tenerlo en una constante para controlarlo
         $sql = "UPDATE " . $tableName . " SET VALUE = '2' WHERE attribute_id = '" . self::ATTRIBUTE_STATUS_ID . "' AND entity_id IN (" . implode(',', $mgIds) . ");";
         $connection->query($sql);
     }
@@ -80,7 +79,7 @@ class SQLHelper extends AbstractHelper
         foreach ($relatedIds as $relationG4100Cod) {
             $sql = "INSERT INTO " . $tableName . " (type, mg_id, g_id, status, parent_g, parent_mg) " .
                 "VALUES(" . SyncgStatus::TYPE_PRODUCT_SIMPLE . ", 0, " . $relationG4100Cod . ", " . SyncgStatus::STATUS_PENDING . ", " . $parentGId . ", 0) " .
-                "ON DUPLICATE KEY UPDATE parent_g = '" . $parentGId . "', parent_mg = 0";
+                "ON DUPLICATE KEY UPDATE parent_g = '" . $parentGId . "' ";
             $connection->query($sql);
         }
     }
@@ -94,7 +93,7 @@ class SQLHelper extends AbstractHelper
         $connection->query($sql);
     }
 
-    public function getRelatedProducts(): array
+    public function getPendingRelatedProducts(): array
     {
         $relatedProducts = [];
         $connection = $this->resource->getConnection(ResourceConnection::DEFAULT_CONNECTION);

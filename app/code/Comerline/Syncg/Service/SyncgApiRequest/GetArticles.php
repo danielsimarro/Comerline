@@ -362,7 +362,7 @@ class GetArticles extends SyncgApiService
         $this->storeManager->setCurrentStore(0); // All store views
         $this->logger->info(new Phrase($this->prefixLog . ' Start Product Relations'));
         $timeStart = microtime(true);
-        $relatedProducts = $this->sqlHelper->getRelatedProducts();
+        $relatedProducts = $this->sqlHelper->getPendingRelatedProducts();
         $relatedCount = 0;
         foreach ($relatedProducts as $rp) {
             $relatedCount += count($rp);

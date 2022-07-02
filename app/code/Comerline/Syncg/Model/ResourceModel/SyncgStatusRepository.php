@@ -61,18 +61,13 @@ class SyncgStatusRepository
 
     public function updateEntityStatus($mgId, $gId, $type, $status, $parentGId = 0)
     {
-        $collection = $this->syncgStatusCollectionFactory->create()
-            ->addFieldToFilter('type', $type)
-            ->addFieldToFilter('g_id', $gId);
-        if ($collection->getSize() > 0) {
-            foreach ($collection as $item) {
-                $this->syncgStatus = $this->syncgStatusFactory->create()->load($item->getData('id'));
-                $this->syncgStatus->setMgId($mgId);
-                $this->syncgStatus->setStatus($status);
-                $this->syncgStatus->setUpdatedAt($this->date->date());
-                $this->saveSyncgStatus($this->syncgStatus);
-            }
-        } else {
+        $entityStatus = $this->getEntityStatus($gId, $type);
+        if ($entityStatus) { // Exists Entity Status
+            $this->syncgStatus = $entityStatus;
+            $this->syncgStatus->setMgId($mgId);
+            $this->syncgStatus->setStatus($status);
+            $this->syncgStatus->setUpdatedAt($this->date->date());
+        } else { // No exist, create
             $this->syncgStatus = $this->syncgStatusFactory->create();
             $this->syncgStatus->setType($type);
             $this->syncgStatus->setMgId($mgId);
@@ -81,8 +76,23 @@ class SyncgStatusRepository
             $this->syncgStatus->setParentMg(0);
             $this->syncgStatus->setStatus($status);
             $this->syncgStatus->setCreatedAt($this->date->date());
-            $this->saveSyncgStatus($this->syncgStatus);
         }
+        $this->saveSyncgStatus($this->syncgStatus);
+    }
+
+    public function getEntityStatus($gId, $type) {
+        $entityStatus = null;
+        $collection = $this->syncgStatusCollectionFactory->create()
+            ->addFieldToFilter('type', $type)
+            ->addFieldToFilter('g_id', $gId)
+            ->setCurPage(0)
+            ->setPageSize(1);
+        if ($collection->getSize() > 0) {
+            foreach ($collection as $item) {
+                $entityStatus = $this->syncgStatusFactory->create()->load($item->getData('id'));
+            }
+        }
+        return $entityStatus;
     }
 
     public function deleteEntity($mgId, $type) {
