@@ -1,4 +1,4 @@
-define(['jquery'], function ($) {
+define(['jquery', 'priceUtils'], function ($, priceUtils) {
     'use strict';
 
     return function (configurable) {
@@ -76,13 +76,23 @@ define(['jquery'], function ($) {
              * @param {*} element - Element associated with a configurable option.
              */
             _fillSelect: function (element) {
-                let attributeId = element.id.replace(/[a-z]*/, ''),
+                var attributeId = element.id.replace(/[a-z]*/, ''),
                     options = this._getAttributeOptions(attributeId),
                     prevConfig,
                     index = 1,
                     allowedProducts,
+                    allowedProductsByOption,
+                    allowedProductsAll,
                     i,
-                    j;
+                    j,
+                    finalPrice = parseFloat(this.options.spConfig.prices.finalPrice.amount),
+                    optionFinalPrice,
+                    optionPriceDiff,
+                    optionPrices = this.options.spConfig.optionPrices,
+                    allowedOptions = [],
+                    indexKey,
+                    allowedProductMinPrice,
+                    allowedProductsAllMinPrice;
 
                 this._clearSelect(element);
                 element.options[0] = new Option('', '');
@@ -94,41 +104,89 @@ define(['jquery'], function ($) {
                 }
 
                 if (options) {
-                    for (i = 0; i < options.length; i++) {
-                        allowedProducts = [];
-                        if (prevConfig) {
+                    for (indexKey in this.options.spConfig.index) {
+                        /* eslint-disable max-depth */
+                        if (this.options.spConfig.index.hasOwnProperty(indexKey)) {
+                            allowedOptions = allowedOptions.concat(_.values(this.options.spConfig.index[indexKey]));
+                        }
+                    }
+
+                    if (prevConfig) {
+                        allowedProductsByOption = {};
+                        allowedProductsAll = [];
+
+                        for (i = 0; i < options.length; i++) {
+                            /* eslint-disable max-depth */
                             for (j = 0; j < options[i].products.length; j++) {
                                 // prevConfig.config can be undefined
                                 if (prevConfig.config &&
                                     prevConfig.config.allowedProducts &&
                                     prevConfig.config.allowedProducts.indexOf(options[i].products[j]) > -1) {
-                                    allowedProducts.push(options[i].products[j]);
+                                    if (!allowedProductsByOption[i]) {
+                                        allowedProductsByOption[i] = [];
+                                    }
+                                    allowedProductsByOption[i].push(options[i].products[j]);
+                                    allowedProductsAll.push(options[i].products[j]);
                                 }
                             }
-                        } else {
-                            allowedProducts = options[i].products.slice(0);
                         }
 
-                        if (allowedProducts.length > 0) {
+                        if (typeof allowedProductsAll[0] !== 'undefined' &&
+                            typeof optionPrices[allowedProductsAll[0]] !== 'undefined') {
+                            allowedProductsAllMinPrice = this._getAllowedProductWithMinPrice(allowedProductsAll);
+                            finalPrice = parseFloat(optionPrices[allowedProductsAllMinPrice].finalPrice.amount);
+                        }
+                    }
+
+                    let selectedFirstOption = false;
+                    for (i = 0; i < options.length; i++) {
+                        if (prevConfig && typeof allowedProductsByOption[i] === 'undefined') {
+                            continue; //jscs:ignore disallowKeywords
+                        }
+
+                        allowedProducts = prevConfig ? allowedProductsByOption[i] : options[i].products.slice(0);
+                        optionPriceDiff = 0;
+
+                        if (typeof allowedProducts[0] !== 'undefined' &&
+                            typeof optionPrices[allowedProducts[0]] !== 'undefined') {
+                            allowedProductMinPrice = this._getAllowedProductWithMinPrice(allowedProducts);
+                            optionFinalPrice = parseFloat(optionPrices[allowedProductMinPrice].finalPrice.amount);
+                            optionPriceDiff = optionFinalPrice - finalPrice;
+                            options[i].label = options[i].initialLabel;
+
+                            if (optionPriceDiff !== 0) {
+                                options[i].label += ' ' + priceUtils.formatPrice(
+                                    optionPriceDiff,
+                                    this.options.priceFormat,
+                                    true
+                                );
+                            }
+                        }
+
+                        if (allowedProducts.length > 0 || _.include(allowedOptions, options[i].id)) {
                             options[i].allowedProducts = allowedProducts;
                             element.options[index] = new Option(this._getOptionLabel(options[i]), options[i].id);
+
                             if (typeof options[i].price !== 'undefined') {
-                                element.options[index].setAttribute('price', options[i].prices);
+                                element.options[index].setAttribute('price', options[i].price);
+                            }
+
+                            if (allowedProducts.length === 0) {
+                                element.options[index].disabled = true;
                             }
 
                             element.options[index].config = options[i];
-
-
                             index++;
                         }
-                        // Code added to select option
-                        if (i === 0) {
+
+                        /** INI MOD **/
+                        if (!selectedFirstOption) {
                             this.options.values[attributeId] = options[i].id;
+                            selectedFirstOption = true;
                         }
-                    }
-                    //Code added to check if configurations are set in url and resets them if needed
-                    if (window.location.href.indexOf('#') !== -1) {
-                        this._parseQueryParams(window.location.href.substr(window.location.href.indexOf('#') + 1));
+                        /** END MOD **/
+
+                        /* eslint-enable max-depth */
                     }
                 }
             },
