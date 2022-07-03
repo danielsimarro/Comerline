@@ -138,7 +138,6 @@ define(['jquery', 'priceUtils'], function ($, priceUtils) {
                         }
                     }
 
-                    let selectedFirstOption = false;
                     for (i = 0; i < options.length; i++) {
                         if (prevConfig && typeof allowedProductsByOption[i] === 'undefined') {
                             continue; //jscs:ignore disallowKeywords
@@ -178,16 +177,18 @@ define(['jquery', 'priceUtils'], function ($, priceUtils) {
                             element.options[index].config = options[i];
                             index++;
                         }
-
-                        /** INI MOD **/
-                        if (!selectedFirstOption) {
-                            this.options.values[attributeId] = options[i].id;
-                            selectedFirstOption = true;
-                        }
-                        /** END MOD **/
-
                         /* eslint-enable max-depth */
                     }
+
+                    /** INI MOD **/
+                    for (i = 0; i < options.length; i++) {
+                        if (options[i].allowedProducts && options[i].allowedProducts.length > 0) {
+                            // Selected fist options available
+                            this.options.values[attributeId] = options[i].id;
+                            break;
+                        }
+                    }
+                    /** END MOD **/
                 }
             },
 
