@@ -94,7 +94,12 @@ class MappingHelper
     /**
      * @var array
      */
-    private $categories;
+    private $groupCategories;
+
+    /**
+     * @var array
+     */
+    private $magentoCategories;
 
     /**
      * @var Registry
@@ -126,9 +131,9 @@ class MappingHelper
         $this->config = $configHelper;
         $this->dateTime = $dateTime;
         $this->registry = $registry;
-        $this->categories = [];
+        $this->magentoCategories = [];
         $this->prefixLog = uniqid() . ' | Comerline Car - Rims Mapping System |';
-        $this->arrayKeys = ['marca', 'modelo', 'ano', 'meta_title', 'meta_description', 'meta_title_parent', 'meta_description_parent'];
+        $this->arrayKeys = ['marca', 'modelo', 'ano', 'meta_title', 'meta_description'];
     }
 
     public function mapCarRims()
@@ -139,62 +144,86 @@ class MappingHelper
         $lastCategoriesMapping = $this->config->getParamsWithoutSystem('syncg/general/last_date_mapping_categories')->getValue(); // We get the last mapping date
         $lastChangeCsv = date('Y-m-d H:i:s', @filemtime($csvFile)); //We get the last CSV change date
 
-        if ($lastChangeCsv > $lastCategoriesMapping) {
-            $collection = $this->productCollectionFactory->create()
-                ->addAttributeToSelect('*')
-                ->addAttributeToFilter('status', Status::STATUS_ENABLED); // We will only map the enabled products to reduce workload
+        if (true || $lastChangeCsv > $lastCategoriesMapping) {
             $this->csvData = $this->readCsv($csvFile); // We load the CSV file
-            $this->createCategoriesByAlphabeticOrder($this->csvData);
-            $this->mapProductCategories($collection); // We traverse through the collection and in an array we map the categories to the products
-            $this->assignCategoriesToProducts($this->processedProducts); // We traverse through the array and save the products with their new categories
-            $this->deleteEmptyCategories();
+            $this->groupCategories();
+//            $this->createCategoriesByAlphabeticOrder();
+//            $this->mapProductCategories(); // We traverse through the collection and in an array we map the categories to the products
+//            $this->assignCategoriesToProducts($this->processedProducts); // We traverse through the array and save the products with their new categories
+//            $this->deleteEmptyCategories();
             $this->logger->info(new Phrase($this->prefixLog . ' Rim <-> Car Mapping End.'));
-            $this->config->setLastDateMappingCategories($this->dateTime->gmtDate());
+//            $this->config->setLastDateMappingCategories($this->dateTime->gmtDate());
         } else {
             $this->logger->info(new Phrase($this->prefixLog . ' Rim <-> Car Mapping Not Necessary.'));
         }
         $this->logger->info(new Phrase($this->prefixLog . ' Finished Rim <-> Car Mapping ' . $this->getTrackTime($timeStart)));
     }
 
-    private function createCategoriesByAlphabeticOrder($csvData)
-    {
-        $model = [];
-        sort($csvData);
-        foreach ($csvData as $csvRow) {
-            $model['marca'] = $csvRow['marca'];
-            $model['modelo'] = $csvRow['modelo'];
-            if (!$csvRow['ano_hasta']) {
-                $model['ano'] = $csvRow['ano_desde'];
-            } else {
-                $model['ano'] = $csvRow['ano_desde'] . ' - ' . $csvRow['ano_hasta'];
+    private function groupCategories() {
+        sort($this->csvData);
+        $measures = ['ancho', 'diametro', 'et', 'anclaje', 'buje'];
+        $this->groupCategories = [];
+        foreach ($this->csvData as $csvRow) {
+            $model = $this->mountCsvCategoriesArray($csvRow);
+            if (!array_key_exists($model['marca'], $this->groupCategories)) {
+                $this->groupCategories[$model['marca']] = [];
             }
-            $model['meta_title'] = $csvRow['meta_title'];
-            $model['meta_description'] = $csvRow['meta_description'];
-            $model['meta_title_parent'] = $csvRow['meta_title_parent'];
-            $model['meta_description_parent'] = $csvRow['meta_description_parent'];
-            for ($i = 0; $i < 3; $i++) {
-                $this->createCategories($model, $i);
+            if (!array_key_exists($model['name'], $this->groupCategories[$model['marca']])) {
+                $this->groupCategories[$model['marca']][$model['name']] = [];
+            }
+            if (!array_key_exists($model['type'], $this->groupCategories[$model['marca']][$model['name']])) {
+                $initMeasure = [];
+                foreach ($measures as $measure) {
+                    $initMeasure[$measure . '_min'] = 0;
+                    $initMeasure[$measure . '_max'] = 0;
+                }
+                $this->groupCategories[$model['marca']][$model['name']][$model['type']] = $initMeasure;
+            }
+            // Add attributes
+            foreach ($measures as $measure) {
+                $valor = $model[$measure];
+                $min = $this->groupCategories[$model['marca']][$model['name']][$model['type']][$measure . '_min'];
+                $max = $this->groupCategories[$model['marca']][$model['name']][$model['type']][$measure . '_max'];
+                if (!$min || $valor < $min) {
+                    $this->groupCategories[$model['marca']][$model['name']][$model['type']][$measure . '_min'] = $valor;
+                }
+                if ($valor > $max) {
+                    $this->groupCategories[$model['marca']][$model['name']][$model['type']][$measure . '_max'] = $valor;
+                }
             }
         }
     }
 
-    private function mapProductCategories($collection)
+    private function createCategoriesByAlphabeticOrder()
     {
+        sort($this->csvData);
+        foreach ($this->csvData as $csvRow) {
+            $model = $this->mountCsvCategoriesArray($csvRow);
+            $this->createCategories($model);
+        }
+    }
+
+    private function mapProductCategories()
+    {
+        $collection = $this->productCollectionFactory->create()
+            ->addAttributeToSelect('*')
+            ->addAttributeToFilter('status', Status::STATUS_ENABLED);
+        $cont = 0;
         foreach ($collection as $product) {
-            $this->logger->info(new Phrase($this->prefixLog . ' Magento Product: ' . $product->getId() . ' | Loaded.'));
+            $cont++;
+            $this->logger->info(new Phrase($this->prefixLog . ' ' . count($collection) . '/' . $cont . ' | Magento Product: ' . $product->getId() . ' | Loaded.'));
             $productId = $product->getId(); // We get the product ID
-            $this->processedProducts[$productId] = []; // We create an array position for it
             $productCategories = $this->checkAttributes($product); // We get the new categories of this product
-            $this->processedProducts[$productId] = $productCategories; // We assign them to its array position
-
-            $parentIds = $this->configurable->getParentIdsByChild($product->getId()); // We check if the product has a parent
-
-            if ($parentIds) { // If it does....
-                foreach ($parentIds as $parentId) {
-                    if (array_key_exists($parentId, $this->processedProducts)) {
-                        $this->processedProducts[$parentId] = array_unique(array_merge($this->processedProducts[$parentId], $productCategories)); // We add the child categories to the parent product
-                    } else {
-                        $this->processedProducts[$parentId] = $productCategories;
+            if ($productCategories) {
+                $this->processedProducts[$productId] = $productCategories; // We assign them to its array position
+                $parentIds = $this->configurable->getParentIdsByChild($product->getId()); // We check if the product has a parent
+                if ($parentIds) { // If it does....
+                    foreach ($parentIds as $parentId) {
+                        if (array_key_exists($parentId, $this->processedProducts)) {
+                            $this->processedProducts[$parentId] = array_unique(array_merge($this->processedProducts[$parentId], $productCategories)); // We add the child categories to the parent product
+                        } else {
+                            $this->processedProducts[$parentId] = $productCategories;
+                        }
                     }
                 }
             }
@@ -203,22 +232,23 @@ class MappingHelper
 
     private function assignCategoriesToProducts($processedProducts)
     {
+        $this->storeManager->setCurrentStore(0);
+        $cont = 0;
         foreach ($processedProducts as $productId => $productCategories) {
-            if (!$productCategories) {
-                $this->logger->info(new Phrase($this->prefixLog . ' Magento Product: ' . $productId . ' | No New Categories To Add To Product.'));
-            } else {
-                $product = $this->productRepository->getById($productId, true, 0, true); // We need to load the
+            $countProcessedProducts = count($processedProducts);
+            $cont++;
+            if ($productCategories) {
+                $product = $this->productRepository->getById($productId, true); // We need to load the
                 // product in edit mode, otherwise the categories will not be saved
                 $currentProductCategories = $product->getCategoryIds();
                 $setProductCategories = array_unique(array_merge($currentProductCategories, $productCategories)); // To keep the categories
                 // existing in the product, we merge the arrays with array_unique
                 $differentCategories = !array_diff($productCategories, $currentProductCategories);
                 if (!$differentCategories) {
+                    $product->setStoreIds([0, 1]);
                     $product->setCategoryIds($setProductCategories);
-                    $product->save();
-                    $this->logger->info(new Phrase($this->prefixLog . ' Magento Product: ' . $product->getId() . ' | Product Categories Saved.'));
-                } else {
-                    $this->logger->info(new Phrase($this->prefixLog . ' Magento Product: ' . $product->getId() . ' | Product Already Has This Categories.'));
+                    $this->productRepository->save($product);
+                    $this->logger->info(new Phrase($this->prefixLog . ' ' . $countProcessedProducts . '/' . $cont . ' Magento Product: ' . $product->getId() . ' | Product Categories Saved.'));
                 }
             }
         }
@@ -226,12 +256,12 @@ class MappingHelper
 
     private function getAttributeTexts($child)
     {
-        $searchableAttributes = ['width', 'diameter', 'offset', 'hub'];
-        $attributeKeys = ['ancho', 'diametro', 'et', 'buje'];
+        $searchableAttributes = ['width', 'diameter', 'offset'];
+        $attributeKeys = ['ancho', 'diametro', 'et'];
         $attributes = [];
         foreach ($searchableAttributes as $sa) {
             $attribute = filter_var($child->getAttributeText($sa), FILTER_SANITIZE_NUMBER_FLOAT, FILTER_FLAG_ALLOW_FRACTION);
-            $attributes[] = str_replace('.', ',', sprintf('%g', $attribute)); // We need to replace the dots with commas for
+            $attributes[] = str_replace('.', ',', $attribute); // We need to replace the dots with commas for
             // the comparison, as well as we need to remove unnecessary zeros
         }
         return array_combine($attributeKeys, $attributes);
@@ -245,21 +275,9 @@ class MappingHelper
             if (count(array_diff_assoc($attributes, $csv)) === 0) {
                 if ($this->checkCsvRow($csv)) {
                     $csvCategories = $this->mountCsvCategoriesArray($csv);
-                    $position = 0;
-                    foreach ($csvCategories as $category) {
-                        $categoryIds[] = $this->getCategoryIds($csvCategories, $position);
-                        $this->logger->info(new Phrase($this->prefixLog . ' Magento Product: ' . $product->getId() . ' | Mapped Category | ' . $category . '.'));
-                        $position++;
-                        if ($position === 3) {
-                            break;
-                        }
-                    }
+                    $categoryIds = array_unique($this->getCategoryIds($csvCategories));
                     $currentProductCategories = $product->getCategoryIds();
                     $categoryIds = array_unique(array_merge($currentProductCategories, $categoryIds)); // To keep the categories
-                    // existing in the product, we merge the arrays with array_unique
-                    $this->logger->info(new Phrase($this->prefixLog . ' Magento Product: ' . $product->getId() . ' | Product Categories Mapped.'));
-                } else {
-                    $this->logger->info(new Phrase($this->prefixLog . ' Magento Product: ' . $product->getId() . ' | Incomplete CSV Category.'));
                 }
             }
         }
@@ -276,6 +294,7 @@ class MappingHelper
         } else {
             $categoryCollection->addAttributeToFilter($attribute, $value);
         }
+        $categoryCollection->setCurPage(0);
         $categoryCollection->setPageSize(1);
         if ($categoryCollection->getSize()) {
             $categoryId = $categoryCollection->getFirstItem()->getId();
@@ -285,41 +304,57 @@ class MappingHelper
         return $categoryId;
     }
 
-    private function getCategoryIds($array, $position)
+    private function getCategoryIds($rowCategory)
     {
-        if ($position === 0) { // In the first position, the parent category will always be 'Por Vehículo'
-            $parentId = $this->getSpecificMagentoCategory('name', 'Por Vehículo');
-
-        } else { // In the following positions, the parent category will be the one in the prior position
-            $parentId = $this->getSpecificMagentoCategory('name', $array[$this->arrayKeys[$position - 1]]);
+        $categoriesIds = [];
+        $name = $rowCategory['name'];
+        $type = $rowCategory['type'];
+        $marca = $rowCategory['marca'];
+        $elements = [$name, $type, $marca];
+        foreach ($elements as $element) {
+            if (!isset($this->magentoCategories[base64_encode($element)])) {
+                $this->magentoCategories[base64_encode($element)] = $this->getSpecificMagentoCategory('name', $element);
+            }
+            $categoriesIds[] = $this->magentoCategories[base64_encode($element)];
         }
-        return $this->getSpecificMagentoCategory(['parent_id', 'name'], [$parentId, $array[$this->arrayKeys[$position]]]);
+        return $categoriesIds;
     }
 
-    private function createCategories($array, $position)
+    private function createCategories($rowCategory)
     {
+        $name = $rowCategory['name'];
+        $type = $rowCategory['type'];
+        $marca = $rowCategory['marca'];
+        $metaTitle = $rowCategory['meta_title'];
+        $metaDescription = $rowCategory['meta_description'];
 
-        if ($position === 0) { // In the first position, the parent category will always be 'Por Vehículo'
-            $parentId = $this->getSpecificMagentoCategory('name', 'Por Vehículo');
-            $metaDescriptionKey = $this->arrayKeys[6]; // The meta description will be 'meta_description_parent'
-            $metaTitleKey = $this->arrayKeys[5]; // The meta title will be 'meta_title_parent'
-        } else { // In the following positions, the parent category will be the one in the prior position
-            $parentId = $this->getSpecificMagentoCategory('name', $array[$this->arrayKeys[$position - 1]]);
-            $metaDescriptionKey = $this->arrayKeys[4]; // The meta description will be 'meta_description'
-            $metaTitleKey = $this->arrayKeys[3]; // The meta title will be 'meta_title'
-        }
-        $metaDescription = $array[$metaDescriptionKey];
-        $metaTitle = $array[$metaTitleKey];
-
-        $categoryId = $this->getSpecificMagentoCategory(['parent_id', 'name'], [$parentId, $array[$this->arrayKeys[$position]]]);
-        $name = $array[$this->arrayKeys[$position]];
-        if (!$categoryId) { // If the category does not exist, we create it
-            $categoryId = $this->createUpdateCategory($name, $metaTitle, $metaDescription, $parentId);
+        if (!array_key_exists(base64_encode('Por Vehículo'), $this->magentoCategories)) { // Get Por Vehículo
+            $forVehicleId = $this->getSpecificMagentoCategory('name', 'Por Vehículo');
+            $this->magentoCategories[base64_encode('Por Vehículo')] = $forVehicleId;
         } else {
-            $categoryId = $this->createUpdateCategory($name, $metaTitle, $metaDescription, $parentId, $categoryId);
+            $forVehicleId = $this->magentoCategories[base64_encode('Por Vehículo')];
         }
-
-        return $categoryId;
+        if (!array_key_exists(base64_encode($marca), $this->magentoCategories)) { // Get or create brand
+            $brandId = $this->getSpecificMagentoCategory('name', $marca);
+            if (!$brandId) {
+                $brandId = $this->createUpdateCategory($marca, '', '', $forVehicleId);
+            }
+            $this->magentoCategories[base64_encode($marca)] = $brandId;
+        } else {
+            $brandId = $this->magentoCategories[base64_encode($marca)];
+        }
+        if (!array_key_exists(base64_encode($name), $this->magentoCategories)) { // Get or create vehicle
+            $vehicleId = $this->getSpecificMagentoCategory('name', $name);
+            $vehicleId = $this->createUpdateCategory($name, $metaTitle, $metaDescription, $brandId, $vehicleId);
+            $this->magentoCategories[base64_encode($name)] = $vehicleId;
+        } else {
+            $vehicleId = $this->magentoCategories[base64_encode($name)];
+        }
+        if (!array_key_exists(base64_encode($type), $this->magentoCategories)) { // Get or create type
+            $typeId = $this->getSpecificMagentoCategory('name', $type);
+            $typeId = $this->createUpdateCategory($type, $metaTitle, $metaDescription, $vehicleId, $typeId);
+            $this->magentoCategories[base64_encode($type)] = $typeId;
+        }
     }
 
     private function createUpdateCategory($name, $metaTitle, $metaDescription, $parentId, $categoryId = null)
@@ -410,7 +445,7 @@ class MappingHelper
         $headers = fgetcsv($file, 10000, ';');
         $data = [];
         while ($row = fgetcsv($file, 10000, ';')) {
-            $data[base64_encode($row[0].$row[1].$row[2].$row[3])] = array_combine($headers, $row);
+            $data[] = array_combine($headers, $row);
         }
         return $data;
     }
@@ -419,35 +454,35 @@ class MappingHelper
     {
         $valid = false;
         $validFields = 0;
-        $requiredKeys = ['marca', 'modelo', 'ano_desde', 'ano_hasta', 'ancho', 'diametro', 'et', 'buje'];
+        $requiredKeys = ['marca', 'modelo', 'tipo', 'ano_desde', 'ano_hasta', 'ancho', 'diametro', 'et', 'buje'];
         foreach ($requiredKeys as $rk) {
             if (isset($csv[$rk]) && ($csv[$rk] !== "")) {
                 $validFields++;
             }
         }
-        if ($validFields === 8) { // If the validFields count is 8, that means we can work with that row
+        if ($validFields === count($requiredKeys)) { // If the validFields count is 8, that means we can work with that row
             $valid = true;
         }
         return $valid;
     }
 
-    private function mountCsvCategoriesArray($csv): array
+    private function mountCsvCategoriesArray($row): array
     {
-        $csvCategories = [];
-
-        $csvCategories['marca'] = $csv['marca'];
-        $csvCategories['modelo'] = $csv['modelo'];
-        if ($csv['ano_hasta'] !== "") { // If 'ano_hasta' is not empty, the category will be a year period instead of only a year
-            $csvCategories['ano'] = $csv['ano_desde'] . " - " . $csv['ano_hasta'];
-        } else {
-            $csvCategories['ano'] = $csv['ano_desde'];
+        $anoDesde = $row['ano_desde'];
+        $anoHasta = $row['ano_hasta'];
+        unset($row['ano_desde']);
+        unset($row['ano_hasta']);
+        $row['ano'] = $anoDesde;
+        if ($anoHasta) {
+            $row['ano'] = $anoDesde . ' - ' . $anoHasta;
         }
-        $csvCategories['meta_title'] = $csv['meta_title'];
-        $csvCategories['meta_description'] = $csv['meta_description'];
-        $csvCategories['meta_title_parent'] = $csv['meta_title_parent'];
-        $csvCategories['meta_description_parent'] = $csv['meta_description_parent'];
-
-        return $csvCategories;
+        $row['name'] = $row['marca'] . ' ' . $row['modelo'];
+        $row['type'] = $row['name'] . ' ' . $row['ano'] . ' (' . $row['tipo'] . ')';
+        $measures = ['ancho', 'diametro', 'et', 'anclaje', 'buje'];
+        foreach ($measures as $measure) {
+            $row[$measure] = floatval($row[$measure]);
+        }
+        return $row;
     }
 
     public function getTrackTime($timeStart): string

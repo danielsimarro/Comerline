@@ -4,6 +4,7 @@ $product = $block->getProduct();
 $attributeOptions = ['diameter', 'width', 'offset', 'hub', 'mounting', 'load'];
 $objectManager = \Magento\Framework\App\ObjectManager::getInstance();
 $categoriesIds = $product->getCategoryIds();
+$finish = '';
 $dataCategories = '';
 foreach ($categoriesIds as $categoryId)  {
     $category = $objectManager->create('Magento\Catalog\Model\Category')->load($categoryId);
@@ -63,5 +64,7 @@ foreach ($categoriesIds as $categoryId)  {
         ?>
     </table>
     <br/>
-    <h4> Acabado: <?php echo $finish ?></h4>
+    <?php if ($finish) : ?>
+        <h4> Acabado: <?php echo $finish ?></h4>
+    <?php endif; ?>
 </div>
