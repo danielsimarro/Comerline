@@ -17,6 +17,7 @@ use Psr\Log\LoggerInterface;
 use Magento\Catalog\Model\Product\Attribute\Source\Status;
 use Magento\Store\Model\StoreManagerInterface;
 use Magento\Catalog\Model\CategoryFactory;
+use Comerline\Syncg\Service\SyncgApiRequest\GetVehicleTires;
 
 class MappingHelper
 {
@@ -62,11 +63,6 @@ class MappingHelper
     private $productRepository;
 
     /**
-     * @var array
-     */
-    private $csvData;
-
-    /**
      * @var Configurable
      */
     private $configurable;
@@ -105,6 +101,7 @@ class MappingHelper
      * @var Registry
      */
     private $registry;
+    private GetVehicleTires $getVehiclesTires;
 
     public function __construct(
         LoggerInterface            $logger,
@@ -117,6 +114,7 @@ class MappingHelper
         Configurable               $configurable,
         Config                     $configHelper,
         DateTime                   $dateTime,
+        GetVehicleTires            $getVehicleTires,
         Registry                   $registry
     )
     {
@@ -132,6 +130,7 @@ class MappingHelper
         $this->dateTime = $dateTime;
         $this->registry = $registry;
         $this->magentoCategories = [];
+        $this->getVehiclesTires = $getVehicleTires;
         $this->prefixLog = uniqid() . ' | Comerline Car - Rims Mapping System |';
         $this->arrayKeys = ['marca', 'modelo', 'ano', 'meta_title', 'meta_description'];
     }
@@ -140,66 +139,22 @@ class MappingHelper
     {
         $this->logger->info(new Phrase($this->prefixLog . ' Rim <-> Car Mapping Start.'));
         $timeStart = microtime(true);
-        $csvFile = $this->dir->getPath('media') . '/mapeo_llantas_modelos.csv';
-        $lastCategoriesMapping = $this->config->getParamsWithoutSystem('syncg/general/last_date_mapping_categories')->getValue(); // We get the last mapping date
-        $lastChangeCsv = date('Y-m-d H:i:s', @filemtime($csvFile)); //We get the last CSV change date
+        $this->getVehiclesTires->send();
+        $this->groupCategories = $this->getVehiclesTires->getVehiclesTiresGroup();
+        $this->createCategoriesByAlphabeticOrder();
+        $this->mapProductCategories(); // We traverse through the collection and in an array we map the categories to the products
+        $this->assignCategoriesToProducts($this->processedProducts); // We traverse through the array and save the products with their new categories
+        $this->deleteEmptyCategories();
+        $this->logger->info(new Phrase($this->prefixLog . ' Rim <-> Car Mapping End.'));
+        $this->config->setLastDateMappingCategories($this->dateTime->gmtDate());
 
-        if (true || $lastChangeCsv > $lastCategoriesMapping) {
-            $this->csvData = $this->readCsv($csvFile); // We load the CSV file
-            $this->groupCategories();
-//            $this->createCategoriesByAlphabeticOrder();
-//            $this->mapProductCategories(); // We traverse through the collection and in an array we map the categories to the products
-//            $this->assignCategoriesToProducts($this->processedProducts); // We traverse through the array and save the products with their new categories
-//            $this->deleteEmptyCategories();
-            $this->logger->info(new Phrase($this->prefixLog . ' Rim <-> Car Mapping End.'));
-//            $this->config->setLastDateMappingCategories($this->dateTime->gmtDate());
-        } else {
-            $this->logger->info(new Phrase($this->prefixLog . ' Rim <-> Car Mapping Not Necessary.'));
-        }
         $this->logger->info(new Phrase($this->prefixLog . ' Finished Rim <-> Car Mapping ' . $this->getTrackTime($timeStart)));
-    }
-
-    private function groupCategories() {
-        sort($this->csvData);
-        $measures = ['ancho', 'diametro', 'et', 'anclaje', 'buje'];
-        $this->groupCategories = [];
-        foreach ($this->csvData as $csvRow) {
-            $model = $this->mountCsvCategoriesArray($csvRow);
-            if (!array_key_exists($model['marca'], $this->groupCategories)) {
-                $this->groupCategories[$model['marca']] = [];
-            }
-            if (!array_key_exists($model['name'], $this->groupCategories[$model['marca']])) {
-                $this->groupCategories[$model['marca']][$model['name']] = [];
-            }
-            if (!array_key_exists($model['type'], $this->groupCategories[$model['marca']][$model['name']])) {
-                $initMeasure = [];
-                foreach ($measures as $measure) {
-                    $initMeasure[$measure . '_min'] = 0;
-                    $initMeasure[$measure . '_max'] = 0;
-                }
-                $this->groupCategories[$model['marca']][$model['name']][$model['type']] = $initMeasure;
-            }
-            // Add attributes
-            foreach ($measures as $measure) {
-                $valor = $model[$measure];
-                $min = $this->groupCategories[$model['marca']][$model['name']][$model['type']][$measure . '_min'];
-                $max = $this->groupCategories[$model['marca']][$model['name']][$model['type']][$measure . '_max'];
-                if (!$min || $valor < $min) {
-                    $this->groupCategories[$model['marca']][$model['name']][$model['type']][$measure . '_min'] = $valor;
-                }
-                if ($valor > $max) {
-                    $this->groupCategories[$model['marca']][$model['name']][$model['type']][$measure . '_max'] = $valor;
-                }
-            }
-        }
     }
 
     private function createCategoriesByAlphabeticOrder()
     {
-        sort($this->csvData);
-        foreach ($this->csvData as $csvRow) {
-            $model = $this->mountCsvCategoriesArray($csvRow);
-            $this->createCategories($model);
+        foreach ($this->groupCategories as $groupCategory) {
+            $this->createCategories($groupCategory);
         }
     }
 
@@ -271,11 +226,10 @@ class MappingHelper
     {
         $attributes = $this->getAttributeTexts($product);
         $categoryIds = [];
-        foreach ($this->csvData as $csv) {
-            if (count(array_diff_assoc($attributes, $csv)) === 0) {
-                if ($this->checkCsvRow($csv)) {
-                    $csvCategories = $this->mountCsvCategoriesArray($csv);
-                    $categoryIds = array_unique($this->getCategoryIds($csvCategories));
+        foreach ($this->groupCategories as  $groupCategory) {
+            if (count(array_diff_assoc($attributes, $groupCategory)) === 0) {
+                if ($this->checkCategoryRow($groupCategory)) {
+                    $categoryIds = array_unique($this->getCategoryIds($groupCategory));
                     $currentProductCategories = $product->getCategoryIds();
                     $categoryIds = array_unique(array_merge($currentProductCategories, $categoryIds)); // To keep the categories
                 }
@@ -450,11 +404,11 @@ class MappingHelper
         return $data;
     }
 
-    private function checkCsvRow($csv): bool
+    private function checkCategoryRow($csv): bool
     {
         $valid = false;
         $validFields = 0;
-        $requiredKeys = ['marca', 'modelo', 'tipo', 'ano_desde', 'ano_hasta', 'ancho', 'diametro', 'et', 'buje'];
+        $requiredKeys = ['marca', 'modelo', 'type', 'ano_desde', 'ano_hasta', 'ancho', 'diametro', 'et', 'anclaje'];
         foreach ($requiredKeys as $rk) {
             if (isset($csv[$rk]) && ($csv[$rk] !== "")) {
                 $validFields++;
@@ -464,25 +418,6 @@ class MappingHelper
             $valid = true;
         }
         return $valid;
-    }
-
-    private function mountCsvCategoriesArray($row): array
-    {
-        $anoDesde = $row['ano_desde'];
-        $anoHasta = $row['ano_hasta'];
-        unset($row['ano_desde']);
-        unset($row['ano_hasta']);
-        $row['ano'] = $anoDesde;
-        if ($anoHasta) {
-            $row['ano'] = $anoDesde . ' - ' . $anoHasta;
-        }
-        $row['name'] = $row['marca'] . ' ' . $row['modelo'];
-        $row['type'] = $row['name'] . ' ' . $row['ano'] . ' (' . $row['tipo'] . ')';
-        $measures = ['ancho', 'diametro', 'et', 'anclaje', 'buje'];
-        foreach ($measures as $measure) {
-            $row[$measure] = floatval($row[$measure]);
-        }
-        return $row;
     }
 
     public function getTrackTime($timeStart): string
