@@ -294,7 +294,7 @@ class GetArticles extends SyncgApiService
                         $prefixLog = $this->prefixLog . ' [' . ($i + 1) . '/' . $countProductsG4100 . '][G4100 Product: ' . $productG4100['cod'] . ']';
                         if ($this->checkRequiredData($productG4100)) {
                             $collectionSyncg = $this->syncgStatusCollectionFactory->create()
-                                ->addFieldToFilter('g_id', $productG4100['cod'])
+                                ->addFieldToFilter('g_id', $productG4100['id'])
                                 ->addFieldToFilter('mg_id', ['neq' => 0])
                                 ->addFieldToFilter('type', ['in' => [SyncgStatus::TYPE_PRODUCT, SyncgStatus::TYPE_PRODUCT_SIMPLE]]) // We check if the product already exists
                                 ->addOrder('type', 'asc')
@@ -327,12 +327,12 @@ class GetArticles extends SyncgApiService
                                 $this->createSimpleOptionParentProduct($productG4100, $attributeSetId); // We duplicate the product to avoid losing options
                                 $relatedIds = [];
                                 foreach ($productG4100['relacionados'] as $related) {
-                                    $relatedIds[] = $related['cod'];
+                                    $relatedIds[] = $related['id'];
                                 }
-                                $this->sqlHelper->setRelatedProducts($relatedIds, $productG4100['cod']); // Add pending relations
-                                $this->syncgStatusRepository->updateEntityStatus($productId, $productG4100['cod'], SyncgStatus::TYPE_PRODUCT, SyncgStatus::STATUS_COMPLETED);
+                                $this->sqlHelper->setRelatedProducts($relatedIds, $productG4100['id']); // Add pending relations
+                                $this->syncgStatusRepository->updateEntityStatus($productId, $productG4100['id'], SyncgStatus::TYPE_PRODUCT, SyncgStatus::STATUS_COMPLETED);
                             } else {
-                                $this->syncgStatusRepository->updateEntityStatus($productId, $productG4100['cod'], SyncgStatus::TYPE_PRODUCT_SIMPLE, SyncgStatus::STATUS_COMPLETED);
+                                $this->syncgStatusRepository->updateEntityStatus($productId, $productG4100['id'], SyncgStatus::TYPE_PRODUCT_SIMPLE, SyncgStatus::STATUS_COMPLETED);
                             }
                         } else {
                             $this->logger->error(new Phrase($prefixLog . ' | Product not valid'));
@@ -462,8 +462,8 @@ class GetArticles extends SyncgApiService
         } else { // If ref_fabricante is empty, we use ref_proveedor
             $sku = $simpleProduct['ref_proveedor'] .= '-' . $simpleProduct['id'];
         }
-        $originalCod = $simpleProduct['cod'];
-        $simpleProduct['cod'] .= '-' . $simpleProduct['id']; // We add the ID to the code to avoid errors
+        $originalCod = $simpleProduct['id'];
+        $simpleProduct['id'] .= '-' . $simpleProduct['cod']; // We add the ID to the code to avoid errors
         try {
             $product = $this->productRepository->get($sku); // If the SKU exists, we load the product
         } catch (NoSuchEntityException $e) {
@@ -512,7 +512,7 @@ class GetArticles extends SyncgApiService
         $product->setPrice($productG4100['pvp2']);
         $product->setCost($productG4100['precio_coste_estimado']);
         $product->setCustomAttribute('tax_class_id', 2);
-        $product->setCustomAttribute('g4100_id', $productG4100['cod']);
+        $product->setCustomAttribute('g4100_id', $productG4100['id']);
         $product->setWeight($productG4100['peso']);
         $product->setDescription($productG4100['desc_detallada']);
         if (array_key_exists('familias', $productG4100)) {
@@ -548,12 +548,12 @@ class GetArticles extends SyncgApiService
             }
         }
 
-        if (!$this->isProductG4100Configurable($productG4100)) {
+        if (!$this->isProductG4100Configurable($productG4100) && !$product->getId()) { // Set stock new simple products
             $product->setStockData([
                 'use_config_manage_stock' => 0,
                 'manage_stock' => 1,
                 'is_in_stock' => 1,
-                'qty' => 10 // @todo test harcode 10. Tenemos que concretar existencias con Isbue $productG4100['existencias_globales']
+                'qty' => 10 // Stock default. Sync real stock nightly.
             ]);
         }
     }
