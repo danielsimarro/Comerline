@@ -141,13 +141,12 @@ class MappingHelper
         $timeStart = microtime(true);
         $this->getVehiclesTires->send();
         $this->groupCategories = $this->getVehiclesTires->getVehiclesTiresGroup();
-        $this->createCategoriesByAlphabeticOrder();
-        $this->mapProductCategories(); // We traverse through the collection and in an array we map the categories to the products
-        $this->assignCategoriesToProducts($this->processedProducts); // We traverse through the array and save the products with their new categories
-        $this->deleteEmptyCategories();
+//        $this->createCategoriesByAlphabeticOrder();
+//        $this->mapProductCategories(); // We traverse through the collection and in an array we map the categories to the products
+//        $this->assignCategoriesToProducts($this->processedProducts); // We traverse through the array and save the products with their new categories
+//        $this->deleteEmptyCategories();
         $this->logger->info(new Phrase($this->prefixLog . ' Rim <-> Car Mapping End.'));
         $this->config->setLastDateMappingCategories($this->dateTime->gmtDate());
-
         $this->logger->info(new Phrase($this->prefixLog . ' Finished Rim <-> Car Mapping ' . $this->getTrackTime($timeStart)));
     }
 
@@ -226,13 +225,11 @@ class MappingHelper
     {
         $attributes = $this->getAttributeTexts($product);
         $categoryIds = [];
-        foreach ($this->groupCategories as  $groupCategory) {
+        foreach ($this->groupCategories as $groupCategory) {
             if (count(array_diff_assoc($attributes, $groupCategory)) === 0) {
-                if ($this->checkCategoryRow($groupCategory)) {
-                    $categoryIds = array_unique($this->getCategoryIds($groupCategory));
-                    $currentProductCategories = $product->getCategoryIds();
-                    $categoryIds = array_unique(array_merge($currentProductCategories, $categoryIds)); // To keep the categories
-                }
+                $categoryIds = array_unique($this->getCategoryIds($groupCategory));
+                $currentProductCategories = $product->getCategoryIds();
+                $categoryIds = array_unique(array_merge($currentProductCategories, $categoryIds)); // To keep the categories
             }
         }
         return $categoryIds;
@@ -279,8 +276,8 @@ class MappingHelper
         $name = $rowCategory['name'];
         $type = $rowCategory['type'];
         $marca = $rowCategory['marca'];
-        $metaTitle = $rowCategory['meta_title'];
-        $metaDescription = $rowCategory['meta_description'];
+        $metaTitle = 'Llantas - ' . $type;
+        $metaDescription = $metaTitle;
 
         if (!array_key_exists(base64_encode('Por Vehículo'), $this->magentoCategories)) { // Get Por Vehículo
             $forVehicleId = $this->getSpecificMagentoCategory('name', 'Por Vehículo');
@@ -383,41 +380,6 @@ class MappingHelper
             }
         }
         return $categories;
-    }
-
-    private function readCsv($csv): array
-    {
-        try {
-            $file = fopen($csv, 'r');
-            if (!$file) {
-                throw new Exception('File does not exists.');
-            }
-        } catch (Exception $e) {
-            $this->logger->error(new Phrase($this->prefixLog . ' CSV File does not exist in the media folder.'));
-            die();
-        }
-        $headers = fgetcsv($file, 10000, ';');
-        $data = [];
-        while ($row = fgetcsv($file, 10000, ';')) {
-            $data[] = array_combine($headers, $row);
-        }
-        return $data;
-    }
-
-    private function checkCategoryRow($csv): bool
-    {
-        $valid = false;
-        $validFields = 0;
-        $requiredKeys = ['marca', 'modelo', 'type', 'ano_desde', 'ano_hasta', 'ancho', 'diametro', 'et', 'anclaje'];
-        foreach ($requiredKeys as $rk) {
-            if (isset($csv[$rk]) && ($csv[$rk] !== "")) {
-                $validFields++;
-            }
-        }
-        if ($validFields === count($requiredKeys)) { // If the validFields count is 8, that means we can work with that row
-            $valid = true;
-        }
-        return $valid;
     }
 
     public function getTrackTime($timeStart): string

@@ -227,7 +227,7 @@ class GetArticles extends SyncgApiService
         } elseif ($lastDateSync) {
             $filters[] = ["campo" => "fecha_cambio", "valor" => $lastDateSync, "tipo" => 8]; // fecha_cambio > last_date_sync
         }
-//        $filters[] = ["campo" => "descripcion", "valor" => 'MAK LEIPZIG GLOSS BLACK', "tipo" => 2]; // For testing @todo test
+//        $filters[] = ["campo" => "descripcion", "valor" => 'MAK LEIPZIG GLOSS BLACK', "tipo" => 2]; // @todo test
         $this->logger->info(new Phrase($this->prefixLog . ' Filters | page: ' . $page . ' | fecha_cambio: ' . $lastDateSync . ' | cod: ' . $lastG4100Cod));
 
         $this->endpoint = 'api/g4100/list';
@@ -381,6 +381,7 @@ class GetArticles extends SyncgApiService
         $this->logger->info(new Phrase($this->prefixLog . ' Init Products sync'));
         $timeStart = microtime(true);
         $finishGetProductsApi = $this->processProductsApi(); // Process product API
+//        $finishGetProductsApi = true; // @todo test
         $finishRelatedProducts = false;
         if ($finishGetProductsApi) { // Process Related products
             $finishRelatedProducts = $this->processRelatedProducts();
@@ -407,7 +408,7 @@ class GetArticles extends SyncgApiService
         $this->buildParams($page);
         $page++;
         $response = $this->execute();
-        if ($response !== null && array_key_exists('listado', $response) && $response['listado']) {
+        if ($response && array_key_exists('listado', $response) && $response['listado']) {
             $productsG4100 = $response['listado'];
             $this->logger->info(new Phrase($this->prefixLog . ' Page ' . $page . '. Products ' . count($productsG4100) . ' ' . $this->getTrackTime($timeStartLoop)));
         } elseif (!isset($response['listado'])) {
@@ -457,12 +458,8 @@ class GetArticles extends SyncgApiService
     {
         $simpleProduct = $productG4100;
         unset($simpleProduct['relacionados']); // We remove related products as we don't need them
-        if ($simpleProduct['ref_fabricante'] !== "") { // We add the ID to the SKU to avoid errors
-            $sku = $simpleProduct['ref_fabricante'] .= '-' . $simpleProduct['id'];
-        } else { // If ref_fabricante is empty, we use ref_proveedor
-            $sku = $simpleProduct['ref_proveedor'] .= '-' . $simpleProduct['id'];
-        }
-        $originalCod = $simpleProduct['id'];
+        $sku = $this->makeSku($productG4100) . '-simple-parent';
+        $originalId = $simpleProduct['id'];
         $simpleProduct['id'] .= '-' . $simpleProduct['cod']; // We add the ID to the code to avoid errors
         try {
             $product = $this->productRepository->get($sku); // If the SKU exists, we load the product
@@ -477,25 +474,30 @@ class GetArticles extends SyncgApiService
         $this->createUpdateProduct($product, $simpleProduct, $attributeSetId);
         $this->productResource->save($product);
         $this->logger->info(new Phrase($this->prefixLog . ' [Magento Product: ' . $product->getId() . '] | ' . $productAction));
-        $this->syncgStatusRepository->updateEntityStatus($product->getEntityId(), $originalCod, SyncgStatus::TYPE_PRODUCT_SIMPLE, SyncgStatus::STATUS_COMPLETED, $originalCod);
+        $this->syncgStatusRepository->updateEntityStatus($product->getEntityId(), $originalId, SyncgStatus::TYPE_PRODUCT_SIMPLE, SyncgStatus::STATUS_COMPLETED, $originalId);
+    }
+
+    private function makeSku($productG4100) {
+        $cod = $productG4100['cod'];
+        $manufacturerRef = $productG4100['ref_fabricante'];
+        $manufacturerRefPlusId = $manufacturerRef . '-' . $cod;
+        $vendorRef = $productG4100['ref_proveedor'];
+        $vendorRefPlusId = $vendorRef . '-' . $cod;
+        $sku = $productG4100['id'] . '-' . $cod;
+        if ($manufacturerRefPlusId) {
+            $sku = $manufacturerRefPlusId;
+        } elseif ($vendorRefPlusId) {
+            $sku = $vendorRefPlusId;
+        }
+        return $sku;
     }
 
     private function createUpdateProduct($product, $productG4100, $attributeSetId)
     {
         $categoryIds = [];
         $cod = $productG4100['cod'];
-        $manufacturerRef = $productG4100['ref_fabricante'];
-        $manufacturerRefPlusId = $manufacturerRef . '-' . $cod;
-        $vendorRef = $productG4100['ref_proveedor'];
-        $vendorRefPlusId = $vendorRef . '-' . $cod;
-        if ($manufacturerRef !== "") {
-            if ($product->getSku() !== $manufacturerRef && $product->getSku() !== $manufacturerRefPlusId) {
-                $product->setSku($manufacturerRef);
-            }
-        } else {
-            if ($product->getSku() !== $vendorRef && $product->getSku() !== $vendorRefPlusId) {
-                $product->setSku($vendorRef);
-            }
+        if (!$product->getSku()) {
+            $product->setSku($this->makeSku($productG4100));
         }
         $product->setName($productG4100['descripcion']);
         $product->setDescription($this->description);
@@ -652,8 +654,8 @@ class GetArticles extends SyncgApiService
             if (!in_array($options, $arrayCombination) && $son !== $parentId) {
                 $related[] = $son; // For each of them, we save the Magento ID to use it later
                 $arrayCombination[] = $options;
-                $this->logger->info(new Phrase($this->prefixLog . ' [Magento Product: ' . $son . '] | [' . 'Magento Product: ' . $parentId . '] | Related to configurable'));
-            } else {
+                $this->logger->info(new Phrase($this->prefixLog . ' [Magento Product: ' . $son . '] | [' . 'Magento Parent Product: ' . $parentId . '] | Related to configurable'));
+            } elseif ($son) {
                 $productSon = $this->productRepository->getById($son, true, 0, true);
                 $this->disableProduct($productSon);
                 $this->logger->info(new Phrase($this->prefixLog . ' [Magento Product: ' . $son . '] | DISABLED PRODUCT (DUPLICATED).'));
@@ -720,14 +722,12 @@ class GetArticles extends SyncgApiService
             foreach ($attributesMap as $attributeG4100 => $attributeMg) {
                 $value = $attributes[$attributeG4100];
                 if ($value !== '') {
-                    if ($attributeG4100 == 'frente') {
-                        $value .= 'cm';
+                    if (in_array($attributeG4100, ['frente', 'diametro'])) {
+                        $value .= "''";
                     } elseif (in_array($attributeG4100, ['fondo', 'alto'])) {
                         $value .= 'mm';
                     } elseif ($attributeG4100 == 'diametro2') {
                         $value .= 'kg';
-                    } elseif ($attributeG4100 == 'diametro') {
-                        $value .= "''";
                     }
                     $attributeId = $this->attributeHelper->createOrGetId($attributeMg, $value);
                     $product->setCustomAttribute($attributeMg, $attributeId);

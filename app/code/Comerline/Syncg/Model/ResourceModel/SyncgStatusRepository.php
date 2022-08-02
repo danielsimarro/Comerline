@@ -64,7 +64,9 @@ class SyncgStatusRepository
         $entityStatus = $this->getEntityStatus($gId, $type);
         if ($entityStatus) { // Exists Entity Status
             $this->syncgStatus = $entityStatus;
-            $this->syncgStatus->setMgId($mgId);
+            if (!$this->syncgStatus->getMgId()) {
+                $this->syncgStatus->setMgId($mgId);
+            }
             $this->syncgStatus->setStatus($status);
             $this->syncgStatus->setUpdatedAt($this->date->date());
         } else { // No exist, create
