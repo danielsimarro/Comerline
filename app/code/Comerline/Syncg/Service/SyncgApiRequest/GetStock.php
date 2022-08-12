@@ -90,7 +90,7 @@ class GetStock extends SyncgApiService
         $contProducts = 1;
         $this->buildParams($page);
         $response = $this->execute();
-        while ($response && isset($response['listado'])) {
+        while ($response && isset($response['listado']) && $response['listado']) {
             $this->storeManager->setCurrentStore(0); // All store views
             $productStocks = $response['listado'];
             foreach ($productStocks as $productStock) {
