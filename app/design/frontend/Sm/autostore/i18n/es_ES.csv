@@ -9253,6 +9253,7 @@
 "Name","Nombre","module","Magento_Contact"
 "Email","Correo electrónico","module","Magento_Contact"
 "Phone Number","Número de teléfono","module","Magento_Contact"
+"Leave A Comment","Mensaje","module","Magento_Contact"
 "What’s on your mind?","¿Qué está en su mente?","module","Magento_Contact"
 "Submit","Enviar","module","Magento_Contact"
 "Contact Form","Formulario de contacto","module","Magento_Contact"
