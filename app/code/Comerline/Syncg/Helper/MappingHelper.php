@@ -2,11 +2,12 @@
 
 namespace Comerline\Syncg\Helper;
 
+use Comerline\Syncg\Service\SyncgApiRequest\Login;
+use Comerline\Syncg\Service\SyncgApiRequest\Logout;
 use Exception;
+use Magento\Catalog\Api\Data\ProductInterface;
 use Magento\Catalog\Api\ProductRepositoryInterface;
 use Magento\ConfigurableProduct\Model\Product\Type\Configurable;
-use Magento\Framework\Exception\FileSystemException;
-use Magento\Framework\Exception\NoSuchEntityException;
 use Magento\Framework\Phrase;
 use Magento\Framework\Filesystem\DirectoryList;
 use Magento\Catalog\Model\ResourceModel\Product\CollectionFactory;
@@ -102,6 +103,13 @@ class MappingHelper
      */
     private $registry;
     private GetVehicleTires $getVehiclesTires;
+    private Login $login;
+    private Logout $logout;
+    private AttributeHelper $attributeHelper;
+    /**
+     * @var int[]|string[]
+     */
+    private array $allStoreIds;
 
     public function __construct(
         LoggerInterface            $logger,
@@ -114,21 +122,28 @@ class MappingHelper
         Configurable               $configurable,
         Config                     $configHelper,
         DateTime                   $dateTime,
+        AttributeHelper            $attributeHelper,
         GetVehicleTires            $getVehicleTires,
+        Login                       $login,
+        Logout                      $logout,
         Registry                   $registry
     )
     {
+        $this->attributeHelper = $attributeHelper;
         $this->logger = $logger;
         $this->dir = $dir;
         $this->categoryCollectionFactory = $categoryCollectionFactory;
         $this->productCollectionFactory = $productCollectionFactory;
         $this->storeManager = $storeManager;
+        $this->allStoreIds = array_keys($storeManager->getStores(true));
         $this->categoryFactory = $categoryFactory;
         $this->productRepository = $productRepository;
         $this->configurable = $configurable;
         $this->config = $configHelper;
         $this->dateTime = $dateTime;
         $this->registry = $registry;
+        $this->login = $login;
+        $this->logout = $logout;
         $this->magentoCategories = [];
         $this->getVehiclesTires = $getVehicleTires;
         $this->prefixLog = uniqid() . ' | Comerline Car - Rims Mapping System |';
@@ -139,12 +154,14 @@ class MappingHelper
     {
         $this->logger->info(new Phrase($this->prefixLog . ' Rim <-> Car Mapping Start.'));
         $timeStart = microtime(true);
+        $this->login->send();
         $this->getVehiclesTires->send();
+        $this->logout->send();
         $this->groupCategories = $this->getVehiclesTires->getVehiclesTiresGroup();
-//        $this->createCategoriesByAlphabeticOrder();
-//        $this->mapProductCategories(); // We traverse through the collection and in an array we map the categories to the products
-//        $this->assignCategoriesToProducts($this->processedProducts); // We traverse through the array and save the products with their new categories
-//        $this->deleteEmptyCategories();
+        $this->createCategoriesByAlphabeticOrder();
+        $this->mapProductCategories(); // We traverse through the collection and in an array we map the categories to the products
+        $this->assignCategoriesToProducts($this->processedProducts); // We traverse through the array and save the products with their new categories
+        $this->deleteEmptyCategories();
         $this->logger->info(new Phrase($this->prefixLog . ' Rim <-> Car Mapping End.'));
         $this->config->setLastDateMappingCategories($this->dateTime->gmtDate());
         $this->logger->info(new Phrase($this->prefixLog . ' Finished Rim <-> Car Mapping ' . $this->getTrackTime($timeStart)));
@@ -199,7 +216,7 @@ class MappingHelper
                 // existing in the product, we merge the arrays with array_unique
                 $differentCategories = !array_diff($productCategories, $currentProductCategories);
                 if (!$differentCategories) {
-                    $product->setStoreIds([0, 1]);
+                    $product->setStoreIds($this->allStoreIds); //Sometimes, product info would not save on admin
                     $product->setCategoryIds($setProductCategories);
                     $this->productRepository->save($product);
                     $this->logger->info(new Phrase($this->prefixLog . ' ' . $countProcessedProducts . '/' . $cont . ' Magento Product: ' . $product->getId() . ' | Product Categories Saved.'));
@@ -208,15 +225,17 @@ class MappingHelper
         }
     }
 
+    /**
+     * @param $child ProductInterface
+     * @return array|false
+     */
     private function getAttributeTexts($child)
     {
         $searchableAttributes = ['width', 'diameter', 'offset'];
         $attributeKeys = ['ancho', 'diametro', 'et'];
         $attributes = [];
         foreach ($searchableAttributes as $sa) {
-            $attribute = filter_var($child->getAttributeText($sa), FILTER_SANITIZE_NUMBER_FLOAT, FILTER_FLAG_ALLOW_FRACTION);
-            $attributes[] = str_replace('.', ',', $attribute); // We need to replace the dots with commas for
-            // the comparison, as well as we need to remove unnecessary zeros
+            $attributes[] = (float) filter_var($child->getAttributeText($sa), FILTER_SANITIZE_NUMBER_FLOAT, FILTER_FLAG_ALLOW_FRACTION);
         }
         return array_combine($attributeKeys, $attributes);
     }
@@ -225,8 +244,22 @@ class MappingHelper
     {
         $attributes = $this->getAttributeTexts($product);
         $categoryIds = [];
+        $mountingAttribute = $product->getAttributeText('mounting'); //Anclaje?
+        if (!$mountingAttribute) {
+            return $categoryIds;
+        }
         foreach ($this->groupCategories as $groupCategory) {
-            if (count(array_diff_assoc($attributes, $groupCategory)) === 0) {
+            $minMaxValid = true;
+            foreach ($attributes as $key => $value) { //Product measurements must be between ranges.
+                $min = $groupCategory[$key . '_min'];
+                $max = $groupCategory[$key . '_max'];
+                if ($value < $min || $value > $max) {
+                    $minMaxValid = false;
+                    break;
+                }
+            }
+            //TODO: Sanitize mounting decimals?
+            if ($minMaxValid && strtolower($groupCategory['anclaje']) == strtolower($mountingAttribute)) {
                 $categoryIds = array_unique($this->getCategoryIds($groupCategory));
                 $currentProductCategories = $product->getCategoryIds();
                 $categoryIds = array_unique(array_merge($currentProductCategories, $categoryIds)); // To keep the categories

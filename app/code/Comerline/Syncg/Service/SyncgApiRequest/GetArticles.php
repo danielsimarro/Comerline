@@ -692,7 +692,7 @@ class GetArticles extends SyncgApiService
             'fondo' => 'offset',
             'diametro' => 'diameter',
             'alto' => 'hub',
-            'envase' => 'mounting',
+            'envase' => 'mounting', //Anclaje?
             'diametro2' => 'load',
             'acotacion' => 'variation',
             'marca' => 'brand'
@@ -732,7 +732,7 @@ class GetArticles extends SyncgApiService
                     $attributeId = $this->attributeHelper->createOrGetId($attributeMg, $value);
                     $product->setCustomAttribute($attributeMg, $attributeId);
                 } else {
-                    $product->setCustomAttribute('diameter', '');
+                    $product->setCustomAttribute($attributeMg, '');
                 }
             }
         }

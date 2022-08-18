@@ -133,7 +133,6 @@ class GetVehicleTires extends SyncgApiService
             }
             fclose($handle);
         }
-        $test = 1;
     }
 
     private function existCache()

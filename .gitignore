@@ -13,7 +13,8 @@ atlassian*
 /pub/sitemap
 /pub/sitemap.xml
 /dev
-/generated
+/generated/code
+/generated/metadata
 /.utils
 /.idea
 /.gitattributes
