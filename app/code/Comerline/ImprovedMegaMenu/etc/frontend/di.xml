@@ -1,0 +1,9 @@
+<?xml version="1.0"?>
+<config>
+    <type name="\Sm\MegaMenu\Model\ResourceModel\MenuItems\Collection">
+        <plugin name="comerline_improvedmegamenu_auto_categories" type="\Comerline\ImprovedMegaMenu\Plugin\MenuItemsCollection" sortOrder="1" disabled="false" />
+    </type>
+    <type name="\Sm\MegaMenu\Model\MenuItems">
+        <plugin name="comerline_improvedmegamenu_auto_categories_model" type="\Comerline\ImprovedMegaMenu\Plugin\MenuItems" sortOrder="1" disabled="false" />
+    </type>
+</config>

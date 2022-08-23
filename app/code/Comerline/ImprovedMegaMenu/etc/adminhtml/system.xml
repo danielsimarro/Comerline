@@ -1,0 +1,25 @@
+<?xml version="1.0"?>
+<config xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="urn:magento:module:Magento_Config:etc/system_file.xsd">
+    <system>
+        <tab id="comerline" translate="label" sortOrder="10">
+            <label>Comerline</label>
+        </tab>
+        <section id="improvedmegamenu" translate="label" sortOrder="130" showInDefault="1" showInWebsite="1" showInStore="1">
+            <class>separator-top</class>
+            <label>Automatic Mega Menu</label>
+            <tab>comerline</tab>
+            <resource>Comerline_ImprovedMegaMenu::menu_config</resource>
+            <group id="main_config" translate="label" type="text" sortOrder="10" showInDefault="1" showInWebsite="0" showInStore="0">
+                <label>Associations</label>
+                <field id="category_id" translate="label" type="text" sortOrder="1" showInDefault="1" showInWebsite="0" showInStore="0">
+                    <label>Category ID</label>
+                    <comment>This is the Magento category ID to associate to a menu element. The child elements of this category will be added to the menu item.</comment>
+                </field>
+                <field id="menu_item_id" translate="label" type="text" sortOrder="1" showInDefault="1" showInWebsite="0" showInStore="0">
+                    <label>Menu Item ID</label>
+                    <comment>This is a parent mega menu item.</comment>
+                </field>
+            </group>
+        </section>
+    </system>
+</config>
