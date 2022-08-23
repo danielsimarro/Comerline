@@ -258,14 +258,33 @@ class MappingHelper
                     break;
                 }
             }
-            //TODO: Sanitize mounting decimals?
-            if ($minMaxValid && strtolower($groupCategory['anclaje']) == strtolower($mountingAttribute)) {
+            if ($minMaxValid && $this->isMatchingMounting($groupCategory['anclaje'], $mountingAttribute)) {
                 $categoryIds = array_unique($this->getCategoryIds($groupCategory));
                 $currentProductCategories = $product->getCategoryIds();
                 $categoryIds = array_unique(array_merge($currentProductCategories, $categoryIds)); // To keep the categories
             }
         }
         return $categoryIds;
+    }
+
+    private function isMatchingMounting(): bool
+    {
+        $sanitizedArgs = array_map(function ($v) {
+            $parts = explode('x', strtolower($v));
+            if (count($parts) < 2) {
+                return $parts[array_key_first($parts)];
+            }
+            $sanitizedParts = array_map(function ($p) {
+                preg_match('/^[0-9]+/m', $p, $matchSegments);
+                if (!$matchSegments) {
+                    return $p;
+                } else {
+                    return $matchSegments[0];
+                }
+            }, $parts);
+            return implode('x', $sanitizedParts);
+        }, func_get_args());
+        return (count(array_unique($sanitizedArgs)) === 1);
     }
 
     private function getSpecificMagentoCategory($attribute, $value)
