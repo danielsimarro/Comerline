@@ -9,6 +9,7 @@ use Comerline\Syncg\Model\Order;
 use Comerline\Syncg\Service\SyncgApiRequest\CheckDeletedArticles;
 use Comerline\Syncg\Service\SyncgApiRequest\Login;
 use Comerline\Syncg\Service\SyncgApiRequest\GetArticles;
+use Comerline\Syncg\Service\SyncgApiRequest\GetStock;
 use Comerline\Syncg\Service\SyncgApiRequest\Logout;
 use Psr\Log\LoggerInterface;
 
@@ -56,6 +57,7 @@ class Syncg
      * @var Logout
      */
     private $logout;
+    private GetStock $getStock;
 
     public function __construct(
         SyncgStatusRepository $syncgStatusRepository,
@@ -65,6 +67,7 @@ class Syncg
         Login $login,
         Logout $logout,
         GetArticles $getArticles,
+        GetStock $getStock,
         CheckDeletedArticles $checkDeletedArticles,
         LoggerInterface $logger
     ) {
@@ -75,21 +78,29 @@ class Syncg
         $this->login = $login;
         $this->logout = $logout;
         $this->getArticles = $getArticles;
+        $this->getStock = $getStock;
         $this->checkDeletedArticles = $checkDeletedArticles;
         $this->logger = $logger;
     }
 
     public function syncgAll(){
-        $this->connectToAPI();
-        if ($this->config->getGeneralConfig('enable_order_sync') === "1") {
-            $this->fetchPendingOrders();
-        }
         if ($this->checkMakeSync()){
             $this->config->setSyncInProgress(true);
+            $this->connectToAPI();
+            if ($this->config->getGeneralConfig('enable_order_sync') === "1") {
+                $this->fetchPendingOrders();
+            }
             $this->fetchArticles();
             $this->config->setSyncInProgress(false);
             $this->disconnectFromAPI();
         }
+    }
+
+    public function syncgStock()
+    {
+        $this->connectToAPI();
+        $this->fetchStock();
+        $this->disconnectFromAPI();
     }
 
     public function fetchPendingOrders(){
@@ -106,6 +117,10 @@ class Syncg
     public function fetchArticles(){
         $this->getArticles->send();
         $this->checkDeletedArticles->send();
+    }
+
+    public function fetchStock(){
+        $this->getStock->send();
     }
 
     public function connectToAPI(){

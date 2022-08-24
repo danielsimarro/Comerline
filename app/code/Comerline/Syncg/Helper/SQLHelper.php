@@ -39,7 +39,7 @@ class SQLHelper extends AbstractHelper
         $disable = [];
         foreach ($productsG4100 as $product) {
             if ($product['si_vender_en_web'] === false) {
-                $ids[] = $product['cod']; // We have to get COD instead of ID from G4100, otherwise we will never get the correct products
+                $ids[] = $product['id']; // We have to get COD instead of ID from G4100, otherwise we will never get the correct products
             }
         }
         if ($ids) {
@@ -86,11 +86,13 @@ class SQLHelper extends AbstractHelper
 
     public function updateRelatedProductsStatus($relatedIds, $parentMgId)
     {
-        $connection = $this->resource->getConnection(ResourceConnection::DEFAULT_CONNECTION);
-        $tableName = $connection->getTableName('comerline_syncg_status');
-        $sql = "UPDATE " . $tableName . " SET parent_mg = '" . $parentMgId . "' " .
-            "WHERE mg_id IN (" . implode(',', $relatedIds) . ") AND type = " . SyncgStatus::TYPE_PRODUCT_SIMPLE;
-        $connection->query($sql);
+        if ($relatedIds) {
+            $connection = $this->resource->getConnection(ResourceConnection::DEFAULT_CONNECTION);
+            $tableName = $connection->getTableName('comerline_syncg_status');
+            $sql = "UPDATE " . $tableName . " SET parent_mg = '" . $parentMgId . "' " .
+                "WHERE mg_id IN (" . implode(',', $relatedIds) . ") AND type = " . SyncgStatus::TYPE_PRODUCT_SIMPLE;
+            $connection->query($sql);
+        }
     }
 
     public function getPendingRelatedProducts(): array
