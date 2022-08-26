@@ -2,6 +2,7 @@
 
 namespace Comerline\ImprovedMegaMenu\Plugin;
 
+use Comerline\ImprovedMegaMenu\Helper\CategoryMenuStruct;
 use Magento\Framework\App\Config\ScopeConfigInterface;
 use Magento\Store\Model\ScopeInterface;
 use Sm\MegaMenu\Model\MenuItems as Subject;
@@ -9,11 +10,14 @@ use Sm\MegaMenu\Model\MenuItems as Subject;
 class MenuItems
 {
     private ScopeConfigInterface $scopeConfig;
+    private CategoryMenuStruct $categoryMenuHelper;
 
     public function __construct(
-        ScopeConfigInterface $scopeConfig
+        ScopeConfigInterface $scopeConfig,
+        CategoryMenuStruct $categoryMenuStruct
     ) {
         $this->scopeConfig = $scopeConfig;
+        $this->categoryMenuHelper = $categoryMenuStruct;
     }
 
     public function aroundGetAllItemsInEqLv(Subject $subject, callable $proceed, $item, $mode = 1, $attributes = '')
@@ -22,7 +26,7 @@ class MenuItems
         $parentItemId = $item['items_id'];
         $databaseItems = $proceed($item, $mode, $attributes);
         if (!$databaseItems && $parentItemId == $parentMenuItemId) {
-            $databaseItems = ['items_id' => '_cat_none']; //Note: Original function calls only count the results. This works.
+            $databaseItems = $this->categoryMenuHelper->fetchBy(['parent_id' => $parentItemId]);
         }
         return $databaseItems;
     }

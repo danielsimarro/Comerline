@@ -18,18 +18,14 @@ class Config extends AbstractHelper
      */
     private $configWriter;
 
-    private $dateTime;
-
     private $coreConfigDataCollection;
 
     public function __construct(
         Context $context,
         WriterInterface $writer,
-        DateTime $dateTime,
         CollectionFactory $coreConfigDataCollection
     ) {
         $this->configWriter = $writer;
-        $this->dateTime = $dateTime;
         $this->coreConfigDataCollection = $coreConfigDataCollection;
         parent::__construct($context);
     }
@@ -49,6 +45,36 @@ class Config extends AbstractHelper
         $collection->addFieldToFilter('path', self::TOKEN_PATH)
             ->getFirstItem();
         return $collection->getFirstItem()->getData('value');
+    }
+
+    public function setStockInProgress(bool $syncInProgress)
+    {
+        $this->configWriter->save(self::PATH .'general/stock_in_progress', $syncInProgress, 'default');
+    }
+
+    public function stockInProgress(): bool
+    {
+        $syncInProgress = false;
+        $coreConfigData = $this->getParamsWithoutSystem('syncg/general/stock_in_progress');
+        if ($coreConfigData) {
+            $syncInProgress = $coreConfigData->getValue() ?? false;
+        }
+        return $syncInProgress;
+    }
+
+    public function setMappingInProgress(bool $syncInProgress)
+    {
+        $this->configWriter->save(self::PATH .'general/mapping_in_progress', $syncInProgress, 'default');
+    }
+
+    public function mappingInProgress(): bool
+    {
+        $syncInProgress = false;
+        $coreConfigData = $this->getParamsWithoutSystem('syncg/general/mapping_in_progress');
+        if ($coreConfigData) {
+            $syncInProgress = $coreConfigData->getValue() ?? false;
+        }
+        return $syncInProgress;
     }
 
     public function setSyncInProgress(bool $syncInProgress)

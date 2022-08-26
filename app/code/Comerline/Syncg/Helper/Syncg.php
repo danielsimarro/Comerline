@@ -11,16 +11,11 @@ use Comerline\Syncg\Service\SyncgApiRequest\Login;
 use Comerline\Syncg\Service\SyncgApiRequest\GetArticles;
 use Comerline\Syncg\Service\SyncgApiRequest\GetStock;
 use Comerline\Syncg\Service\SyncgApiRequest\Logout;
+use Magento\Store\Model\StoreManagerInterface;
 use Psr\Log\LoggerInterface;
 
 class Syncg
 {
-
-    /**
-     * @var SyncgStatusRepository
-     */
-    private $syncgStatusRepository;
-
     /**
      * @var CollectionFactory
      */
@@ -58,9 +53,9 @@ class Syncg
      */
     private $logout;
     private GetStock $getStock;
+    private StoreManagerInterface $storeManager;
 
     public function __construct(
-        SyncgStatusRepository $syncgStatusRepository,
         CollectionFactory $syncgStatusCollectionFactory,
         Order $order,
         Config $config,
@@ -69,9 +64,9 @@ class Syncg
         GetArticles $getArticles,
         GetStock $getStock,
         CheckDeletedArticles $checkDeletedArticles,
+        StoreManagerInterface      $storeManager,
         LoggerInterface $logger
     ) {
-        $this->syncgStatusRepository = $syncgStatusRepository;
         $this->syncgStatusCollectionFactory = $syncgStatusCollectionFactory;
         $this->order = $order;
         $this->config = $config;
@@ -81,9 +76,11 @@ class Syncg
         $this->getStock = $getStock;
         $this->checkDeletedArticles = $checkDeletedArticles;
         $this->logger = $logger;
+        $this->storeManager = $storeManager;
     }
 
     public function syncgAll(){
+        $this->storeManager->setCurrentStore(0);
         if ($this->checkMakeSync()){
             $this->config->setSyncInProgress(true);
             $this->connectToAPI();
@@ -98,9 +95,14 @@ class Syncg
 
     public function syncgStock()
     {
-        $this->connectToAPI();
-        $this->fetchStock();
-        $this->disconnectFromAPI();
+        $this->storeManager->setCurrentStore(0);
+        if ($this->checkMakeStock()) {
+            $this->config->setStockInProgress(true);
+            $this->connectToAPI();
+            $this->fetchStock();
+            $this->disconnectFromAPI();
+            $this->config->setStockInProgress(false);
+        }
     }
 
     public function fetchPendingOrders(){
@@ -137,6 +139,16 @@ class Syncg
         if ($this->config->syncInProgress()) {
             $makeSync = false;
             $this->logger->info('Syncg | Sync in progress');
+        }
+        return $makeSync;
+    }
+
+    private function checkMakeStock(): bool
+    {
+        $makeSync = true;
+        if ($this->config->stockInProgress()) {
+            $makeSync = false;
+            $this->logger->info('Stock | Stock in progress');
         }
         return $makeSync;
     }
