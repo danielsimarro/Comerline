@@ -11,8 +11,8 @@ use Comerline\Syncg\Helper\Syncg;
 
 class ComerlineSyncgStock extends Command
 {
-    protected $syncgHelper;
-    private $state;
+    protected Syncg $syncgHelper;
+    private State $state;
 
     public function __construct(
         Syncg $syncgHelper,

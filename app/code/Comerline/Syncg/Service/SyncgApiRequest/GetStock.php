@@ -2,7 +2,6 @@
 
 namespace Comerline\Syncg\Service\SyncgApiRequest;
 
-use Comerline\Syncg\Model\ResourceModel\SyncgStatusRepository;
 use Comerline\Syncg\Model\SyncgStatus;
 use Comerline\Syncg\Service\SyncgApiService;
 use Comerline\Syncg\Model\ResourceModel\SyncgStatus\CollectionFactory;
@@ -13,32 +12,14 @@ use Comerline\Syncg\Helper\Config;
 use GuzzleHttp\ClientFactory;
 use GuzzleHttp\Psr7\ResponseFactory;
 use Magento\Framework\Serialize\Serializer\Json;
-use Magento\Store\Model\StoreManagerInterface;
 use Psr\Log\LoggerInterface;
 
 class GetStock extends SyncgApiService
 {
     protected $method = Request::HTTP_METHOD_POST;
-
-    /**
-     * @var SyncgStatus
-     */
-    private $syncgStatus;
-
-    /**
-     * @var SyncgStatusRepository
-     */
-    private $syncgStatusRepository;
-
-    /**
-     * @var CollectionFactory
-     */
-    private $syncgStatusCollectionFactory;
-
-    private $stockG4100;
+    private CollectionFactory $syncgStatusCollectionFactory;
     private string $prefixLog;
     private ProductRepositoryInterface $productRepository;
-    private StoreManagerInterface $storeManager;
 
     public function __construct(
         Config                     $configHelper,
@@ -46,18 +27,12 @@ class GetStock extends SyncgApiService
         ClientFactory              $clientFactory,
         ResponseFactory            $responseFactory,
         ProductRepositoryInterface $productRepository,
-        StoreManagerInterface      $storeManager,
         CollectionFactory          $syncgStatusCollectionFactory,
-        SyncgStatus                $syncgStatus,
-        SyncgStatusRepository      $syncgStatusRepository,
         LoggerInterface            $logger
     )
     {
         $this->productRepository = $productRepository;
-        $this->syncgStatus = $syncgStatus;
-        $this->storeManager = $storeManager;
         $this->syncgStatusCollectionFactory = $syncgStatusCollectionFactory;
-        $this->syncgStatusRepository = $syncgStatusRepository;
         $this->prefixLog = uniqid() . ' | G4100 Sync Stock |';
         parent::__construct($configHelper, $json, $responseFactory, $clientFactory, $logger);
     }
@@ -91,7 +66,6 @@ class GetStock extends SyncgApiService
         $this->buildParams($page);
         $response = $this->execute();
         while ($response && isset($response['listado']) && $response['listado']) {
-            $this->storeManager->setCurrentStore(0); // All store views
             $productStocks = $response['listado'];
             foreach ($productStocks as $productStock) {
                 $productGId = $productStock['id_articulo']['id'];

@@ -7,9 +7,9 @@ use Comerline\Syncg\Service\SyncgApiRequest\Logout;
 use Exception;
 use Magento\Catalog\Api\Data\ProductInterface;
 use Magento\Catalog\Api\ProductRepositoryInterface;
+use Magento\Catalog\Model\Category;
 use Magento\ConfigurableProduct\Model\Product\Type\Configurable;
 use Magento\Framework\Phrase;
-use Magento\Framework\Filesystem\DirectoryList;
 use Magento\Catalog\Model\ResourceModel\Product\CollectionFactory;
 use Magento\Catalog\Model\ResourceModel\Category\CollectionFactory as CategoryCollectionFactory;
 use Magento\Framework\Registry;
@@ -22,90 +22,24 @@ use Comerline\Syncg\Service\SyncgApiRequest\GetVehicleTires;
 
 class MappingHelper
 {
-
-    /**
-     * @var LoggerInterface
-     */
-    private $logger;
-
-    /**
-     * @var DirectoryList
-     */
-    private $dir;
-
-    /**
-     * @var CollectionFactory
-     */
-    protected $productCollectionFactory;
-
-    /**
-     * @var CategoryCollectionFactory
-     */
-    private $categoryCollectionFactory;
-
-    /**
-     * @var StoreManagerInterface
-     */
-    protected $storeManager;
-
-    /**
-     * @var CategoryFactory
-     */
-    protected $categoryFactory;
-
-    /**
-     * @var string
-     */
-    private $prefixLog;
-
-    /**
-     * @var ProductRepositoryInterface
-     */
-    private $productRepository;
-
-    /**
-     * @var Configurable
-     */
-    private $configurable;
-
-    /**
-     * @var Config
-     */
-    private $config;
-
-    /**
-     * @var DateTime
-     */
-    private $dateTime;
-
-    /**
-     * @var array
-     */
-    private $processedProducts;
-
-    /**
-     * @var array
-     */
-    private $arrayKeys;
-
-    /**
-     * @var array
-     */
-    private $groupCategories;
-
-    /**
-     * @var array
-     */
-    private $magentoCategories;
-
-    /**
-     * @var Registry
-     */
-    private $registry;
+    private LoggerInterface $logger;
+    protected CollectionFactory $productCollectionFactory;
+    private CategoryCollectionFactory $categoryCollectionFactory;
+    protected StoreManagerInterface $storeManager;
+    protected CategoryFactory $categoryFactory;
+    private string $prefixLog;
+    private ProductRepositoryInterface $productRepository;
+    private Configurable $configurable;
+    private Config $config;
+    private DateTime $dateTime;
+    private array $processedProducts;
+    private array $groupCategories;
+    private array $magentoCategories;
+    private Registry $registry;
     private GetVehicleTires $getVehiclesTires;
     private Login $login;
     private Logout $logout;
-    private AttributeHelper $attributeHelper;
+
     /**
      * @var int[]|string[]
      */
@@ -113,7 +47,6 @@ class MappingHelper
 
     public function __construct(
         LoggerInterface            $logger,
-        DirectoryList              $dir,
         CollectionFactory          $productCollectionFactory,
         CategoryCollectionFactory  $categoryCollectionFactory,
         StoreManagerInterface      $storeManager,
@@ -122,16 +55,13 @@ class MappingHelper
         Configurable               $configurable,
         Config                     $configHelper,
         DateTime                   $dateTime,
-        AttributeHelper            $attributeHelper,
         GetVehicleTires            $getVehicleTires,
         Login                       $login,
         Logout                      $logout,
         Registry                   $registry
     )
     {
-        $this->attributeHelper = $attributeHelper;
         $this->logger = $logger;
-        $this->dir = $dir;
         $this->categoryCollectionFactory = $categoryCollectionFactory;
         $this->productCollectionFactory = $productCollectionFactory;
         $this->storeManager = $storeManager;
@@ -147,30 +77,37 @@ class MappingHelper
         $this->magentoCategories = [];
         $this->getVehiclesTires = $getVehicleTires;
         $this->prefixLog = uniqid() . ' | Comerline Car - Rims Mapping System |';
-        $this->arrayKeys = ['marca', 'modelo', 'ano', 'meta_title', 'meta_description'];
+    }
+
+    private function checkMakeMapping(): bool
+    {
+        $makeSync = true;
+        if ($this->config->mappingInProgress()) {
+            $makeSync = false;
+            $this->logger->info('Mapping | Mapping in progress');
+        }
+        return $makeSync;
     }
 
     public function mapCarRims()
     {
-        $this->logger->info(new Phrase($this->prefixLog . ' Rim <-> Car Mapping Start.'));
-        $timeStart = microtime(true);
-        $this->login->send();
-        $this->getVehiclesTires->send();
-        $this->logout->send();
-        $this->groupCategories = $this->getVehiclesTires->getVehiclesTiresGroup();
-        $this->createCategoriesByAlphabeticOrder();
-        $this->mapProductCategories(); // We traverse through the collection and in an array we map the categories to the products
-        $this->assignCategoriesToProducts($this->processedProducts); // We traverse through the array and save the products with their new categories
-        $this->deleteEmptyCategories();
-        $this->logger->info(new Phrase($this->prefixLog . ' Rim <-> Car Mapping End.'));
-        $this->config->setLastDateMappingCategories($this->dateTime->gmtDate());
-        $this->logger->info(new Phrase($this->prefixLog . ' Finished Rim <-> Car Mapping ' . $this->getTrackTime($timeStart)));
-    }
-
-    private function createCategoriesByAlphabeticOrder()
-    {
-        foreach ($this->groupCategories as $groupCategory) {
-            $this->createCategories($groupCategory);
+        $this->storeManager->setCurrentStore(0);
+        if ($this->checkMakeMapping()) {
+            $this->config->setMappingInProgress(true);
+            $this->logger->info(new Phrase($this->prefixLog . ' Rim <-> Car Mapping Start.'));
+            $timeStart = microtime(true);
+            $this->login->send();
+            $this->getVehiclesTires->send();
+            $this->logout->send();
+            $this->groupCategories = $this->getVehiclesTires->getVehiclesTiresGroup();
+            $this->createCategories();
+            $this->mapProductCategories(); // We traverse through the collection and in an array we map the categories to the products
+            $this->assignCategoriesToProducts($this->processedProducts); // We traverse through the array and save the products with their new categories
+            $this->deleteEmptyCategories();
+            $this->logger->info(new Phrase($this->prefixLog . ' Rim <-> Car Mapping End.'));
+            $this->config->setLastDateMappingCategories($this->dateTime->gmtDate());
+            $this->logger->info(new Phrase($this->prefixLog . ' Finished Rim <-> Car Mapping ' . $this->getTrackTime($timeStart)));
+            $this->config->setMappingInProgress(false);
         }
     }
 
@@ -203,13 +140,12 @@ class MappingHelper
 
     private function assignCategoriesToProducts($processedProducts)
     {
-        $this->storeManager->setCurrentStore(0);
         $cont = 0;
         foreach ($processedProducts as $productId => $productCategories) {
             $countProcessedProducts = count($processedProducts);
             $cont++;
             if ($productCategories) {
-                $product = $this->productRepository->getById($productId, true); // We need to load the
+                $product = $this->productRepository->getById($productId, true, 0); // We need to load the
                 // product in edit mode, otherwise the categories will not be saved
                 $currentProductCategories = $product->getCategoryIds();
                 $setProductCategories = array_unique(array_merge($currentProductCategories, $productCategories)); // To keep the categories
@@ -258,33 +194,37 @@ class MappingHelper
                     break;
                 }
             }
-            if ($minMaxValid && $this->isMatchingMounting($groupCategory['anclaje'], $mountingAttribute)) {
-                $categoryIds = array_unique($this->getCategoryIds($groupCategory));
-                $currentProductCategories = $product->getCategoryIds();
-                $categoryIds = array_unique(array_merge($currentProductCategories, $categoryIds)); // To keep the categories
+            if ($minMaxValid && $this->isMatchingMounting($groupCategory['anclaje_group'], $mountingAttribute)) {
+                //Keep existing product categories.
+                $categoryIds = array_unique(array_merge($product->getCategoryIds(), $this->getCategoryIds($groupCategory)));
             }
         }
         return $categoryIds;
     }
 
-    private function isMatchingMounting(): bool
+    private function isMatchingMounting($anclajes, $attribute): bool
     {
-        $sanitizedArgs = array_map(function ($v) {
-            $parts = explode('x', strtolower($v));
-            if (count($parts) < 2) {
-                return $parts[array_key_first($parts)];
-            }
-            $sanitizedParts = array_map(function ($p) {
-                preg_match('/^[0-9]+/m', $p, $matchSegments);
-                if (!$matchSegments) {
-                    return $p;
-                } else {
-                    return $matchSegments[0];
+        foreach ($anclajes as $anclaje) {
+            $sanitizedArgs = array_map(function ($v) {
+                $parts = explode('x', strtolower($v));
+                if (count($parts) < 2) {
+                    return $parts[array_key_first($parts)];
                 }
-            }, $parts);
-            return implode('x', $sanitizedParts);
-        }, func_get_args());
-        return (count(array_unique($sanitizedArgs)) === 1);
+                $sanitizedParts = array_map(function ($p) {
+                    preg_match('/^[0-9]+/m', $p, $matchSegments);
+                    if (!$matchSegments) {
+                        return $p;
+                    } else {
+                        return $matchSegments[0];
+                    }
+                }, $parts);
+                return implode('x', $sanitizedParts);
+            }, [$anclaje, $attribute]);
+            if (count(array_unique($sanitizedArgs)) === 1) {
+                return true; //We only need one match of the group.
+            }
+        }
+        return false;
     }
 
     private function getSpecificMagentoCategory($attribute, $value)
@@ -307,56 +247,56 @@ class MappingHelper
         return $categoryId;
     }
 
+    /**
+     * Get category ids from structure.
+     * Loads category from already loaded list. If not, it re-tries database.
+     * @param $rowCategory
+     * @return array
+     */
     private function getCategoryIds($rowCategory)
     {
         $categoriesIds = [];
-        $name = $rowCategory['name'];
-        $type = $rowCategory['type'];
-        $marca = $rowCategory['marca'];
-        $elements = [$name, $type, $marca];
-        foreach ($elements as $element) {
-            if (!isset($this->magentoCategories[base64_encode($element)])) {
-                $this->magentoCategories[base64_encode($element)] = $this->getSpecificMagentoCategory('name', $element);
+        $tree = [
+            $rowCategory['marca'],
+            $rowCategory['name'], //Model
+            $rowCategory['type']
+        ];
+        foreach ($tree as $catName) {
+            $key = base64_encode($catName);
+            if (array_key_exists($key, $this->magentoCategories)) {
+                $categoriesIds[] = $this->magentoCategories[$key];
             }
-            $categoriesIds[] = $this->magentoCategories[base64_encode($element)];
         }
         return $categoriesIds;
     }
 
-    private function createCategories($rowCategory)
+    /**
+     * Creates category tree for each group.
+     * @return void
+     */
+    private function createCategories()
     {
-        $name = $rowCategory['name'];
-        $type = $rowCategory['type'];
-        $marca = $rowCategory['marca'];
-        $metaTitle = 'Llantas - ' . $type;
-        $metaDescription = $metaTitle;
-
-        if (!array_key_exists(base64_encode('Por Vehículo'), $this->magentoCategories)) { // Get Por Vehículo
-            $forVehicleId = $this->getSpecificMagentoCategory('name', 'Por Vehículo');
-            $this->magentoCategories[base64_encode('Por Vehículo')] = $forVehicleId;
-        } else {
-            $forVehicleId = $this->magentoCategories[base64_encode('Por Vehículo')];
-        }
-        if (!array_key_exists(base64_encode($marca), $this->magentoCategories)) { // Get or create brand
-            $brandId = $this->getSpecificMagentoCategory('name', $marca);
-            if (!$brandId) {
-                $brandId = $this->createUpdateCategory($marca, '', '', $forVehicleId);
+        foreach ($this->groupCategories as $rowCategory) {
+            $tree = [
+                'Por Vehículo',
+                $rowCategory['marca'],
+                $rowCategory['name'], //Model
+                $rowCategory['type']
+            ];
+            $parentId = null;
+            foreach ($tree as $catName) {
+                $key = base64_encode($catName);
+                if (!array_key_exists($key, $this->magentoCategories)) {
+                    $forVehicleId = $this->getSpecificMagentoCategory('name', $catName);
+                    if ($parentId) {
+                        $forVehicleId = $this->createUpdateCategory($catName, "Llantas - $catName", "Llantas para $catName", $parentId, $forVehicleId);
+                    }
+                    $this->magentoCategories[$key] = $forVehicleId;
+                } else {
+                    $forVehicleId = $this->magentoCategories[$key];
+                }
+                $parentId = $forVehicleId;
             }
-            $this->magentoCategories[base64_encode($marca)] = $brandId;
-        } else {
-            $brandId = $this->magentoCategories[base64_encode($marca)];
-        }
-        if (!array_key_exists(base64_encode($name), $this->magentoCategories)) { // Get or create vehicle
-            $vehicleId = $this->getSpecificMagentoCategory('name', $name);
-            $vehicleId = $this->createUpdateCategory($name, $metaTitle, $metaDescription, $brandId, $vehicleId);
-            $this->magentoCategories[base64_encode($name)] = $vehicleId;
-        } else {
-            $vehicleId = $this->magentoCategories[base64_encode($name)];
-        }
-        if (!array_key_exists(base64_encode($type), $this->magentoCategories)) { // Get or create type
-            $typeId = $this->getSpecificMagentoCategory('name', $type);
-            $typeId = $this->createUpdateCategory($type, $metaTitle, $metaDescription, $vehicleId, $typeId);
-            $this->magentoCategories[base64_encode($type)] = $typeId;
         }
     }
 
@@ -414,6 +354,7 @@ class MappingHelper
     private function deleteCategoriesFromIds($categories)
     {
         foreach ($categories as $cat) {
+            /** @var Category $cat */
             if ($cat->getProductCount() <= 0) {
                 $name = $cat->getName();
                 $cat->delete();

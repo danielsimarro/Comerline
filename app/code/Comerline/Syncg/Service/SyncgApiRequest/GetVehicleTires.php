@@ -18,11 +18,9 @@ class GetVehicleTires extends SyncgApiService
     protected $method = Request::HTTP_METHOD_POST;
 
     private DirectoryList $dir;
-    private array $vehiclesTires;
     private array $vehiclesTiresGroup;
     private string $prefixLog;
 
-    const VEHICLE_TIRE_FILE = 'vehicle_tire.csv';
     const VEHICLE_TIRE_GROUP_FILE = 'vehicle_tire_group.csv';
 
     public function __construct(
@@ -38,14 +36,6 @@ class GetVehicleTires extends SyncgApiService
         $this->dir = $dir;
         $this->vehiclesTiresGroup = [];
         parent::__construct($configHelper, $json, $responseFactory, $clientFactory, $logger);
-    }
-
-    /**
-     * @return array
-     */
-    public function getVehiclesTires(): array
-    {
-        return $this->vehiclesTires;
     }
 
     /**
@@ -85,26 +75,19 @@ class GetVehicleTires extends SyncgApiService
         $this->buildParams($page);
         $response = $this->execute();
         if (!$this->existCache()) { // No exists cache, call api
-            $vehicleTireFile = $this->dir->getPath('media') . '/' . self::VEHICLE_TIRE_FILE;
-            $vehicleTireGroupFile = $this->dir->getPath('media') . '/' . self::VEHICLE_TIRE_GROUP_FILE;
-            $handle = fopen($vehicleTireFile, 'w');
             while ($response && isset($response['listado']) && $response['listado']) {
                 $list = $response['listado'];
                 foreach ($list as $row) {
                     $vehicleTire = $this->mountItemVehicleTireApi($row);
-                    fputcsv($handle, $vehicleTire, ';');
                     $this->logger->info(new Phrase($this->prefixLog . ' Page ' . $page . ' ' . $contItems . ' | ' . $vehicleTire['marca'] . ' ' . $vehicleTire['modelo'] . ' ' . $vehicleTire['type']));
-                    $this->vehiclesTires[] = $vehicleTire;
                     $this->groupVehiclesTires($vehicleTire);
                     $contItems++;
                 }
                 $page++;
-//                if ($page > 3) {
-//                    break; // @todo for testing
-//                }
                 $this->buildParams($page);
                 $response = $this->execute();
             }
+            $vehicleTireGroupFile = $this->dir->getPath('media') . '/' . self::VEHICLE_TIRE_GROUP_FILE;
             $handle = fopen($vehicleTireGroupFile, 'w');
             foreach ($this->vehiclesTiresGroup as $group) {
                 $group['anclaje_group'] = implode(',', $group['anclaje_group']);
@@ -117,19 +100,12 @@ class GetVehicleTires extends SyncgApiService
     }
 
     private function readCache() {
-        $vehicleTireFile = $this->dir->getPath('media') . '/' . self::VEHICLE_TIRE_FILE;
         $vehicleTireGroupFile = $this->dir->getPath('media') . '/' . self::VEHICLE_TIRE_GROUP_FILE;
-        if (($handle = fopen($vehicleTireFile, "r")) !== false) {
-            while (($data = fgetcsv($handle, 1000, ";")) !== false) {
-                $this->vehiclesTires[] = $this->mountItemVehicleTireCache($data);
-            }
-            fclose($handle);
-        }
-
         if (($handle = fopen($vehicleTireGroupFile, "r")) !== false) {
             while (($data = fgetcsv($handle, 1000, ";")) !== false) {
                 $item = $this->mountItemVehicleTireGroupCache($data);
-                $this->vehiclesTiresGroup[$item['type']] = $item;
+                $key = base64_encode($item['type']);
+                $this->vehiclesTiresGroup[$key] = $item;
             }
             fclose($handle);
         }
@@ -137,47 +113,41 @@ class GetVehicleTires extends SyncgApiService
 
     private function existCache()
     {
-        $cache = false;
-        try {
-            $vehicleTireFile = $this->dir->getPath('media') . '/' . self::VEHICLE_TIRE_FILE;
-            $vehicleTireGroupFile = $this->dir->getPath('media') . '/' . self::VEHICLE_TIRE_GROUP_FILE;
-            $vehicleTireFile = fopen($vehicleTireFile, 'r');
-            $vehicleTireGroupFile = fopen($vehicleTireGroupFile, 'r');
-            if ($vehicleTireFile && $vehicleTireGroupFile) {
-                $cache = true;
-            }
-        } catch (Exception $e) {
+        $vehicleTireGroupFile = $this->dir->getPath('media') . '/' . self::VEHICLE_TIRE_GROUP_FILE;
+        $exists = file_exists($vehicleTireGroupFile) && is_file($vehicleTireGroupFile);
+        if (!$exists) {
             $this->logger->error(new Phrase($this->prefixLog . ' No cache file.'));
         }
-        return $cache;
+        return $exists;
     }
 
     private function groupVehiclesTires($vehicleTire)
     {
         $measures = ['ancho', 'diametro', 'et'];
         $type = $vehicleTire['type'];
-        if (!array_key_exists($type, $this->vehiclesTiresGroup)) {
-            $this->vehiclesTiresGroup[$type] = $vehicleTire;
+        $key = base64_encode($type);
+        if (!array_key_exists($key, $this->vehiclesTiresGroup)) {
+            $this->vehiclesTiresGroup[$key] = $vehicleTire;
             foreach ($measures as $measure) {
-                $this->vehiclesTiresGroup[$type][$measure . '_min'] = 0;
-                $this->vehiclesTiresGroup[$type][$measure . '_max'] = 0;
+                $this->vehiclesTiresGroup[$key][$measure . '_min'] = 0;
+                $this->vehiclesTiresGroup[$key][$measure . '_max'] = 0;
             }
         }
         // Add attributes
         foreach ($measures as $measure) {
             $valor = floatval($vehicleTire[$measure]);
-            $min = $this->vehiclesTiresGroup[$type][$measure . '_min'];
-            $max = $this->vehiclesTiresGroup[$type][$measure . '_max'];
+            $min = $this->vehiclesTiresGroup[$key][$measure . '_min'];
+            $max = $this->vehiclesTiresGroup[$key][$measure . '_max'];
             if (!$min || $valor < $min) {
-                $this->vehiclesTiresGroup[$type][$measure . '_min'] = $valor;
+                $this->vehiclesTiresGroup[$key][$measure . '_min'] = $valor;
             }
             if ($valor > $max) {
-                $this->vehiclesTiresGroup[$type][$measure . '_max'] = $valor;
+                $this->vehiclesTiresGroup[$key][$measure . '_max'] = $valor;
             }
         }
         $anclaje = $vehicleTire['anclaje'];
-        if (!isset($this->vehiclesTiresGroup[$type]['anclaje_group']) || !in_array($anclaje, $this->vehiclesTiresGroup[$type]['anclaje_group'])) {
-            $this->vehiclesTiresGroup[$type]['anclaje_group'][] = $anclaje;
+        if (!isset($this->vehiclesTiresGroup[$key]['anclaje_group']) || !in_array($anclaje, $this->vehiclesTiresGroup[$key]['anclaje_group'])) {
+            $this->vehiclesTiresGroup[$key]['anclaje_group'][] = $anclaje;
         }
     }
 
@@ -198,21 +168,6 @@ class GetVehicleTires extends SyncgApiService
         $vehicleTire['diametro'] = $row['c_7'];
         $vehicleTire['et'] = $row['c_8'];
         $vehicleTire['anclaje'] = $row['c_9'];
-        return $vehicleTire;
-    }
-
-    private function mountItemVehicleTireCache($row): array
-    {
-        $vehicleTire = [];
-        $vehicleTire['marca'] = $row[0];
-        $vehicleTire['modelo'] = $row[1];
-        $vehicleTire['ano'] = $row[2];
-        $vehicleTire['name'] = $row[3];
-        $vehicleTire['type'] = $row[4];
-        $vehicleTire['ancho'] = floatval($row[5]);
-        $vehicleTire['diametro'] = floatval($row[6]);
-        $vehicleTire['et'] = floatval($row[7]);
-        $vehicleTire['anclaje'] = $row[8];
         return $vehicleTire;
     }
 

@@ -17,13 +17,14 @@ use Magento\Catalog\Api\ProductRepositoryInterface;
 use Magento\Catalog\Model\Category;
 use Magento\Catalog\Model\CategoryFactory;
 use Magento\Catalog\Model\Product\Gallery\Processor;
+use Magento\Catalog\Model\Product\Visibility;
 use Magento\Catalog\Model\ResourceModel\Category\CollectionFactory as CategoryCollectionFactory;
 use Magento\Catalog\Model\ResourceModel\Eav\Attribute as EavModel;
 use Magento\Catalog\Model\ResourceModel\Product as ProductResource;
 use Magento\ConfigurableProduct\Model\Product\Type\Configurable;
-use Magento\Eav\Model\Entity\Attribute\SetFactory as AttributeSetFactory;
 use Magento\Eav\Model\ResourceModel\Entity\Attribute\Set\CollectionFactory as AttributeCollectionFactory;
 use Magento\Framework\App\ObjectManager;
+use Magento\Framework\Exception\AlreadyExistsException;
 use Magento\Framework\Exception\InputException;
 use Magento\Framework\Exception\NoSuchEntityException;
 use Magento\Framework\Filesystem\DirectoryList;
@@ -33,7 +34,6 @@ use Magento\Framework\Webapi\Rest\Request;
 use Magento\Store\Model\StoreManagerInterface;
 use PHPUnit\Exception;
 use Psr\Log\LoggerInterface;
-use Magento\Framework\Stdlib\DateTime\DateTime as DatetimeGmt;
 
 class GetArticles extends SyncgApiService
 {
@@ -46,11 +46,6 @@ class GetArticles extends SyncgApiService
     protected $config;
 
     /**
-     * @var SyncgStatus
-     */
-    private $syncgStatus;
-
-    /**
      * @var CollectionFactory
      */
     private $syncgStatusCollectionFactory;
@@ -59,11 +54,6 @@ class GetArticles extends SyncgApiService
      * @var SyncgStatusRepository
      */
     private $syncgStatusRepository;
-
-    /**
-     * @var
-     */
-    private $order;
 
     /**
      * @var ProductFactory
@@ -79,11 +69,6 @@ class GetArticles extends SyncgApiService
      * @var ProductResource
      */
     private $productResource;
-
-    /**
-     * @var AttributeSetFactory
-     */
-    private $attributeSetFactory;
 
     /**
      * @var AttributeHelper
@@ -147,20 +132,8 @@ class GetArticles extends SyncgApiService
     private $curlDownloadImage;
 
     private $baseUrlDownloadImage;
-    /**
-     * @var DatetimeGmt
-     */
-    private $dateTime;
-
-    private $description;
-
-    private $shortDescription;
 
     protected $sqlHelper;
-
-    private $useId;
-
-    private $type;
 
     public function __construct(
         Config                     $configHelper,
@@ -168,13 +141,11 @@ class GetArticles extends SyncgApiService
         ClientFactory              $clientFactory,
         ResponseFactory            $responseFactory,
         LoggerInterface            $logger,
-        SyncgStatus                $syncgStatus,
         CollectionFactory          $syncgStatusCollectionFactory,
         SyncgStatusRepository      $syncgStatusRepository,
         ProductFactory             $productFactory,
         ProductRepositoryInterface $productRepository,
         ProductResource            $productResource,
-        AttributeSetFactory        $attributeSetFactory,
         AttributeHelper            $attributeHelper,
         DirectoryList              $dir,
         CategoryCollectionFactory  $categoryCollectionFactory,
@@ -185,18 +156,15 @@ class GetArticles extends SyncgApiService
         Configurable               $configurable,
         Processor                  $imageProcessor,
         EavModel                   $eavModel,
-        DatetimeGmt                $dateTime,
         SQLHelper                  $sqlHelper
     )
     {
         $this->config = $configHelper;
-        $this->syncgStatus = $syncgStatus;
         $this->syncgStatusCollectionFactory = $syncgStatusCollectionFactory;
         $this->syncgStatusRepository = $syncgStatusRepository;
         $this->productFactory = $productFactory;
         $this->productRepository = $productRepository;
         $this->productResource = $productResource;
-        $this->attributeSetFactory = $attributeSetFactory;
         $this->attributeHelper = $attributeHelper;
         $this->dir = $dir;
         $this->categoryCollectionFactory = $categoryCollectionFactory;
@@ -208,7 +176,6 @@ class GetArticles extends SyncgApiService
         $this->logger = $logger;
         $this->imageProcessor = $imageProcessor;
         $this->eavModel = $eavModel;
-        $this->dateTime = $dateTime;
         $this->sqlHelper = $sqlHelper;
         $this->prefixLog = uniqid() . ' | G4100 Sync |';
         $this->baseUrlDownloadImage = $this->config->getGeneralConfig('installation_url') . 'api/g4100/image/';
@@ -251,9 +218,6 @@ class GetArticles extends SyncgApiService
 //                'order' => json_encode(["campo" => "cod", "orden" => "ASC"]) // @todo test
             ]),
         ];
-        $decoded = json_decode($this->params['body']);
-        $decoded = (array)$decoded;
-        $this->order = $decoded['order']; // We will need this to get the products correctly
     }
 
     private function processProductsApi(): bool
@@ -284,7 +248,6 @@ class GetArticles extends SyncgApiService
                     }
                     $attributeSetId = "";  // Variable where we will store the attribute set ID
                     $this->categories = $this->getMagentoCategories();
-                    $this->storeManager->setCurrentStore(0); // All store views
                     $countProductsG4100 = count($productsG4100);
 
                     for ($i = 0; $i < $countProductsG4100; $i++) {
@@ -309,7 +272,7 @@ class GetArticles extends SyncgApiService
                             $productAction = 'Edited';
                             if ($collectionSyncg->getSize() > 0) { // If the product already exists, that means we only have to update it
                                 foreach ($collectionSyncg as $itemSyncg) {
-                                    $product = $this->productRepository->getById($itemSyncg->getData('mg_id'), true); // We load the product in edit mode
+                                    $product = $this->productRepository->getById($itemSyncg->getData('mg_id'), true, 0); // We load the product in edit mode
                                 }
                             }
                             if (!$product) {
@@ -359,7 +322,6 @@ class GetArticles extends SyncgApiService
 
     private function processRelatedProducts() {
         $finishRelatedProducts = false;
-        $this->storeManager->setCurrentStore(0); // All store views
         $this->logger->info(new Phrase($this->prefixLog . ' Start Product Relations'));
         $timeStart = microtime(true);
         $relatedProducts = $this->sqlHelper->getPendingRelatedProducts();
@@ -462,7 +424,7 @@ class GetArticles extends SyncgApiService
         $originalId = $simpleProduct['id'];
         $simpleProduct['id'] .= '-' . $simpleProduct['cod']; // We add the ID to the code to avoid errors
         try {
-            $product = $this->productRepository->get($sku); // If the SKU exists, we load the product
+            $product = $this->productRepository->get($sku, true, 0); // If the SKU exists, we load the product
         } catch (NoSuchEntityException $e) {
             $product = false; // Otherwise, we have to create it
         }
@@ -500,8 +462,8 @@ class GetArticles extends SyncgApiService
             $product->setSku($this->makeSku($productG4100));
         }
         $product->setName($productG4100['descripcion']);
-        $product->setDescription($this->description);
-        $product->setShortDescription($this->shortDescription);
+        $product->setDescription($productG4100['desc_detallada']);
+        $product->setShortDescription($productG4100['desc_interna']);
         $product->setMetaTitle($productG4100['SEO_title']);
         $product->setMetaDescription($productG4100['SEO_description']);
         $product->setAttributeSetId($attributeSetId);
@@ -534,10 +496,10 @@ class GetArticles extends SyncgApiService
         if (!$product->getId()) { // New product
             $this->insertAttributes($productG4100, $product);
             if ($this->isProductG4100Configurable($productG4100)) {
-                $product->setVisibility(4);
+                $product->setVisibility(Visibility::VISIBILITY_BOTH);
                 $product->setTypeId('configurable');
             } else {
-                $product->setVisibility(1);
+                $product->setVisibility(Visibility::VISIBILITY_NOT_VISIBLE);
                 $product->setTypeId('simple');
             }
             // Set url
@@ -590,7 +552,7 @@ class GetArticles extends SyncgApiService
                 $attributeModels[] = $new;
                 try {
                     $attributeModel->setData($data)->save(); // We create the attribute model
-                } catch (\Magento\Framework\Exception\AlreadyExistsException $e) {
+                } catch (AlreadyExistsException $e) {
                     $this->logger->error($prefixLog . ' | Attribute model already exists. Skipping creation....'); // If the attribute model already exists, it throws an exception,
                 }                                                       // so we need to catch it to avoid execution from stopping
             }
