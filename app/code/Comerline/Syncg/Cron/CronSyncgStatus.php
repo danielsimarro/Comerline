@@ -19,6 +19,7 @@ class CronSyncgStatus
 
     public function execute()
     {
-        $this->syncgHelper->syncgAll();
+        // Disabled, execute with crontab manually
+        // $this->syncgHelper->syncgAll();
     }
 }
