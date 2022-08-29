@@ -154,7 +154,12 @@ class MappingHelper
                 if (!$differentCategories) {
                     $product->setStoreIds($this->allStoreIds); //Sometimes, product info would not save on admin
                     $product->setCategoryIds($setProductCategories);
-                    $this->productRepository->save($product);
+                    try {
+                        $this->productRepository->save($product);
+                    } catch (Exception $e) {
+                        $this->logger->warning(new Phrase($this->prefixLog . ' ' . $countProcessedProducts . '/' . $cont . ' Magento Product: ' . $product->getId() . ' | Categories not saved: ' . $e->getMessage()));
+                        continue;
+                    }
                     $this->logger->info(new Phrase($this->prefixLog . ' ' . $countProcessedProducts . '/' . $cont . ' Magento Product: ' . $product->getId() . ' | Product Categories Saved.'));
                 }
             }

@@ -5,6 +5,7 @@ namespace Comerline\Syncg\Service\SyncgApiRequest;
 use Comerline\Syncg\Model\SyncgStatus;
 use Comerline\Syncg\Service\SyncgApiService;
 use Comerline\Syncg\Model\ResourceModel\SyncgStatus\CollectionFactory;
+use Exception;
 use Magento\Catalog\Api\ProductRepositoryInterface;
 use Magento\Framework\Phrase;
 use Magento\Framework\Webapi\Rest\Request;
@@ -98,8 +99,13 @@ class GetStock extends SyncgApiService
                     'is_in_stock' => 1,
                     'qty' => $stock
                 ]);
+                try {
+                    $this->productRepository->save($product);
+                } catch (Exception $e) {
+                    $this->logger->warning(new Phrase($this->prefixLog . ' | Product G4100 ' . $productGId . ' | Product Mg ' . $itemSyncg->getData('mg_id') . ' | Not saved: ' . $e->getMessage()));
+                    continue;
+                }
                 $this->logger->info(new Phrase($this->prefixLog . ' | Product G4100 ' . $productGId . ' | Product Mg ' . $itemSyncg->getData('mg_id') . ' |  ' . $stock . ' saved'));
-                $this->productRepository->save($product);
             }
         }
     }
