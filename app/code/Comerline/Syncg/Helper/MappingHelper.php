@@ -7,7 +7,7 @@ use Comerline\Syncg\Service\SyncgApiRequest\Logout;
 use Exception;
 use Magento\Catalog\Api\Data\ProductInterface;
 use Magento\Catalog\Api\ProductRepositoryInterface;
-use Magento\Catalog\Model\Category;
+use Magento\Catalog\Model\ResourceModel\Category;
 use Magento\ConfigurableProduct\Model\Product\Type\Configurable;
 use Magento\Framework\Phrase;
 use Magento\Catalog\Model\ResourceModel\Product\CollectionFactory;
@@ -32,7 +32,6 @@ class MappingHelper
     private Configurable $configurable;
     private Config $config;
     private DateTime $dateTime;
-    private array $processedProducts;
     private array $groupCategories;
     private array $magentoCategories;
     private Registry $registry;
@@ -44,6 +43,7 @@ class MappingHelper
      * @var int[]|string[]
      */
     private array $allStoreIds;
+    private Category $categoryResource;
 
     public function __construct(
         LoggerInterface            $logger,
@@ -51,6 +51,7 @@ class MappingHelper
         CategoryCollectionFactory  $categoryCollectionFactory,
         StoreManagerInterface      $storeManager,
         CategoryFactory            $categoryFactory,
+        Category $categoryResource,
         ProductRepositoryInterface $productRepository,
         Configurable               $configurable,
         Config                     $configHelper,
@@ -64,6 +65,7 @@ class MappingHelper
         $this->logger = $logger;
         $this->categoryCollectionFactory = $categoryCollectionFactory;
         $this->productCollectionFactory = $productCollectionFactory;
+        $this->categoryResource = $categoryResource;
         $this->storeManager = $storeManager;
         $this->allStoreIds = array_keys($storeManager->getStores(true));
         $this->categoryFactory = $categoryFactory;
@@ -102,8 +104,7 @@ class MappingHelper
             $this->groupCategories = $this->getVehiclesTires->getVehiclesTiresGroup();
             $this->createCategories();
             $this->mapProductCategories(); // We traverse through the collection and in an array we map the categories to the products
-            $this->assignCategoriesToProducts($this->processedProducts); // We traverse through the array and save the products with their new categories
-            $this->deleteEmptyCategories();
+            $this->deleteCategories();
             $this->logger->info(new Phrase($this->prefixLog . ' Rim <-> Car Mapping End.'));
             $this->config->setLastDateMappingCategories($this->dateTime->gmtDate());
             $this->logger->info(new Phrase($this->prefixLog . ' Finished Rim <-> Car Mapping ' . $this->getTrackTime($timeStart)));
@@ -116,52 +117,49 @@ class MappingHelper
         $collection = $this->productCollectionFactory->create()
             ->addAttributeToSelect('*')
             ->addAttributeToFilter('status', Status::STATUS_ENABLED);
+
         $cont = 0;
+        $processedProducts = [];
         foreach ($collection as $product) {
             $cont++;
             $this->logger->info(new Phrase($this->prefixLog . ' ' . count($collection) . '/' . $cont . ' | Magento Product: ' . $product->getId() . ' | Loaded.'));
             $productId = $product->getId(); // We get the product ID
             $productCategories = $this->checkAttributes($product); // We get the new categories of this product
-            if ($productCategories) {
-                $this->processedProducts[$productId] = $productCategories; // We assign them to its array position
+            if ($productCategories !== null) {
+                $processedProducts[$productId] = $productCategories; // We assign them to its array position
                 $parentIds = $this->configurable->getParentIdsByChild($product->getId()); // We check if the product has a parent
                 if ($parentIds) { // If it does....
                     foreach ($parentIds as $parentId) {
-                        if (array_key_exists($parentId, $this->processedProducts)) {
-                            $this->processedProducts[$parentId] = array_unique(array_merge($this->processedProducts[$parentId], $productCategories)); // We add the child categories to the parent product
+                        if (array_key_exists($parentId, $processedProducts)) {
+                            $processedProducts[$parentId] = array_unique(array_merge($processedProducts[$parentId], $productCategories)); // We add the child categories to the parent product
                         } else {
-                            $this->processedProducts[$parentId] = $productCategories;
+                            $processedProducts[$parentId] = $productCategories;
                         }
                     }
                 }
             }
         }
-    }
 
-    private function assignCategoriesToProducts($processedProducts)
-    {
         $cont = 0;
+        $countProcessedProducts = count($processedProducts);
         foreach ($processedProducts as $productId => $productCategories) {
-            $countProcessedProducts = count($processedProducts);
             $cont++;
-            if ($productCategories) {
-                $product = $this->productRepository->getById($productId, true, 0); // We need to load the
-                // product in edit mode, otherwise the categories will not be saved
-                $currentProductCategories = $product->getCategoryIds();
-                $setProductCategories = array_unique(array_merge($currentProductCategories, $productCategories)); // To keep the categories
-                // existing in the product, we merge the arrays with array_unique
-                $differentCategories = !array_diff($productCategories, $currentProductCategories);
-                if (!$differentCategories) {
-                    $product->setStoreIds($this->allStoreIds); //Sometimes, product info would not save on admin
-                    $product->setCategoryIds($setProductCategories);
-                    try {
-                        $this->productRepository->save($product);
-                    } catch (Exception $e) {
-                        $this->logger->warning(new Phrase($this->prefixLog . ' ' . $countProcessedProducts . '/' . $cont . ' Magento Product: ' . $product->getId() . ' | Categories not saved: ' . $e->getMessage()));
-                        continue;
-                    }
-                    $this->logger->info(new Phrase($this->prefixLog . ' ' . $countProcessedProducts . '/' . $cont . ' Magento Product: ' . $product->getId() . ' | Product Categories Saved.'));
+            $productCategories = array_filter($productCategories);
+            $product = $collection->getItemById($productId);
+            $currentProductCategories = $product->getCategoryIds();
+            $setProductCategories = array_unique(array_merge($currentProductCategories, $productCategories)); // To keep the categories
+            // existing in the product, we merge the arrays with array_unique
+            $sameCategories = !array_diff($productCategories, $currentProductCategories);
+            if (!$sameCategories) {
+                $product->setStoreIds($this->allStoreIds); //Sometimes, product info would not save on admin
+                $product->setCategoryIds($setProductCategories);
+                try {
+                    $this->productRepository->save($product);
+                } catch (Exception $e) {
+                    $this->logger->warning(new Phrase($this->prefixLog . ' ' . $countProcessedProducts . '/' . $cont . ' Magento Product: ' . $productId . ' | Categories not saved: ' . $e->getMessage()));
+                    continue;
                 }
+                $this->logger->info(new Phrase($this->prefixLog . ' ' . $countProcessedProducts . '/' . $cont . ' Magento Product: ' . $productId . ' | Product Categories Saved.'));
             }
         }
     }
@@ -181,14 +179,14 @@ class MappingHelper
         return array_combine($attributeKeys, $attributes);
     }
 
-    private function checkAttributes($product): array
+    private function checkAttributes($product): ?array
     {
         $attributes = $this->getAttributeTexts($product);
-        $categoryIds = [];
         $mountingAttribute = $product->getAttributeText('mounting'); //Anclaje?
         if (!$mountingAttribute) {
-            return $categoryIds;
+            return null;
         }
+        $vehicleCategoryIds = [];
         foreach ($this->groupCategories as $groupCategory) {
             $minMaxValid = true;
             foreach ($attributes as $key => $value) { //Product measurements must be between ranges.
@@ -200,11 +198,11 @@ class MappingHelper
                 }
             }
             if ($minMaxValid && $this->isMatchingMounting($groupCategory['anclaje_group'], $mountingAttribute)) {
-                //Keep existing product categories.
-                $categoryIds = array_unique(array_merge($product->getCategoryIds(), $this->getCategoryIds($groupCategory)));
+                $vehicleCategoryIds = array_merge($vehicleCategoryIds, $this->getCategoryIds($groupCategory)); //Add to array.
             }
         }
-        return $categoryIds;
+        //Keep existing categories and merge with vehicle group categories.
+        return array_unique(array_merge($product->getCategoryIds(), $vehicleCategoryIds));
     }
 
     private function isMatchingMounting($anclajes, $attribute): bool
@@ -337,8 +335,22 @@ class MappingHelper
         return $categoryId;
     }
 
-    public function deleteEmptyCategories()
+    private function getCategoryProductCountFast(): array
     {
+        $connection = $this->categoryResource->getConnection();
+        $select = $connection->select()
+            ->from(
+                ['main_table' => $this->categoryResource->getCategoryProductTable()],
+                ['category_id', new \Zend_Db_Expr('COUNT(product_id) as c')]
+            )
+            ->group(['category_id']);
+        $array = $connection->fetchAll($select);
+        return array_combine(array_column($array, 'category_id'), $array);
+    }
+
+    public function deleteCategories($all = false)
+    {
+        $categoriesWithProducts = $this->getCategoryProductCountFast();
         $this->logger->info(new Phrase($this->prefixLog . ' Deleting Empty Categories - Start.'));
         $parentId = $this->getSpecificMagentoCategory('name', 'Por Vehículo');
         $parentCategory = $this->categoryFactory->create()->load($parentId);
@@ -348,19 +360,19 @@ class MappingHelper
         $this->registry->register('isSecureArea', true); // With this we can delete the categories without problem
 
         $this->logger->info(new Phrase($this->prefixLog . ' Deleting Empty "Year" categories.'));
-        $this->deleteCategoriesFromIds($yearCategories);
+        $this->deleteCategoriesFromIds($yearCategories, $categoriesWithProducts, $all);
         $this->logger->info(new Phrase($this->prefixLog . ' Deleting Empty "Model" categories.'));
-        $this->deleteCategoriesFromIds($modelCategories);
+        $this->deleteCategoriesFromIds($modelCategories, $categoriesWithProducts, $all);
         $this->logger->info(new Phrase($this->prefixLog . ' Deleting Empty "Brand" categories.'));
-        $this->deleteCategoriesFromIds($brandCategories);
+        $this->deleteCategoriesFromIds($brandCategories, $categoriesWithProducts, $all);
         $this->logger->info(new Phrase($this->prefixLog . ' Deleting Empty Categories - Finish.'));
     }
 
-    private function deleteCategoriesFromIds($categories)
+    private function deleteCategoriesFromIds($categories, $categoriesDB, $deleteAll = false)
     {
         foreach ($categories as $cat) {
-            /** @var Category $cat */
-            if ($cat->getProductCount() <= 0) {
+            $count = (int) (isset($categoriesDB[$cat->getId()])) ? $categoriesDB[$cat->getId()]['c'] : 0;
+            if ($deleteAll || $count <= 0) {
                 $name = $cat->getName();
                 $cat->delete();
                 $this->logger->info(new Phrase($this->prefixLog . ' Deleted Category ' . $name . '.'));

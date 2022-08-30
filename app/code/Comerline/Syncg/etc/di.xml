@@ -4,20 +4,10 @@
         <arguments>
             <argument name="commands" xsi:type="array">
                 <item name="comerlineRunSyncg" xsi:type="object">Comerline\Syncg\Console\ComerlineSyncg</item>
-            </argument>
-        </arguments>
-    </type>
-    <type name="Magento\Framework\Console\CommandList">
-        <arguments>
-            <argument name="commands" xsi:type="array">
                 <item name="comerlineRunSyncgStock" xsi:type="object">Comerline\Syncg\Console\ComerlineSyncgStock</item>
-            </argument>
-        </arguments>
-    </type>
-    <type name="Magento\Framework\Console\CommandList">
-        <arguments>
-            <argument name="commands" xsi:type="array">
                 <item name="comerlineRunMappingSystem" xsi:type="object">Comerline\Syncg\Console\ComerlineMappingSystem</item>
+                <item name="comerlineResetInProgress" xsi:type="object">Comerline\Syncg\Console\ComerlineResetInProgress</item>
+                <item name="comerlineResetCategories" xsi:type="object">Comerline\Syncg\Console\ComerlineResetCategories</item>
             </argument>
         </arguments>
     </type>
