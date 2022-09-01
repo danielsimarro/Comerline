@@ -2,23 +2,23 @@
 
 namespace Comerline\Syncg\Helper;
 
+use Comerline\Syncg\Service\SyncgApiRequest\GetVehicleTires;
 use Comerline\Syncg\Service\SyncgApiRequest\Login;
 use Comerline\Syncg\Service\SyncgApiRequest\Logout;
 use Exception;
 use Magento\Catalog\Api\Data\ProductInterface;
 use Magento\Catalog\Api\ProductRepositoryInterface;
+use Magento\Catalog\Model\CategoryFactory;
+use Magento\Catalog\Model\Product\Attribute\Source\Status;
 use Magento\Catalog\Model\ResourceModel\Category;
+use Magento\Catalog\Model\ResourceModel\Category\CollectionFactory as CategoryCollectionFactory;
+use Magento\Catalog\Model\ResourceModel\Product\CollectionFactory;
 use Magento\ConfigurableProduct\Model\Product\Type\Configurable;
 use Magento\Framework\Phrase;
-use Magento\Catalog\Model\ResourceModel\Product\CollectionFactory;
-use Magento\Catalog\Model\ResourceModel\Category\CollectionFactory as CategoryCollectionFactory;
 use Magento\Framework\Registry;
 use Magento\Framework\Stdlib\DateTime\DateTime;
-use Psr\Log\LoggerInterface;
-use Magento\Catalog\Model\Product\Attribute\Source\Status;
 use Magento\Store\Model\StoreManagerInterface;
-use Magento\Catalog\Model\CategoryFactory;
-use Comerline\Syncg\Service\SyncgApiRequest\GetVehicleTires;
+use Psr\Log\LoggerInterface;
 
 class MappingHelper
 {
@@ -38,10 +38,6 @@ class MappingHelper
     private GetVehicleTires $getVehiclesTires;
     private Login $login;
     private Logout $logout;
-
-    /**
-     * @var int[]|string[]
-     */
     private array $allStoreIds;
     private Category $categoryResource;
 

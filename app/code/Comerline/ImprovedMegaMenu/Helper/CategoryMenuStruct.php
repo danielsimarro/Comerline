@@ -2,86 +2,121 @@
 
 namespace Comerline\ImprovedMegaMenu\Helper;
 
-use Magento\Catalog\Model\CategoryRepository;
-use \Magento\Framework\App\Helper\AbstractHelper;
+use Magento\Catalog\Model\Category as CategoryModel;
+use Magento\Catalog\Model\ResourceModel\Category;
+use Magento\Framework\App\Helper\AbstractHelper;
 use Magento\Framework\App\Helper\Context;
-use Magento\Framework\Exception\NoSuchEntityException;
+use Magento\Framework\UrlInterface;
 use Magento\Store\Model\ScopeInterface;
+use Magento\Store\Model\StoreManagerInterface;
 use Sm\MegaMenu\Model\Config\Source\Align;
 use Sm\MegaMenu\Model\Config\Source\Status;
 use Sm\MegaMenu\Model\Config\Source\Type;
+use Sm\MegaMenu\Model\ResourceModel\MenuItems\CollectionFactory as MenuItemsCollection;
 
 class CategoryMenuStruct extends AbstractHelper
 {
-    private CategoryRepository $categoryRepository;
-    private $categoryStruct = null;
+    const ID_PREFIX = '_cat_';
+
+    private MenuItemsCollection $menuItemsCollection;
+    private Category $categoryResourceModel;
+    private string $baseUrl;
 
     public function __construct(
         Context $context,
-        CategoryRepository $categoryRepository
+        MenuItemsCollection $menuItemsCollection,
+        Category $categoryResourceModel,
+        StoreManagerInterface $storeManager
     ) {
         parent::__construct($context);
-        $this->categoryRepository = $categoryRepository;
+        $this->menuItemsCollection = $menuItemsCollection;
+        $this->categoryResourceModel = $categoryResourceModel;
+        $this->baseUrl = $storeManager->getStore()->getBaseUrl(UrlInterface::URL_TYPE_WEB);
     }
 
-    private function loadCategoriesChildLeaf($subCategories, $depthLevel, $parentCategoryId)
+    private function calculateDepth(int $baseDepth, array $categoryPathIds, $parentVehicleCategoryId)
     {
-        foreach ($subCategories as $category) {
-            $mockCategoryId = '_cat_' . $category->getId();
-            $this->categoryStruct[] = [
-                'items_id' => $mockCategoryId,
-                'title' => $category->getName(),
-                'data_type' => 'category/' . $category->getId(),
-                'show_title' => '1',
-                'description' => null,
-                'align' => (string) Align::LEFT,
-                'icon_url' => '',
-                'content' => null,
-                'custom_class' => '',
-                'position_item' => '2',
-                'priorities' => '1',
-                'target' => '0', //Used for urls. Using default functionality.
-                'type' => (string) Type::CATEGORY,
-                'status' => (string) Status::STATUS_ENABLED,
-                'depth' => (string) $depthLevel,
-                'group_id' => '2', //TODO: See if theres any way to obtain the current level easily.
-                'cols_nb' => '2', //Using 2 from current data.
-                'parent_id' => $parentCategoryId,
-                'order_item' => (string) count($this->categoryStruct),
-                'show_image_product' => '0',
-                'show_title_product' => '0',
-                'show_rating_product' => '0',
-                'show_price_product' => '0',
-                'show_title_category' => (string) Status::STATUS_DISABLED,
-                'limit_category' => '',
-                'show_sub_category' => (string) Status::STATUS_ENABLED,
-                'limit_sub_category' => '',
-            ];
-            $children = $category->getChildrenCategories();
-            if ($children) {
-                $this->loadCategoriesChildLeaf($children, $depthLevel + 1, $mockCategoryId);
-            }
-        }
+        $baseKey = array_search($parentVehicleCategoryId, $categoryPathIds);
+        $lastKey = array_key_last($categoryPathIds);
+        return $baseDepth + ($lastKey - $baseKey);
     }
 
     private function loadCategories()
     {
-        $this->categoryStruct = [];
-        $initialMockDepth = 2; //This is menu item depth + 1.
         $parentVehicleCategoryId = $this->scopeConfig->getValue('improvedmegamenu/main_config/category_id', ScopeInterface::SCOPE_STORE);
         $parentMenuItemId = $this->scopeConfig->getValue('improvedmegamenu/main_config/menu_item_id', ScopeInterface::SCOPE_STORE);
         if (!$parentVehicleCategoryId || !$parentMenuItemId) {
             return;
         }
-        try {
-            $vehiclesCategory = $this->categoryRepository->get($parentVehicleCategoryId);
-        } catch (NoSuchEntityException $e) {
+        $parentMenuItem = $this->menuItemsCollection->create()->getItemById($parentMenuItemId);
+        if (!$parentMenuItem) {
             return;
         }
-        $subCategories = $vehiclesCategory->getChildrenCategories();
-        if ($subCategories) {
-            $this->loadCategoriesChildLeaf($subCategories, $initialMockDepth, $parentMenuItemId);
+        $categoryStruct = [];
+        $categoryChildren = [];
+        $subCategories = $this->categoryResourceModel->getCategories($parentVehicleCategoryId, 0, true, true, true);
+        if ($subCategories && $subCategories->count()) {
+            $baseMenuItemDepth = (int) $parentMenuItem['depth'];
+            $baseMenuItemOrder = $parentMenuItem['order_item']; //Increment each insertion.
+            $baseMenuItemPriorities = $parentMenuItem['priorities']; //Increment each insertion.
+            $baseMenuItemGroup = $parentMenuItem['group_id']; //Keep as-is.
+            $baseMenuItemPosition = $parentMenuItem['position_item']; //Keep as-is.
+            $currOrder = $baseMenuItemOrder;
+            $currPriorities = $baseMenuItemPriorities;
+            foreach ($subCategories as $category) {
+                /** @var $category CategoryModel */
+                $categoryStruct[] = [
+                    'items_id' => self::ID_PREFIX . $category->getId(),
+                    'title' => $category->getName(),
+                    'level' => $category->getData('level') ?? '',
+                    'data_type' => 'category/' . $category->getId(),
+                    'data_type_url' => $this->baseUrl . $category->getRequestPath(), //Extra attribute.
+                    'show_title' => '1',
+                    'description' => null,
+                    'align' => Align::LEFT,
+                    'icon_url' => '',
+                    'content' => null,
+                    'custom_class' => '',
+                    'position_item' => $baseMenuItemPosition,
+                    'priorities' => $currPriorities++,
+                    'target' => '0', //Used for urls. Using default functionality.
+                    'type' => Type::CATEGORY,
+                    'status' => Status::STATUS_ENABLED,
+                    'depth' => $this->calculateDepth($baseMenuItemDepth, $category->getPathIds(), $parentVehicleCategoryId),
+                    'group_id' => $baseMenuItemGroup,
+                    'cols_nb' => '2', //Using 2 from current data.
+                    'parent_id' => ($category->getParentId() == $parentVehicleCategoryId) ? $parentMenuItemId : (self::ID_PREFIX . $category->getParentId()),
+                    'order_item' => $currOrder++,
+                    'show_image_product' => '0',
+                    'show_title_product' => '0',
+                    'show_rating_product' => '0',
+                    'show_price_product' => '0',
+                    'show_title_category' => Status::STATUS_DISABLED,
+                    'limit_category' => '',
+                    'show_sub_category' => Status::STATUS_ENABLED,
+                    'limit_sub_category' => '',
+                    'view_category_id' => $category->getId()
+                ];
+                $categoryChildren[$category->getParentId()][] = $category->getId();
+            }
         }
+
+        //Find child categories in already loaded data.
+        foreach ($categoryStruct as $key => $menuItem) {
+            $categoryId = $menuItem['view_category_id'] ?? null;
+            if ($categoryId !== null) {
+                $categoryStruct[$key]['view_children_category_ids'] = $categoryChildren[$categoryId] ?? [];
+            }
+        }
+        return $categoryStruct;
+    }
+
+    private function loadAllMenuItems() {
+        return $this->menuItemsCollection->create()
+            ->setOrder('title', 'ASC')
+            ->setOrder('order_item', 'ASC')
+            ->setOrder('priorities', 'ASC')
+            ->getData();
     }
 
     /**
@@ -90,10 +125,13 @@ class CategoryMenuStruct extends AbstractHelper
      */
     public function fetchAll()
     {
-        if ($this->categoryStruct === null) {
-            $this->loadCategories();
+        global $_comerline_sm_menu_items;
+        $categoryStruct = $_comerline_sm_menu_items ?? [];
+        if (!$categoryStruct) {
+            $categoryStruct = array_merge($this->loadAllMenuItems(), $this->loadCategories());
+            $_comerline_sm_menu_items = $categoryStruct;
         }
-        return $this->categoryStruct ?? [];
+        return $categoryStruct ?? [];
     }
 
     /**
@@ -105,7 +143,7 @@ class CategoryMenuStruct extends AbstractHelper
     {
         $categories = $this->fetchAll();
         foreach ($where as $field => $value) {
-            $keystoKeep = array_keys(array_column($categories, $field), $value);
+            $keystoKeep = array_keys(array_combine(array_keys($categories),array_column($categories, $field)), $value);
             $categories = array_filter(
                 $categories,
                 function ($key) use ($keystoKeep) {
@@ -115,5 +153,33 @@ class CategoryMenuStruct extends AbstractHelper
             );
         }
         return $categories;
+    }
+
+    /**
+     * Get loaded children of category.
+     * @param $id
+     * @return array|mixed
+     */
+    public function fetchChildrenIds($id)
+    {
+        $categories = $this->fetchAll();
+        $categories = array_filter($categories, function ($item) use ($id) {
+            return $item['data_type'] == 'category/' . $id;
+        });
+        return $categories[array_key_first($categories)]['view_children_category_ids'] ?? [];
+    }
+
+    /**
+     * Get loaded children of category.
+     * @param $id
+     * @return array|mixed
+     */
+    public function fetchLoadedMenuItemById($id)
+    {
+        $categories = $this->fetchAll();
+        $categories = array_filter($categories, function ($item) use ($id) {
+            return $item['data_type'] == 'category/' . $id;
+        });
+        return $categories[array_key_first($categories)] ?? null;
     }
 }

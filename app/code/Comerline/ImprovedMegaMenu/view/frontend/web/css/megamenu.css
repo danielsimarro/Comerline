@@ -2,6 +2,10 @@
     display: none;
 }
 
+.sm_megamenu_title_lv-3 {
+    display: none;
+}
+
 .sm_megamenu_title_lv-4 {
     padding: 3px 6px !important;
 }
