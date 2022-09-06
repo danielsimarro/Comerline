@@ -16,6 +16,7 @@ use Magento\Catalog\Api\Data\ProductInterfaceFactory as ProductFactory;
 use Magento\Catalog\Api\ProductRepositoryInterface;
 use Magento\Catalog\Model\Category;
 use Magento\Catalog\Model\CategoryFactory;
+use Magento\Catalog\Model\Product;
 use Magento\Catalog\Model\Product\Gallery\Processor;
 use Magento\Catalog\Model\Product\Visibility;
 use Magento\Catalog\Model\ResourceModel\Category\CollectionFactory as CategoryCollectionFactory;
@@ -679,6 +680,7 @@ class GetArticles extends SyncgApiService
 
     private function insertAttributes($attributes, $product)
     {
+        /** @var Product $product */
         if ($attributes) { // If this is exists, that means we have attributes
             $attributesMap = $this->getAttributesMap();
             foreach ($attributesMap as $attributeG4100 => $attributeMg) {

@@ -112,7 +112,8 @@ class MappingHelper
     {
         $collection = $this->productCollectionFactory->create()
             ->addAttributeToSelect('*')
-            ->addAttributeToFilter('status', Status::STATUS_ENABLED);
+            ->addAttributeToFilter('status', Status::STATUS_ENABLED)
+            ->load();
 
         $cont = 0;
         $processedProducts = [];
@@ -142,20 +143,22 @@ class MappingHelper
             $cont++;
             $productCategories = array_filter($productCategories);
             $product = $collection->getItemById($productId);
-            $currentProductCategories = $product->getCategoryIds();
-            $setProductCategories = array_unique(array_merge($currentProductCategories, $productCategories)); // To keep the categories
-            // existing in the product, we merge the arrays with array_unique
-            $sameCategories = !array_diff($productCategories, $currentProductCategories);
-            if (!$sameCategories) {
-                $product->setStoreIds($this->allStoreIds); //Sometimes, product info would not save on admin
-                $product->setCategoryIds($setProductCategories);
-                try {
-                    $this->productRepository->save($product);
-                } catch (Exception $e) {
-                    $this->logger->warning(new Phrase($this->prefixLog . ' ' . $countProcessedProducts . '/' . $cont . ' Magento Product: ' . $productId . ' | Categories not saved: ' . $e->getMessage()));
-                    continue;
+            if ($product) {
+                $currentProductCategories = $product->getCategoryIds();
+                $setProductCategories = array_unique(array_merge($currentProductCategories, $productCategories)); // To keep the categories
+                // existing in the product, we merge the arrays with array_unique
+                $sameCategories = !array_diff($productCategories, $currentProductCategories);
+                if (!$sameCategories) {
+                    $product->setStoreIds($this->allStoreIds); //Sometimes, product info would not save on admin
+                    $product->setCategoryIds($setProductCategories);
+                    try {
+                        $this->productRepository->save($product);
+                    } catch (Exception $e) {
+                        $this->logger->warning(new Phrase($this->prefixLog . ' ' . $countProcessedProducts . '/' . $cont . ' Magento Product: ' . $productId . ' | Categories not saved: ' . $e->getMessage()));
+                        continue;
+                    }
+                    $this->logger->info(new Phrase($this->prefixLog . ' ' . $countProcessedProducts . '/' . $cont . ' Magento Product: ' . $productId . ' | Product Categories Saved.'));
                 }
-                $this->logger->info(new Phrase($this->prefixLog . ' ' . $countProcessedProducts . '/' . $cont . ' Magento Product: ' . $productId . ' | Product Categories Saved.'));
             }
         }
     }
