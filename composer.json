@@ -19,6 +19,7 @@
     },
     "version": "2.4.1",
     "require": {
+        "ext-curl": "*",
         "aplazame/magento2": "^2.4",
         "elasticsearch/elasticsearch": "~7.1",
         "magento/composer-dependency-version-audit-plugin": "~0.1",
@@ -27,7 +28,7 @@
         "magepal/magento2-googletagmanager": "^2.7",
         "mageplaza/module-core": "^1.4",
         "mageplaza/module-smtp": "^4.2",
-        "ext-curl": "*"
+        "sequra/magento2-partpayments": "^2.4"
     },
     "autoload": {
         "exclude-from-classmap": [

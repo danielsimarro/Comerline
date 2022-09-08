@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "e5cfa598821029e78e8ee3d39089ca90",
+    "content-hash": "c416341edee9975dbe1c1e15b25fad61",
     "packages": [
         {
             "name": "2tvenom/cborencode",
@@ -19341,6 +19341,149 @@
             "time": "2021-12-10T11:20:11+00:00"
         },
         {
+            "name": "sequra/magento2-core",
+            "version": "2.4.1.2",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/sequra/magento2-core.git",
+                "reference": "e2662f1d742dca65a15953be4dbb8f4174d9739c"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/sequra/magento2-core/zipball/e2662f1d742dca65a15953be4dbb8f4174d9739c",
+                "reference": "e2662f1d742dca65a15953be4dbb8f4174d9739c",
+                "shasum": ""
+            },
+            "require": {
+                "sequra/php-client": "^0.3.1"
+            },
+            "type": "magento2-module",
+            "autoload": {
+                "files": [
+                    "registration.php"
+                ],
+                "psr-4": {
+                    "Sequra\\Core\\": ""
+                }
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "MIT"
+            ],
+            "authors": [
+                {
+                    "name": "Sequra Engineering",
+                    "email": "dev@sequra.es"
+                }
+            ],
+            "description": "Core module for SeQura Payment Methods",
+            "keywords": [
+                "magento2",
+                "pagos",
+                "payment",
+                "sequra"
+            ],
+            "support": {
+                "source": "https://github.com/sequra/magento2-core/tree/2.4.1.2"
+            },
+            "time": "2022-06-29T11:17:15+00:00"
+        },
+        {
+            "name": "sequra/magento2-partpayments",
+            "version": "2.4.1.0",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/sequra/magento2-partpayments.git",
+                "reference": "63f9c52b8d05d4d1b88b1b366c673b46affaa307"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/sequra/magento2-partpayments/zipball/63f9c52b8d05d4d1b88b1b366c673b46affaa307",
+                "reference": "63f9c52b8d05d4d1b88b1b366c673b46affaa307",
+                "shasum": ""
+            },
+            "require": {
+                "sequra/magento2-core": "^2.4.1.0"
+            },
+            "type": "magento2-module",
+            "autoload": {
+                "files": [
+                    "registration.php"
+                ],
+                "psr-4": {
+                    "Sequra\\Partpayments\\": ""
+                }
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "MIT"
+            ],
+            "authors": [
+                {
+                    "name": "SeQura Engineering",
+                    "email": "dev@sequra.es"
+                }
+            ],
+            "description": "SeQura Part Payments Payment Method",
+            "keywords": [
+                "magento2",
+                "pagos",
+                "payment",
+                "sequra"
+            ],
+            "support": {
+                "source": "https://github.com/sequra/magento2-partpayments/tree/2.4.1.0"
+            },
+            "time": "2022-06-23T00:31:37+00:00"
+        },
+        {
+            "name": "sequra/php-client",
+            "version": "0.3.2",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/sequra/php-client.git",
+                "reference": "9a453866d194d8a4425351a5793f04fa4ed57312"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/sequra/php-client/zipball/9a453866d194d8a4425351a5793f04fa4ed57312",
+                "reference": "9a453866d194d8a4425351a5793f04fa4ed57312",
+                "shasum": ""
+            },
+            "require": {
+                "ext-curl": "*",
+                "ext-json": "*",
+                "php": ">=5.4.0"
+            },
+            "type": "library",
+            "autoload": {
+                "psr-4": {
+                    "Sequra\\PhpClient\\": "src/"
+                }
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "MIT"
+            ],
+            "authors": [
+                {
+                    "name": "SeQura Engineering",
+                    "email": "dev@sequra.es"
+                }
+            ],
+            "description": "PHP client for SeQura API",
+            "keywords": [
+                "pagos",
+                "payment",
+                "sequra"
+            ],
+            "support": {
+                "issues": "https://github.com/sequra/php-client/issues",
+                "source": "https://github.com/sequra/php-client/tree/0.3.2"
+            },
+            "time": "2022-08-23T08:13:41+00:00"
+        },
+        {
             "name": "spomky-labs/aes-key-wrap",
             "version": "v6.0.0",
             "source": {
@@ -27428,7 +27571,9 @@
     "stability-flags": [],
     "prefer-stable": true,
     "prefer-lowest": false,
-    "platform": [],
+    "platform": {
+        "ext-curl": "*"
+    },
     "platform-dev": [],
-    "plugin-api-version": "1.1.0"
+    "plugin-api-version": "2.3.0"
 }

@@ -352,6 +352,8 @@ return [
         'PayPal_Braintree' => 1,
         'PayPal_BraintreeGraphQl' => 1,
         'Redsys_Redsys' => 1,
+        'Sequra_Core' => 1,
+        'Sequra_Partpayments' => 1,
         'Sm_AttributesSearch' => 1,
         'Sm_Autostore' => 1,
         'Sm_BackEnd' => 1,
