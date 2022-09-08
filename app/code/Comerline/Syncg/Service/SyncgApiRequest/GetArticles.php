@@ -281,7 +281,12 @@ class GetArticles extends SyncgApiService
                                 $product = $this->productFactory->create(); // If the product doesn't exists, we create it
                             }
                             $this->createUpdateProduct($product, $productG4100, $attributeSetId);
-                            $this->productRepository->save($product);
+                            try {
+                                $this->productRepository->save($product);
+                            } catch (\Exception $e) {
+                                $this->logger->warning(new Phrase($prefixLog . ' | [Magento Product: ' . $product->getId() . '] | Exception: ' . $e->getMessage()));
+                                continue;
+                            }
                             $product = $this->productRepository->get($product->getSku()); // Refresh product after save by sku
                             $productId = $product->getId();
                             $this->logger->info(new Phrase($prefixLog . ' | [Magento Product: ' . $product->getId() . '] | ' . $productAction));
@@ -504,11 +509,8 @@ class GetArticles extends SyncgApiService
                 $product->setTypeId('simple');
             }
             // Set url
-            $url = strtolower(str_replace(" ", "-", $productG4100['descripcion']));
-            if (!$this->isProductG4100Configurable($productG4100)) {
-                $url .= '-' . $cod;
-            }
             if ($product->getUrlKey() === null) {
+                $url = strtolower(str_replace(" ", "-", $productG4100['descripcion'])) . '-' . $cod;
                 $product->setUrlKey($url);
             }
         }
