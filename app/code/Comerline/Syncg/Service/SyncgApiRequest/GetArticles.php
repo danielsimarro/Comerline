@@ -255,7 +255,7 @@ class GetArticles extends SyncgApiService
                         $productG4100 = $productsG4100[$i];
                         $this->description = $productG4100['desc_detallada'];
                         $this->shortDescription = $productG4100['desc_interna'];
-                        $prefixLog = $this->prefixLog . ' [' . ($i + 1) . '/' . $countProductsG4100 . '][G4100 Product: ' . $productG4100['cod'] . ']';
+                        $prefixLog = $this->prefixLog . ' [' . ($i + 1) . '/' . $countProductsG4100 . '][G4100 Product: ' . $productG4100['id'] . ']';
                         if ($this->checkRequiredData($productG4100)) {
                             $collectionSyncg = $this->syncgStatusCollectionFactory->create()
                                 ->addFieldToFilter('g_id', $productG4100['id'])

@@ -102,7 +102,7 @@ class SQLHelper extends AbstractHelper
         $tableName = $connection->getTableName('comerline_syncg_status');
         $sql = "SELECT table1.mg_id AS child_mg_id, table2.mg_id AS parent_mg_id FROM " . $tableName . " AS table1 " .
             "JOIN " . $tableName . " AS table2 ON table1.parent_g = table2.g_id AND table2.`type` = " . SyncgStatus::TYPE_PRODUCT . " " .
-            "WHERE table1.parent_g != 0 AND table1.parent_mg = 0 " .
+            "WHERE table1.parent_g != 0 AND table1.parent_mg = 0 AND table1.mg_id != 0 " .
             "AND table1.`type` = " . SyncgStatus::TYPE_PRODUCT_SIMPLE . ";";
         $result = $connection->fetchAll($sql);
         foreach ($result as $r) {
