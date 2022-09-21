@@ -161,7 +161,7 @@ class CheckDeletedArticles extends SyncgApiService
             $ids = []; // Array where we will store the active products ids
             foreach ($pages as $page) {
                 for ($i = 0; $i < count($page); $i++) {
-                    $ids[] = $page[$i]['cod'];
+                    $ids[] = $page[$i]['id'];
                 }
             }
             foreach ($ids as $id) {
