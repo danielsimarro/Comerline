@@ -749,6 +749,7 @@ class GetArticles extends SyncgApiService
     private function processImages()
     {
         $this->logger->info(new Phrase($this->prefixLog . ' Init Images sync'));
+        $timeStart = microtime(true);
         $pendingImages = $this->sqlHelper->getPendingImages();
         $g4100CacheFolder = $this->dir->getPath('media') . '/g4100_cache/'; // Folder where we will cache all the images
         $g4100ImagesCache = [];
