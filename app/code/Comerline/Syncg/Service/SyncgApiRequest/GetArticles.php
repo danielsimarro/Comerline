@@ -758,13 +758,13 @@ class GetArticles extends SyncgApiService
     {
         $this->logger->info(new Phrase($this->prefixLog . ' Init Images sync'));
         $timeStart = microtime(true);$timeStart = microtime(true);
-        $pendingImages = $this->getPendingImages();
+        $pendingImages = $this->sqlHelper->getPendingImages();
         $g4100CacheFolder = $this->dir->getPath('media') . '/g4100_cache/'; // Folder where we will cache all the images
         $g4100ImagesCache = [];
 
         foreach ($pendingImages as $pendingImage) { // Download and fill images group by magento product id
-            $image = $pendingImage->getData('g_id');
-            $magentoProductId = $pendingImage->getData('mg_id');
+            $image = $pendingImage['g_id'];
+            $magentoProductId = $pendingImage['mg_id'];
             $imageSplit = str_split($image);  // Here we split all the characters in the image to create the folders
             $pathImage = $g4100CacheFolder;
             foreach ($imageSplit as $char) {

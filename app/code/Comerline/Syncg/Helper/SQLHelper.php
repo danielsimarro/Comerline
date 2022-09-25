@@ -110,4 +110,28 @@ class SQLHelper extends AbstractHelper
         }
         return $relatedProducts;
     }
+
+    public function getPendingImages(): array
+    {
+        $images = [];
+        $connection = $this->resource->getConnection(ResourceConnection::DEFAULT_CONNECTION);
+        $tableName = $connection->getTableName('comerline_syncg_status');
+        $sql = "SELECT table1.g_id, GROUP_CONCAT(g_id) images " .
+            "FROM " . $tableName . " AS table1 " .
+            "WHERE table1.status = " . SyncgStatus::STATUS_PENDING . " " .
+            "AND table1.`type` = " . SyncgStatus::TYPE_IMAGE . " " .
+            "GROUP BY table1.mg_id " .
+            "LIMIT 20;";
+        $result = $connection->fetchAll($sql);
+        foreach ($result as $r) {
+            $imagesSplit = explode(',', $r['images']);
+            foreach ($imagesSplit as $image) {
+                $images[] = [
+                    'g_id' => $r['g_id'],
+                    'mg_id' => $image
+                ];
+            }
+        }
+        return $images;
+    }
 }
