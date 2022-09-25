@@ -116,7 +116,7 @@ class SQLHelper extends AbstractHelper
         $images = [];
         $connection = $this->resource->getConnection(ResourceConnection::DEFAULT_CONNECTION);
         $tableName = $connection->getTableName('comerline_syncg_status');
-        $sql = "SELECT table1.g_id, GROUP_CONCAT(g_id) images " .
+        $sql = "SELECT table1.mg_id, GROUP_CONCAT(g_id) images " .
             "FROM " . $tableName . " AS table1 " .
             "WHERE table1.status = " . SyncgStatus::STATUS_PENDING . " " .
             "AND table1.`type` = " . SyncgStatus::TYPE_IMAGE . " " .
@@ -127,8 +127,8 @@ class SQLHelper extends AbstractHelper
             $imagesSplit = explode(',', $r['images']);
             foreach ($imagesSplit as $image) {
                 $images[] = [
-                    'g_id' => $r['g_id'],
-                    'mg_id' => $image
+                    'g_id' => $image,
+                    'mg_id' => $r['mg_id']
                 ];
             }
         }

@@ -746,18 +746,9 @@ class GetArticles extends SyncgApiService
         return end($image);
     }
 
-    private function getPendingImages(): Collection
-    {
-        return $this->syncgStatusCollectionFactory->create()
-            ->addFieldToFilter('type', SyncgStatus::TYPE_IMAGE)
-            ->addFieldToFilter('status', SyncgStatus::STATUS_PENDING)
-            ->setPageSize(20); // Process only 20 images pending
-    }
-
     private function processImages()
     {
         $this->logger->info(new Phrase($this->prefixLog . ' Init Images sync'));
-        $timeStart = microtime(true);$timeStart = microtime(true);
         $pendingImages = $this->sqlHelper->getPendingImages();
         $g4100CacheFolder = $this->dir->getPath('media') . '/g4100_cache/'; // Folder where we will cache all the images
         $g4100ImagesCache = [];
