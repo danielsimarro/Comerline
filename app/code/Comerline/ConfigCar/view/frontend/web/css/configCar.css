@@ -36,6 +36,10 @@
     margin-right: 10px;
 }
 
+body.cartquickpro-catalog_product-view #configcar-modal-button {
+    display: none !important;
+}
+
 .llantas_modelo, .llantas_ano, .llantas_marca{
     width: 20%;
     display: table-cell;
