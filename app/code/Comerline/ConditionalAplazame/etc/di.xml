@@ -1,0 +1,8 @@
+<?xml version="1.0"?>
+<config xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="urn:magento:framework:ObjectManager/etc/config.xsd">
+    <!-- Plugin used for disable offline payment method in frontend -->
+    <type name="Magento\Payment\Model\MethodList">
+        <plugin sortOrder="1" name="disableAplazame" type="Comerline\ConditionalAplazame\Plugin\MethodAvailable" disabled="false" />
+    </type>
+    <preference for="Aplazame\Payment\Block\Js" type="Comerline\ConditionalAplazame\Block\AplazameWidget" />
+</config>

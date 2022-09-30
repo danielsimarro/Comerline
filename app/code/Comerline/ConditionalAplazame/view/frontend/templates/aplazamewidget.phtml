@@ -1,0 +1,19 @@
+<?php
+/** @var $block \Comerline\ConditionalAplazame\Block\AplazameWidget */
+if (!$block->isEnabled()) {
+    return '';
+}
+
+$config = $block->getConfig();
+?>
+
+<script type="text/x-magento-init">
+    {
+        "*": {
+            "Aplazame_Payment/js/aplazame-init": {
+                "public_key":"<?php echo $config->getPublicApiKey() ?>",
+                "sandbox":<?php echo $config->isSandbox() ? 'true' : 'false' ?>
+            }
+        }
+    }
+</script>
