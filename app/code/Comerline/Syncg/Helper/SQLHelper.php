@@ -100,13 +100,18 @@ class SQLHelper extends AbstractHelper
         $relatedProducts = [];
         $connection = $this->resource->getConnection(ResourceConnection::DEFAULT_CONNECTION);
         $tableName = $connection->getTableName('comerline_syncg_status');
-        $sql = "SELECT table1.mg_id AS child_mg_id, table2.mg_id AS parent_mg_id FROM " . $tableName . " AS table1 " .
+        $sql = "SELECT table2.mg_id AS parent_mg_id,  GROUP_CONCAT(table1.mg_id) AS child_mg_id FROM " . $tableName . " AS table1 " .
             "JOIN " . $tableName . " AS table2 ON table1.parent_g = table2.g_id AND table2.`type` = " . SyncgStatus::TYPE_PRODUCT . " " .
             "WHERE table1.parent_g != 0 AND table1.parent_mg = 0 AND table1.mg_id != 0 " .
-            "AND table1.`type` = " . SyncgStatus::TYPE_PRODUCT_SIMPLE . ";";
+            "AND table1.`type` = " . SyncgStatus::TYPE_PRODUCT_SIMPLE . " " .
+            "GROUP BY table2.mg_id " .
+            "LIMIT 20;";
         $result = $connection->fetchAll($sql);
         foreach ($result as $r) {
-            $relatedProducts[$r['parent_mg_id']][] = $r['child_mg_id'];
+            $childMgIds = explode(',', $r['child_mg_id']);
+            foreach ($childMgIds as $childMgId) {
+                $relatedProducts[$r['parent_mg_id']][] = $childMgId;
+            }
         }
         return $relatedProducts;
     }
