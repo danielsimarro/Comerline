@@ -126,6 +126,7 @@ class CreateOrder extends SyncgApiService
         $items = $order->getData('items');
         $lines = [];
         foreach ($items as $item) {
+            // @todo Todo esto está para refactorizar. Se resuelve con una llamada
             $price = floatval($item->getData('price'));
             if ($price != 0.0) { // If the price is 0, that means that article is not right, so we don't add it to the order
                 $qty = intval($item->getData('qty_ordered'));
@@ -139,12 +140,7 @@ class CreateOrder extends SyncgApiService
                     ->addFieldToFilter('type', ['in' => [SyncgStatus::TYPE_PRODUCT,SyncgStatus::TYPE_PRODUCT_SIMPLE]]);
                 if ($collectionSyncg->getSize() > 0) {
                     foreach ($collectionSyncg as $itemSyncg) {
-                        $codeG4100 = $itemSyncg->getData('g_id');
-                        $this->buildParams($codeG4100);
-                        $response = $this->execute();
-                        if ($response) {
-                            $idG4100 = intval($response['listado'][0]['id']);
-                        }
+                        $idG4100 = $itemSyncg->getData('g_id');
                     }
                 }
                 array_push($lines, ["articulo" => $idG4100, "cantidad" => $qty, "precio" => $price, "descuento" => 0]);

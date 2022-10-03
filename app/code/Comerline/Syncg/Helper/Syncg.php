@@ -113,7 +113,9 @@ class Syncg
         foreach ($collection as $item){
             $orderIds[] = $item->getData('mg_id');
         }
-        $this->order->getOrderDetails($orderIds);
+        if ($orderIds) {
+            $this->order->sendOrders($orderIds);
+        }
     }
 
     public function fetchArticles(){

@@ -61,11 +61,18 @@ class SyncgStatusRepository
 
     public function updateEntityStatus($mgId, $gId, $type, $status, $parentGId = 0)
     {
-        $entityStatus = $this->getEntityStatus($gId, $type);
+        if ($type == SyncgStatus::TYPE_ORDER) {
+            $entityStatus = $this->getEntityStatusByMgId($mgId, $type);
+        } else {
+            $entityStatus = $this->getEntityStatus($gId, $type);
+        }
         if ($entityStatus) { // Exists Entity Status
             $this->syncgStatus = $entityStatus;
             if (!$this->syncgStatus->getMgId()) {
                 $this->syncgStatus->setMgId($mgId);
+            }
+            if ($type == SyncgStatus::TYPE_ORDER && !$this->syncgStatus->getGId()) {
+                $this->syncgStatus->setGId($gId);
             }
             $this->syncgStatus->setStatus($status);
             $this->syncgStatus->setUpdatedAt($this->date->date());
@@ -87,6 +94,21 @@ class SyncgStatusRepository
         $collection = $this->syncgStatusCollectionFactory->create()
             ->addFieldToFilter('type', $type)
             ->addFieldToFilter('g_id', $gId)
+            ->setCurPage(0)
+            ->setPageSize(1);
+        if ($collection->getSize() > 0) {
+            foreach ($collection as $item) {
+                $entityStatus = $this->syncgStatusFactory->create()->load($item->getData('id'));
+            }
+        }
+        return $entityStatus;
+    }
+
+    public function getEntityStatusByMgId($mgId, $type) {
+        $entityStatus = null;
+        $collection = $this->syncgStatusCollectionFactory->create()
+            ->addFieldToFilter('type', $type)
+            ->addFieldToFilter('mg_id', $mgId)
             ->setCurPage(0)
             ->setPageSize(1);
         if ($collection->getSize() > 0) {

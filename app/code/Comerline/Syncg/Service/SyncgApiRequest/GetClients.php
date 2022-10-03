@@ -120,11 +120,12 @@ class GetClients extends SyncgApiService
         }
         $clientEmail = $order->getData('customer_email'); // Client's email
         $clientName = $order->getData('customer_firstname') . " " . $order->getData('customer_lastname'); // Client's name
-        $clientAddress = $order->getData('addresses')[0]->getData('street'); // Client's street
-        $clientCity = $order->getData('addresses')[0]->getData('city'); // Client's city
-        $clientPhone = $order->getData('addresses')[0]->getData('telephone');
-        $clientProvince = $this->getProvince->checkProvince($order->getData('addresses')[0]->getData('region')); // Client's province
-        $clientPostcode = $order->getData('addresses')[0]->getData('postcode'); // Client's postcode
+        $shippingAddress = $order->getShippingAddress();
+        $clientAddress = $shippingAddress->getData('street'); // Client's street
+        $clientCity = $shippingAddress->getData('city'); // Client's city
+        $clientPhone = $shippingAddress->getData('telephone');
+        $clientProvince = $this->getProvince->checkProvince($shippingAddress->getData('region')); // Client's province
+        $clientPostcode = $shippingAddress->getData('postcode'); // Client's postcode
         $client = [$clientName, $clientAddress, $clientEmail, $clientCity, $clientPhone, $clientProvince, $clientPostcode, $clientMgId]; // We put it all togheter on an array
         $this->buildParams($client, true); // First, we search if the client exists in G4100
         $response = $this->execute();
