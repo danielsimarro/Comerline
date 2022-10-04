@@ -1,0 +1,13 @@
+<?xml version="1.0"?>
+<config xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="urn:magento:module:Magento_Config:etc/system_file.xsd">
+    <system>
+        <section id="payment_es" extends="payment_other">
+            <group id="express_checkout_other">
+                <group id="express_checkout_required">
+                    <field id="enable_paypal_paylater_experience" showInDefault="1" showInWebsite="1"/>
+                    <group id="advertise_paylater" showInDefault="1" showInWebsite="1"/>
+                </group>
+            </group>
+        </section>
+    </system>
+</config>
