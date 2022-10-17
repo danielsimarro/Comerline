@@ -34,6 +34,6 @@ class AplazameWidget extends Js
             return true; //Not product page.
         }
         $price = $product->getFinalPrice(true);
-        return $price > 1000;
+        return $price > 2000;
     }
 }

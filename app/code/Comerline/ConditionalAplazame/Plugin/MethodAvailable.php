@@ -15,7 +15,7 @@ class MethodAvailable
             $grandTotal = $quote->getGrandTotal();
         }
         $result = $proceed($quote); //Original method.
-        if (floatval($grandTotal) < 1000) {
+        if (floatval($grandTotal) < 2000) {
             //Remove aplazame.
             foreach ($result as $key => $_result) {
                 if ($_result->getCode() == Aplazame::PAYMENT_METHOD_CODE) {
