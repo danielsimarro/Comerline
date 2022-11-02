@@ -800,8 +800,6 @@ class GetArticles extends SyncgApiService
                 foreach ($images as $key => $g4100ImageCache) {
                     if ($key === 0) {
                         $types = ['image', 'small_image', 'thumbnail'];
-                    } else {
-                        $types = ['small_image'];
                     }
                     $product->addImageToMediaGallery($g4100ImageCache['path'] . $g4100ImageCache['image'], $types, false, false);
                     $this->syncgStatusRepository->updateEntityStatus($product->getId(), $g4100ImageCache['image'], SyncgStatus::TYPE_IMAGE, SyncgStatus::STATUS_COMPLETED);
