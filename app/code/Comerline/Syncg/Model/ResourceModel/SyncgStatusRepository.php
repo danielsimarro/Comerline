@@ -11,6 +11,7 @@ use Magento\Framework\Phrase;
 use Magento\Framework\Stdlib\DateTime\DateTime;
 use Exception;
 use Psr\Log\LoggerInterface;
+use Comerline\Syncg\Helper\SQLHelper;
 
 class SyncgStatusRepository
 {
@@ -44,19 +45,22 @@ class SyncgStatusRepository
      * @var LoggerInterface
      */
     private $logger;
+    private SQLHelper $sqlHelper;
 
     public function __construct(
         SyncgStatusResource $syncgStatusResource,
         DateTime $date,
         CollectionFactory $syncgStatusCollectionFactory,
         SyncgStatusFactory $syncgStatusFactory,
-        LoggerInterface $logger
+        LoggerInterface $logger,
+        SQLHelper $sqlHelper
     ) {
         $this->syncgStatusResource = $syncgStatusResource;
         $this->date = $date;
         $this->syncgStatusCollectionFactory = $syncgStatusCollectionFactory;
         $this->syncgStatusFactory = $syncgStatusFactory;
         $this->logger = $logger;
+        $this->sqlHelper = $sqlHelper;
     }
 
     public function updateEntityStatus($mgId, $gId, $type, $status, $parentGId = 0)
@@ -71,22 +75,22 @@ class SyncgStatusRepository
             if (!$this->syncgStatus->getMgId()) {
                 $this->syncgStatus->setMgId($mgId);
             }
-            if ($type == SyncgStatus::TYPE_ORDER && !$this->syncgStatus->getGId()) {
+            if ($type == SyncgStatus::TYPE_ORDER && $gId && !$this->syncgStatus->getGId()) {
                 $this->syncgStatus->setGId($gId);
             }
             $this->syncgStatus->setStatus($status);
             $this->syncgStatus->setUpdatedAt($this->date->date());
+            $this->saveSyncgStatus($this->syncgStatus);
         } else { // No exist, create
-            $this->syncgStatus = $this->syncgStatusFactory->create();
-            $this->syncgStatus->setType($type);
-            $this->syncgStatus->setMgId($mgId);
-            $this->syncgStatus->setGId($gId);
-            $this->syncgStatus->setParentG($parentGId);
-            $this->syncgStatus->setParentMg(0);
-            $this->syncgStatus->setStatus($status);
-            $this->syncgStatus->setCreatedAt($this->date->date());
+            $valuesToInsert['type'] = $type;
+            $valuesToInsert['mg_id'] = $mgId;
+            $valuesToInsert['g_id'] = $gId;
+            $valuesToInsert['status'] = $status;
+            $valuesToInsert['parent_g'] = $parentGId;
+            $valuesToInsert['parent_mg'] = 0;
+            $valuesToInsert['created_at'] = $this->date->date();
+            $this->sqlHelper->addSyncgStatus($valuesToInsert);
         }
-        $this->saveSyncgStatus($this->syncgStatus);
     }
 
     public function getEntityStatus($gId, $type) {

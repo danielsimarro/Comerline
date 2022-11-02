@@ -84,6 +84,14 @@ class SQLHelper extends AbstractHelper
         }
     }
 
+    public function addSyncgStatus($values) {
+        $connection = $this->resource->getConnection(ResourceConnection::DEFAULT_CONNECTION);
+        $tableName = $connection->getTableName('comerline_syncg_status');
+        $sql = "INSERT INTO " . $tableName . " (type, mg_id, g_id, status, parent_g, parent_mg, created_at) " .
+            "VALUES (" . $values['type'] . ", " . $values['mg_id'] . ", " . $values['g_id'] . ", " . $values['status'] . ", " . $values['parent_g'] . ", " . $values['parent_mg'] . ", '" . $values['created_at'] . "')";
+        $connection->query($sql);
+    }
+
     public function updateRelatedProductsStatus($relatedIds, $parentMgId)
     {
         if ($relatedIds) {
